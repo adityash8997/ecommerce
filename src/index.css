@@ -173,7 +173,7 @@ Beautiful, vibrant colors inspired by campus life and modern design
   
   /* Service card styles */
   .service-card {
-    @apply glass-card p-6 hover-lift cursor-pointer group;
+    @apply glass-card p-6 hover-lift cursor-pointer;
     transition: var(--transition-bouncy);
   }
   
