@@ -2,14 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* KIIT University Superapp Design System
+Beautiful, vibrant colors inspired by campus life and modern design
 */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* KIIT Brand Colors - HSL format */
+    --background: 120 15% 97%;
+    --foreground: 210 20% 15%;
+    
+    /* KIIT Green Palette */
+    --kiit-green: 140 60% 45%;
+    --kiit-green-light: 140 55% 65%;
+    --kiit-green-dark: 140 65% 25%;
+    --kiit-green-soft: 140 30% 92%;
+    
+    /* Campus Vibes */
+    --campus-blue: 210 80% 55%;
+    --campus-orange: 25 90% 60%;
+    --campus-purple: 270 70% 60%;
+    --glass-white: 0 0% 100%;
+    --glass-overlay: 0 0% 100% / 0.1;
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -17,17 +33,31 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: var(--kiit-green);
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: var(--kiit-green-soft);
+    --secondary-foreground: var(--kiit-green-dark);
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 140 20% 95%;
+    --muted-foreground: 140 15% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: var(--campus-blue);
+    --accent-foreground: 0 0% 100%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--kiit-green)) 0%, hsl(var(--campus-blue)) 100%);
+    --gradient-soft: linear-gradient(135deg, hsl(var(--kiit-green-soft)) 0%, hsl(0 0% 100%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(var(--kiit-green)) 0%, hsl(var(--campus-purple)) 50%, hsl(var(--campus-orange)) 100%);
+    
+    /* Glassmorphism */
+    --glass-bg: hsl(var(--glass-white) / 0.1);
+    --glass-border: hsl(var(--glass-white) / 0.2);
+    --glass-shadow: 0 8px 32px 0 hsl(var(--kiit-green) / 0.15);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bouncy: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -100,6 +130,89 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
   }
+}
+
+@layer components {
+  /* Glass morphism components */
+  .glass-card {
+    @apply backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl shadow-lg;
+    box-shadow: var(--glass-shadow);
+  }
+  
+  .glass-button {
+    @apply backdrop-blur-md bg-white/20 border border-white/30 rounded-xl transition-all duration-300 hover:bg-white/30 hover:scale-105;
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-soft {
+    background: var(--gradient-soft);
+  }
+  
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
+  /* Animation utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-bounce-slow {
+    animation: bounce 3s infinite;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-2 hover:shadow-xl;
+  }
+  
+  /* Service card styles */
+  .service-card {
+    @apply glass-card p-6 hover-lift cursor-pointer group;
+    transition: var(--transition-bouncy);
+  }
+  
+  .service-card:hover {
+    transform: translateY(-8px) scale(1.02);
+  }
+  
+  /* Mascot animation */
+  .mascot-bounce {
+    animation: mascotBounce 2s ease-in-out infinite;
+  }
+  
+  /* Text gradients */
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .text-hero-gradient {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes mascotBounce {
+  0%, 100% { transform: translateY(0px) rotate(-3deg); }
+  50% { transform: translateY(-10px) rotate(3deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--kiit-green) / 0.3); }
+  50% { box-shadow: 0 0 40px hsl(var(--kiit-green) / 0.6); }
 }
