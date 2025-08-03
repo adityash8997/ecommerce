@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Smartphone, LogIn } from "lucide-react";
+import { Menu, X, Smartphone, LogIn, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import kiitMascot from "@/assets/kiit-mascot.png";
 
 export const Navbar = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
@@ -19,7 +21,10 @@ export const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate('/')}
+          >
             <img src={kiitMascot} alt="KIIT Buddy" className="w-8 h-8" />
             <div className="font-poppins font-bold text-xl text-gradient">
               KIIT Buddy
@@ -28,6 +33,13 @@ export const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
+            <button
+              onClick={() => navigate('/')}
+              className="text-foreground hover:text-kiit-green transition-colors font-medium flex items-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </button>
             {navItems.map((item) => (
               <a
                 key={item.label}
@@ -63,6 +75,16 @@ export const Navbar = () => {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden border-t border-white/20 py-4 space-y-4">
+            <button
+              onClick={() => {
+                navigate('/');
+                setIsOpen(false);
+              }}
+              className="w-full text-left text-foreground hover:text-kiit-green transition-colors font-medium py-2 flex items-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </button>
             {navItems.map((item) => (
               <a
                 key={item.label}

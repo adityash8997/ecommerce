@@ -20,12 +20,15 @@ import {
   User,
   Sparkles,
   ArrowRight,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const SeniorConnect = () => {
+  const navigate = useNavigate();
   const [selectedFilters, setSelectedFilters] = useState({
     area: "",
     branch: "",
@@ -100,6 +103,20 @@ const SeniorConnect = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-kiit-green-soft to-white">
+      {/* Back to Home Button */}
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-white/20">
+        <div className="container mx-auto px-4 py-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-kiit-green hover:text-kiit-green-dark"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </Button>
+        </div>
+      </div>
+      
       <Navbar />
       
       {/* Hero Section */}
