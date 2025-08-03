@@ -175,6 +175,8 @@ export const ServicesGrid = () => {
   const handleServiceClick = (index: number) => {
     if (index === 0) { // Carton Packing service
       navigate("/carton-transfer");
+    } else if (index === 2) { // Senior Connect service
+      navigate("/senior-connect");
     }
   };
 
