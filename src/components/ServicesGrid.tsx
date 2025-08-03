@@ -20,6 +20,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const services = [
   {
@@ -169,6 +170,14 @@ const services = [
 ];
 
 export const ServicesGrid = () => {
+  const navigate = useNavigate();
+
+  const handleServiceClick = (index: number) => {
+    if (index === 0) { // Carton Packing service
+      navigate("/carton-transfer");
+    }
+  };
+
   return (
     <section className="py-20 bg-gradient-to-br from-kiit-green-soft to-white">
       <div className="container mx-auto px-4">
@@ -223,7 +232,12 @@ export const ServicesGrid = () => {
                       {service.price}
                     </span>
                     
-                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-all duration-300">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+                      onClick={() => handleServiceClick(index)}
+                    >
                       Try Now
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </Button>
