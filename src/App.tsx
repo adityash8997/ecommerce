@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import CartonTransfer from "./pages/CartonTransfer";
 import SeniorConnect from "./pages/SeniorConnect";
 import HandwrittenAssignments from "./pages/HandwrittenAssignments";
+import LostAndFound from "./pages/LostAndFound";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/carton-transfer" element={<CartonTransfer />} />
           <Route path="/senior-connect" element={<SeniorConnect />} />
           <Route path="/handwritten-assignments" element={<HandwrittenAssignments />} />
+          <Route path="/lost-and-found" element={<LostAndFound />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
