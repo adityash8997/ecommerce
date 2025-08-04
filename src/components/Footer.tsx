@@ -1,11 +1,8 @@
 import { Heart, Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
 import kiitMascot from "@/assets/kiit-mascot.png";
-
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
-
-  return (
-    <footer className="bg-gradient-to-br from-kiit-green-dark to-foreground text-white">
+  return <footer className="bg-gradient-to-br from-kiit-green-dark to-foreground text-white">
       <div className="container mx-auto px-4 py-16">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
@@ -13,9 +10,7 @@ export const Footer = () => {
           <div className="lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
               <img src={kiitMascot} alt="KIIT Buddy" className="w-10 h-10" />
-              <div className="font-poppins font-bold text-2xl">
-                KIIT Buddy
-              </div>
+              <div className="font-poppins font-bold text-2xl">KIIT Saathi</div>
             </div>
             
             <p className="text-white/80 leading-relaxed mb-6 max-w-md">
@@ -24,22 +19,13 @@ export const Footer = () => {
             </p>
             
             <div className="flex items-center gap-4">
-              <a 
-                href="#" 
-                className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
-              >
+              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
-              >
+              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Linkedin className="w-5 h-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors"
-              >
+              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Mail className="w-5 h-5" />
               </a>
             </div>
@@ -87,12 +73,7 @@ export const Footer = () => {
             <h4 className="font-semibold mb-2 flex items-center gap-2">
               <span>⚠️</span> Important Disclaimer
             </h4>
-            <p className="text-white/80 text-sm leading-relaxed">
-              KIIT Buddy is an independent student-run initiative and is not officially affiliated with 
-              KIIT University. We are students serving fellow students with campus-related services. 
-              All academic assistance is meant to supplement learning, not replace it. Use responsibly! 
-              The university name and logos are used for identification purposes only.
-            </p>
+            <p className="text-white/80 text-sm leading-relaxed">KIIT Saathi is an independent student-run initiative and is not officially affiliated with KIIT University. We are students serving fellow students with campus-related services. All academic assistance is meant to supplement learning, not replace it. Use responsibly! The university name and logos are used for identification purposes only.</p>
           </div>
         </div>
 
@@ -107,6 +88,5 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
