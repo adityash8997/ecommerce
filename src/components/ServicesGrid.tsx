@@ -173,7 +173,9 @@ export const ServicesGrid = () => {
   const navigate = useNavigate();
 
   const handleServiceClick = (index: number) => {
-    if (index === 0) { // Carton Packing service
+    if (index === 0) { // Handwritten Assignments service
+      navigate("/handwritten-assignments");
+    } else if (index === 1) { // Carton Packing service
       navigate("/carton-transfer");
     } else if (index === 2) { // Senior Connect service
       navigate("/senior-connect");
