@@ -31,6 +31,7 @@ import {
   Coffee
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Navbar } from "@/components/Navbar";
 
 // Mock data for lost and found items
 const mockItems = [
@@ -157,6 +158,7 @@ export default function LostAndFound() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft to-white">
+      <Navbar />
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-kiit-green to-campus-blue text-white">
         <div className="container mx-auto px-4 text-center">
