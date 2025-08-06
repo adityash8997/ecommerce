@@ -17,7 +17,8 @@ import {
   Car,
   Lightbulb,
   Star,
-  ArrowRight
+  ArrowRight,
+  Calculator
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -166,6 +167,14 @@ const services = [
     price: "₹299/workshop",
     gradient: "from-campus-blue to-campus-purple",
     emoji: "🛠️"
+  },
+  {
+    icon: Calculator,
+    title: "SplitSaathi – Group Expense Manager",
+    description: "Simplify how you and your friends split bills during trips, café visits, or fests.",
+    price: "Free",
+    gradient: "from-green-500 to-emerald-600",
+    emoji: "🧾"
   }
 ];
 
@@ -181,6 +190,8 @@ export const ServicesGrid = () => {
       navigate("/handwritten-assignments");
     } else if (index === 15) { // Lost & Found Portal service
       navigate("/lost-and-found");
+    } else if (index === 18) { // SplitSaathi service
+      navigate("/split-saathi");
     }
   };
 

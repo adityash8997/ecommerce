@@ -9,6 +9,8 @@ import CartonTransfer from "./pages/CartonTransfer";
 import SeniorConnect from "./pages/SeniorConnect";
 import HandwrittenAssignments from "./pages/HandwrittenAssignments";
 import LostAndFound from "./pages/LostAndFound";
+import SplitSaathi from "./pages/SplitSaathi";
+import GroupDashboard from "./pages/GroupDashboard";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/senior-connect" element={<SeniorConnect />} />
           <Route path="/handwritten-assignments" element={<HandwrittenAssignments />} />
           <Route path="/lost-and-found" element={<LostAndFound />} />
+          <Route path="/split-saathi" element={<SplitSaathi />} />
+          <Route path="/split-saathi/group/:groupId" element={<GroupDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
