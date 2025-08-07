@@ -188,6 +188,8 @@ export const ServicesGrid = () => {
       navigate("/senior-connect");
     } else if (index === 3) { // Handwritten Assignments service
       navigate("/handwritten-assignments");
+    } else if (index === 8) { // Study Material by Seniors service
+      navigate("/study-material");
     } else if (index === 15) { // Lost & Found Portal service
       navigate("/lost-and-found");
     } else if (index === 18) { // SplitSaathi service
