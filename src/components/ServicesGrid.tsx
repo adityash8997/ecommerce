@@ -183,6 +183,14 @@ const services = [
     price: "Fair Price",
     gradient: "from-campus-orange to-kiit-green",
     emoji: "📚"
+  },
+  {
+    icon: PartyPopper,
+    title: "KIIT Saathi Celebrations",
+    description: "From surprise birthday parties to last-minute cake deliveries, decorations, and fun party combos — all planned & delivered for you.",
+    price: "₹299+",
+    gradient: "from-pink-500 to-purple-600",
+    emoji: "🎉"
   }
 ];
 
@@ -204,6 +212,8 @@ export const ServicesGrid = () => {
       navigate("/split-saathi");
     } else if (index === 19) { // Book Buyback & Resale service
       navigate("/book-buyback");
+    } else if (index === 20) { // KIIT Saathi Celebrations service
+      navigate("/celebrations");
     }
   };
 

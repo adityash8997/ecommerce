@@ -107,6 +107,48 @@ export type Database = {
         }
         Relationships: []
       }
+      celebration_bookings: {
+        Row: {
+          admin_notes: string | null
+          celebration_type: string
+          contact_number: string
+          created_at: string
+          date_time: string
+          id: string
+          name: string
+          special_requests: string | null
+          status: string
+          updated_at: string
+          venue_location: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          celebration_type: string
+          contact_number: string
+          created_at?: string
+          date_time: string
+          id?: string
+          name: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          venue_location: string
+        }
+        Update: {
+          admin_notes?: string | null
+          celebration_type?: string
+          contact_number?: string
+          created_at?: string
+          date_time?: string
+          id?: string
+          name?: string
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          venue_location?: string
+        }
+        Relationships: []
+      }
       expense_splits: {
         Row: {
           amount: number
