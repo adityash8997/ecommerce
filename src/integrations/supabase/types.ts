@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_purchase_requests: {
+        Row: {
+          admin_notes: string | null
+          book_set_needed: string
+          contact_number: string
+          created_at: string
+          full_name: string
+          id: string
+          roll_number: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          book_set_needed: string
+          contact_number: string
+          created_at?: string
+          full_name: string
+          id?: string
+          roll_number: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          book_set_needed?: string
+          contact_number?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          roll_number?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      book_submissions: {
+        Row: {
+          admin_notes: string | null
+          book_condition: string
+          book_titles: string
+          branch: string
+          contact_number: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          photo_urls: string[] | null
+          pickup_location: string
+          roll_number: string
+          status: string
+          terms_accepted: boolean
+          updated_at: string
+          year_of_study: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          book_condition: string
+          book_titles: string
+          branch: string
+          contact_number: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          photo_urls?: string[] | null
+          pickup_location: string
+          roll_number: string
+          status?: string
+          terms_accepted?: boolean
+          updated_at?: string
+          year_of_study: string
+        }
+        Update: {
+          admin_notes?: string | null
+          book_condition?: string
+          book_titles?: string
+          branch?: string
+          contact_number?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          photo_urls?: string[] | null
+          pickup_location?: string
+          roll_number?: string
+          status?: string
+          terms_accepted?: boolean
+          updated_at?: string
+          year_of_study?: string
+        }
+        Relationships: []
+      }
       expense_splits: {
         Row: {
           amount: number
