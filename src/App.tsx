@@ -12,6 +12,7 @@ import LostAndFound from "./pages/LostAndFound";
 import SplitSaathi from "./pages/SplitSaathi";
 import GroupDashboard from "./pages/GroupDashboard";
 import StudyMaterial from "./pages/StudyMaterial";
+import BookBuyback from "./pages/BookBuyback";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/split-saathi" element={<SplitSaathi />} />
           <Route path="/split-saathi/group/:groupId" element={<GroupDashboard />} />
           <Route path="/study-material" element={<StudyMaterial />} />
+          <Route path="/book-buyback" element={<BookBuyback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

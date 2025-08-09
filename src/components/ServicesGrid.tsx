@@ -175,6 +175,14 @@ const services = [
     price: "Free",
     gradient: "from-green-500 to-emerald-600",
     emoji: "🧾"
+  },
+  {
+    icon: BookOpen,
+    title: "Book Buyback & Resale",
+    description: "Sell your old semester books for a better price and help juniors save money — by students, for students.",
+    price: "Fair Price",
+    gradient: "from-campus-orange to-kiit-green",
+    emoji: "📚"
   }
 ];
 
@@ -194,6 +202,8 @@ export const ServicesGrid = () => {
       navigate("/lost-and-found");
     } else if (index === 18) { // SplitSaathi service
       navigate("/split-saathi");
+    } else if (index === 19) { // Book Buyback & Resale service
+      navigate("/book-buyback");
     }
   };
 
