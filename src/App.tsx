@@ -16,6 +16,7 @@ import StudyMaterial from "./pages/StudyMaterial";
 import BookBuyback from "./pages/BookBuyback";
 import Celebrations from "./pages/Celebrations";
 import PrintoutOnDemand from "./pages/PrintoutOnDemand";
+import Meetups from "./pages/Meetups";
 
 console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
 
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/book-buyback" element={<BookBuyback />} />
           <Route path="/celebrations" element={<Celebrations />} />
           <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
+          <Route path="/meetups" element={<Meetups />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

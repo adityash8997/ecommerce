@@ -191,6 +191,14 @@ const services = [
     price: "₹299+",
     gradient: "from-pink-500 to-purple-600",
     emoji: "🎉"
+  },
+  {
+    icon: Users,
+    title: "KIIT Saathi Meetups",
+    description: "Find your people, create your moments - campus meetups made easy",
+    price: "Free",
+    gradient: "from-pink-500 to-purple-600",
+    emoji: "💛"
   }
 ];
 
@@ -216,6 +224,8 @@ export const ServicesGrid = () => {
       navigate("/book-buyback");
     } else if (index === 20) { // KIIT Saathi Celebrations service
       navigate("/celebrations");
+    } else if (index === 21) { // KIIT Saathi Meetups service
+      navigate("/meetups");
     }
   };
 
