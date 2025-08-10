@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const PrintoutOnDemand = () => {
+  console.log('PrintoutOnDemand component is rendering');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('student');
   

@@ -17,6 +17,8 @@ import BookBuyback from "./pages/BookBuyback";
 import Celebrations from "./pages/Celebrations";
 import PrintoutOnDemand from "./pages/PrintoutOnDemand";
 
+console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
+
 const queryClient = new QueryClient();
 
 const App = () => (
