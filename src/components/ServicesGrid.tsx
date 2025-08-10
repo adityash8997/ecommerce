@@ -200,6 +200,8 @@ export const ServicesGrid = () => {
   const handleServiceClick = (index: number) => {
     if (index === 0) { // Carton Packing service
       navigate("/carton-transfer");
+    } else if (index === 1) { // Printouts on Demand service
+      navigate("/printout-on-demand");
     } else if (index === 2) { // Senior Connect service
       navigate("/senior-connect");
     } else if (index === 3) { // Handwritten Assignments service
