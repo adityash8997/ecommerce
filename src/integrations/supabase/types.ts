@@ -301,6 +301,132 @@ export type Database = {
         }
         Relationships: []
       }
+      print_helpers: {
+        Row: {
+          contact: string
+          email: string | null
+          id: string
+          is_active: boolean
+          joined_at: string
+          last_active: string
+          name: string
+          total_earnings: number
+          total_jobs: number
+        }
+        Insert: {
+          contact: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          last_active?: string
+          name: string
+          total_earnings?: number
+          total_jobs?: number
+        }
+        Update: {
+          contact?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          joined_at?: string
+          last_active?: string
+          name?: string
+          total_earnings?: number
+          total_jobs?: number
+        }
+        Relationships: []
+      }
+      print_jobs: {
+        Row: {
+          accepted_at: string | null
+          additional_notes: string | null
+          binding_option: string | null
+          copies: number
+          created_at: string
+          delivered_at: string | null
+          delivery_location: string
+          delivery_time: string | null
+          file_name: string
+          file_size: number
+          file_url: string
+          helper_fee: number
+          helper_id: string | null
+          id: string
+          page_count: number
+          paper_size: string
+          print_type: string
+          printed_at: string | null
+          printing_cost: number
+          secure_download_token: string | null
+          service_fee: number
+          status: string
+          student_contact: string
+          student_name: string
+          token_expires_at: string | null
+          total_cost: number
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          additional_notes?: string | null
+          binding_option?: string | null
+          copies?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_location: string
+          delivery_time?: string | null
+          file_name: string
+          file_size: number
+          file_url: string
+          helper_fee: number
+          helper_id?: string | null
+          id?: string
+          page_count: number
+          paper_size?: string
+          print_type: string
+          printed_at?: string | null
+          printing_cost: number
+          secure_download_token?: string | null
+          service_fee: number
+          status?: string
+          student_contact: string
+          student_name: string
+          token_expires_at?: string | null
+          total_cost: number
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          additional_notes?: string | null
+          binding_option?: string | null
+          copies?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_location?: string
+          delivery_time?: string | null
+          file_name?: string
+          file_size?: number
+          file_url?: string
+          helper_fee?: number
+          helper_id?: string | null
+          id?: string
+          page_count?: number
+          paper_size?: string
+          print_type?: string
+          printed_at?: string | null
+          printing_cost?: number
+          secure_download_token?: string | null
+          service_fee?: number
+          status?: string
+          student_contact?: string
+          student_name?: string
+          token_expires_at?: string | null
+          total_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       settlements: {
         Row: {
           amount: number
