@@ -65,14 +65,6 @@ const services = [
     emoji: "📣"
   },
   {
-    icon: ShoppingBag,
-    title: "Grocery & Momo Delivery",
-    description: "From Deepak Momos to Doms pencils — delivery from nearby shops.",
-    price: "₹20 delivery",
-    gradient: "from-campus-blue to-campus-purple",
-    emoji: "🛍️"
-  },
-  {
     icon: PartyPopper,
     title: "Fest Announcements",
     description: "All fest updates, registrations, and event highlights — in one place.",
@@ -183,6 +175,14 @@ const services = [
     price: "Free",
     gradient: "from-pink-500 to-purple-600",
     emoji: "💛"
+  },
+  {
+    icon: ShoppingBag,
+    title: "Grocery & Momo Delivery",
+    description: "From Deepak Momos to Doms pencils — delivery from nearby shops.",
+    price: "₹20 delivery",
+    gradient: "from-campus-blue to-campus-purple",
+    emoji: "🛍️"
   }
 ];
 
