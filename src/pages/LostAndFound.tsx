@@ -226,11 +226,26 @@ export default function LostAndFound() {
     reader.readAsDataURL(file);
   };
 
-  // Upload image to a temporary URL (in a real app, you'd use Supabase Storage)
+  // Upload image to Supabase Storage
   const uploadImage = async (file: File): Promise<string> => {
-    // For demo purposes, we'll use a placeholder URL
-    // In a real implementation, you'd upload to Supabase Storage or another service
-    return "/placeholder.svg";
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('lost-and-found-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // Get the public URL
+    const { data } = supabase.storage
+      .from('lost-and-found-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
   };
 
   // Handle form submission
