@@ -216,3 +216,38 @@ Beautiful, vibrant colors inspired by campus life and modern design
   0%, 100% { box-shadow: 0 0 20px hsl(var(--kiit-green) / 0.3); }
   50% { box-shadow: 0 0 40px hsl(var(--kiit-green) / 0.6); }
 }
+
+@keyframes dropDown {
+  0% {
+    transform: translateY(-100px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(10px) scale(1.1);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-5px) scale(0.95);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
