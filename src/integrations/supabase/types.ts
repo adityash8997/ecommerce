@@ -107,6 +107,57 @@ export type Database = {
         }
         Relationships: []
       }
+      carton_transfer_bookings: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          full_name: string
+          hostel_name: string
+          id: string
+          mobile_number: string
+          need_tape: boolean
+          number_of_boxes: number
+          payment_method: string
+          pickup_slot: string
+          room_number: string
+          status: string
+          total_price: number
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          full_name: string
+          hostel_name: string
+          id?: string
+          mobile_number: string
+          need_tape?: boolean
+          number_of_boxes: number
+          payment_method: string
+          pickup_slot: string
+          room_number: string
+          status?: string
+          total_price: number
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          full_name?: string
+          hostel_name?: string
+          id?: string
+          mobile_number?: string
+          need_tape?: boolean
+          number_of_boxes?: number
+          payment_method?: string
+          pickup_slot?: string
+          room_number?: string
+          status?: string
+          total_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       celebration_bookings: {
         Row: {
           admin_notes: string | null
