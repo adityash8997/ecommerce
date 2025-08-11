@@ -202,6 +202,8 @@ export const ServicesGrid = () => {
       navigate("/study-material");
     } else if (index === 13) { // Lost & Found Portal service
       navigate("/lost-and-found");
+    } else if (index === 14) { // Campus Tour Booking service  
+      navigate("/campus-tour-booking");
     } else if (index === 16) { // SplitSaathi service
       navigate("/split-saathi");
     } else if (index === 17) { // Book Buyback & Resale service

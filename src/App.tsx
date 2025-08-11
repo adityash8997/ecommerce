@@ -17,6 +17,7 @@ import BookBuyback from "./pages/BookBuyback";
 import Celebrations from "./pages/Celebrations";
 import PrintoutOnDemand from "./pages/PrintoutOnDemand";
 import Meetups from "./pages/Meetups";
+import CampusTourBooking from "./pages/CampusTourBooking";
 
 console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
 
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/celebrations" element={<Celebrations />} />
           <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
           <Route path="/meetups" element={<Meetups />} />
+          <Route path="/campus-tour-booking" element={<CampusTourBooking />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
