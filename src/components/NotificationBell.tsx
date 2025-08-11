@@ -103,25 +103,25 @@ export const NotificationBell = () => {
     }
   }, [isVisible, hasLanded]);
 
-  // Cycle through events
+  // Cycle through events with exact timing
   useEffect(() => {
     if (!hasLanded || !shouldShow) return;
 
     const cycleEvents = () => {
-      // Fade out current event
+      // Fade out current event (0.5s)
       setEventTextVisible(false);
       
       setTimeout(() => {
-        // Move to next event
+        // Move to next event after fade out completes
         setCurrentEventIndex((prev) => (prev + 1) % upcomingEvents.length);
-        // Fade in new event
+        // Fade in new event (0.5s)
         setEventTextVisible(true);
-      }, 300); // Brief pause between events
+      }, 500); // Wait for fade out to complete
     };
 
-    // Initial delay, then cycle every 4.3 seconds (4s visible + 0.3s transition)
+    // Initial event shows for 4s, then cycles every 5s (4s visible + 0.5s fade out + 0.5s fade in)
     const timer = setTimeout(() => {
-      const interval = setInterval(cycleEvents, 4300);
+      const interval = setInterval(cycleEvents, 5000);
       return () => clearInterval(interval);
     }, 4000); // First event shows for 4 seconds
 
@@ -156,35 +156,41 @@ export const NotificationBell = () => {
           </div>
         </div>
 
-        {/* Event Text */}
+        {/* Event Text - Mobile responsive positioning */}
         {hasLanded && (
           <div 
             className={`
-              absolute top-0 right-20 max-w-xs sm:max-w-sm md:max-w-md
-              transition-all duration-300 pointer-events-auto
+              absolute sm:top-0 sm:right-20 top-16 right-0 
+              max-w-xs sm:max-w-sm md:max-w-md
+              transition-all duration-500 pointer-events-auto
               ${eventTextVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}
             `}
           >
-            <div className="bg-gradient-to-r from-purple-100 via-pink-50 to-blue-100 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-blue-900/30 
-                          rounded-xl p-4 shadow-xl border border-purple-200/50 dark:border-purple-500/20
-                          backdrop-blur-sm">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl flex-shrink-0">{currentEvent.emoji}</span>
+            <div className="bg-gradient-to-br from-pink-100/90 via-purple-50/90 to-blue-100/90 
+                          dark:from-pink-900/40 dark:via-purple-900/40 dark:to-blue-900/40 
+                          rounded-2xl p-3 sm:p-4 shadow-2xl border border-pink-200/60 dark:border-purple-500/30
+                          backdrop-blur-md relative overflow-hidden">
+              
+              {/* Soft glow background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-300/20 via-purple-300/20 to-blue-300/20 rounded-2xl"></div>
+              
+              <div className="relative flex items-start gap-2 sm:gap-3">
+                <span className="text-xl sm:text-2xl flex-shrink-0 drop-shadow-sm">{currentEvent.emoji}</span>
                 <div className="min-w-0">
-                  <h3 className="font-bold text-lg text-purple-800 dark:text-purple-200 leading-tight">
+                  <h3 className="font-bold text-sm sm:text-lg text-purple-900 dark:text-purple-100 leading-tight">
                     {currentEvent.title}
                   </h3>
-                  <p className="text-purple-600 dark:text-purple-300 text-sm mt-1">
+                  <p className="text-purple-700 dark:text-purple-200 text-xs sm:text-sm mt-1 opacity-90">
                     {currentEvent.date} • {currentEvent.time}
                   </p>
                 </div>
               </div>
               
-              {/* Sparkle decoration */}
-              <div className="absolute -top-1 -right-1 text-yellow-400 animate-pulse">
+              {/* Floating sparkles */}
+              <div className="absolute -top-1 -right-1 text-yellow-400 animate-pulse text-sm">
                 ✨
               </div>
-              <div className="absolute -bottom-1 -left-1 text-pink-400 animate-pulse" style={{ animationDelay: '0.5s' }}>
+              <div className="absolute -bottom-1 -left-1 text-pink-400 animate-pulse text-sm" style={{ animationDelay: '0.5s' }}>
                 💫
               </div>
             </div>
