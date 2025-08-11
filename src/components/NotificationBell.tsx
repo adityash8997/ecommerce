@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { Bell, X } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
+import { Bell } from "lucide-react";
 
 const upcomingEvents = [
   {
@@ -35,11 +34,52 @@ const upcomingEvents = [
 
 export const NotificationBell = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [shouldAutoClose, setShouldAutoClose] = useState(true);
+  const [hasLanded, setHasLanded] = useState(false);
+  const [currentEventIndex, setCurrentEventIndex] = useState(0);
+  const [eventTextVisible, setEventTextVisible] = useState(false);
+  const [shouldShow, setShouldShow] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Create soft ding sound using Web Audio API
+  const playDingSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.3);
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.log('Audio not supported');
+    }
+  };
+
+  // Handle scroll to hide when past Services section
   useEffect(() => {
-    // Show bell after page loads (1.5s delay)
+    const handleScroll = () => {
+      const servicesSection = document.getElementById('services');
+      if (servicesSection) {
+        const rect = servicesSection.getBoundingClientRect();
+        const isPastServices = rect.bottom < window.innerHeight / 2;
+        setShouldShow(!isPastServices);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Show bell after page loads
+  useEffect(() => {
     const showTimer = setTimeout(() => {
       setIsVisible(true);
     }, 1500);
@@ -47,124 +87,110 @@ export const NotificationBell = () => {
     return () => clearTimeout(showTimer);
   }, []);
 
+  // Handle landing animation and sound
   useEffect(() => {
-    // Auto-show panel after bell appears
-    if (isVisible && !isPanelOpen) {
-      const panelTimer = setTimeout(() => {
-        setIsPanelOpen(true);
-        setShouldAutoClose(true);
-      }, 800);
+    if (isVisible && !hasLanded) {
+      const landTimer = setTimeout(() => {
+        setHasLanded(true);
+        playDingSound();
+        // Start showing events after landing
+        setTimeout(() => {
+          setEventTextVisible(true);
+        }, 500);
+      }, 800); // Match animation duration
 
-      return () => clearTimeout(panelTimer);
+      return () => clearTimeout(landTimer);
     }
-  }, [isVisible, isPanelOpen]);
+  }, [isVisible, hasLanded]);
 
+  // Cycle through events
   useEffect(() => {
-    // Auto-close panel after 8 seconds (only if it should auto-close)
-    if (isPanelOpen && shouldAutoClose) {
-      const closeTimer = setTimeout(() => {
-        setIsPanelOpen(false);
-      }, 8000);
+    if (!hasLanded || !shouldShow) return;
 
-      return () => clearTimeout(closeTimer);
-    }
-  }, [isPanelOpen, shouldAutoClose]);
+    const cycleEvents = () => {
+      // Fade out current event
+      setEventTextVisible(false);
+      
+      setTimeout(() => {
+        // Move to next event
+        setCurrentEventIndex((prev) => (prev + 1) % upcomingEvents.length);
+        // Fade in new event
+        setEventTextVisible(true);
+      }, 300); // Brief pause between events
+    };
 
-  const handleBellClick = () => {
-    setIsPanelOpen(!isPanelOpen);
-    setShouldAutoClose(false); // Disable auto-close when manually clicked
-  };
+    // Initial delay, then cycle every 4.3 seconds (4s visible + 0.3s transition)
+    const timer = setTimeout(() => {
+      const interval = setInterval(cycleEvents, 4300);
+      return () => clearInterval(interval);
+    }, 4000); // First event shows for 4 seconds
 
-  const handleClosePanel = () => {
-    setIsPanelOpen(false);
-    setShouldAutoClose(false);
-  };
+    return () => clearTimeout(timer);
+  }, [hasLanded, shouldShow, currentEventIndex]);
 
-  if (!isVisible) return null;
+  if (!shouldShow) return null;
+
+  const currentEvent = upcomingEvents[currentEventIndex];
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed top-4 right-4 z-50 pointer-events-none">
       {/* Bell Icon */}
-      <button
-        onClick={handleBellClick}
-        className={`
-          relative bg-gradient-primary text-white p-3 rounded-full shadow-elegant
-          transition-all duration-500 hover:scale-110 hover:shadow-glow
-          ${isVisible ? 'animate-[bounceIn_0.8s_ease-out]' : ''}
-        `}
-        style={{
-          animation: isVisible ? 'dropDown 0.8s ease-out' : undefined
-        }}
-      >
-        <Bell className="w-6 h-6" />
-        
-        {/* Notification dot */}
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-kiit-orange rounded-full border-2 border-white">
-          <div className="w-full h-full bg-kiit-orange rounded-full animate-ping"></div>
+      <div className="relative flex items-start justify-end">
+        <div
+          className={`
+            relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-600 
+            text-white p-3 rounded-full shadow-lg
+            transition-all duration-300 hover:scale-110
+            ${isVisible ? 'animate-[dropDown_0.8s_ease-out]' : 'opacity-0 -translate-y-20'}
+            ${hasLanded ? 'animate-[bellWiggle_0.5s_ease-in-out_0.8s]' : ''}
+          `}
+        >
+          <Bell className="w-6 h-6" />
+          
+          {/* Golden glow effect */}
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-yellow-300/30 to-amber-500/30 animate-pulse"></div>
+          
+          {/* Notification dot */}
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white">
+            <div className="w-full h-full bg-red-500 rounded-full animate-ping"></div>
+          </div>
         </div>
-      </button>
 
-      {/* Events Panel */}
-      {isPanelOpen && (
-        <Card className={`
-          absolute top-16 right-0 w-80 md:w-96 glass-card border-primary/20
-          transition-all duration-300 animate-scale-in shadow-elegant
-          ${isPanelOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}
-        `}>
-          <div className="p-4">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gradient flex items-center gap-2">
-                🔔 Upcoming Events
-              </h3>
-              <button
-                onClick={handleClosePanel}
-                className="text-muted-foreground hover:text-primary transition-colors p-1 rounded-full hover:bg-accent"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Events List */}
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {upcomingEvents.map((event, index) => (
-                <div
-                  key={event.id}
-                  className={`
-                    p-3 rounded-lg bg-gradient-to-r from-background/50 to-accent/30
-                    border border-primary/10 hover:border-primary/30 transition-all
-                    hover:scale-[1.02] cursor-pointer group
-                    animate-fade-in
-                  `}
-                  style={{
-                    animationDelay: `${index * 0.1}s`
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl">{event.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm leading-snug text-foreground group-hover:text-primary transition-colors">
-                        {event.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {event.date} • {event.time}
-                      </p>
-                    </div>
-                  </div>
+        {/* Event Text */}
+        {hasLanded && (
+          <div 
+            className={`
+              absolute top-0 right-20 max-w-xs sm:max-w-sm md:max-w-md
+              transition-all duration-300 pointer-events-auto
+              ${eventTextVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}
+            `}
+          >
+            <div className="bg-gradient-to-r from-purple-100 via-pink-50 to-blue-100 dark:from-purple-900/30 dark:via-pink-900/30 dark:to-blue-900/30 
+                          rounded-xl p-4 shadow-xl border border-purple-200/50 dark:border-purple-500/20
+                          backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl flex-shrink-0">{currentEvent.emoji}</span>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-lg text-purple-800 dark:text-purple-200 leading-tight">
+                    {currentEvent.title}
+                  </h3>
+                  <p className="text-purple-600 dark:text-purple-300 text-sm mt-1">
+                    {currentEvent.date} • {currentEvent.time}
+                  </p>
                 </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-primary/10">
-              <p className="text-xs text-center text-muted-foreground">
-                ✨ Stay tuned for more exciting campus events!
-              </p>
+              </div>
+              
+              {/* Sparkle decoration */}
+              <div className="absolute -top-1 -right-1 text-yellow-400 animate-pulse">
+                ✨
+              </div>
+              <div className="absolute -bottom-1 -left-1 text-pink-400 animate-pulse" style={{ animationDelay: '0.5s' }}>
+                💫
+              </div>
             </div>
           </div>
-        </Card>
-      )}
-
+        )}
+      </div>
     </div>
   );
 };

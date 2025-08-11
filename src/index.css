@@ -251,3 +251,9 @@ Beautiful, vibrant colors inspired by campus life and modern design
     opacity: 1;
   }
 }
+
+@keyframes bellWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
