@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import {
   Search, 
   MapPin, 
   Calendar, 
-  Lock, 
   Upload, 
   Phone, 
   Mail, 
@@ -28,58 +27,41 @@ import {
   ArrowRight,
   Users,
   Shield,
-  Coffee
+  X,
+  ImageIcon
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data for lost and found items
-const mockItems = [
-  {
-    id: 1,
-    type: "Found",
-    title: "Black JBL Earbuds Case",
-    description: "Found near Food Court, has scratches on the back",
-    location: "Food Court, Block 3",
-    date: "2024-08-03",
-    image: "/placeholder.svg",
-    category: "Electronics",
-    status: "available"
-  },
-  {
-    id: 2,
-    type: "Lost",
-    title: "Blue Water Bottle with Stickers",
-    description: "Cello brand, has engineering stickers",
-    location: "Library, 2nd Floor",
-    date: "2024-08-02",
-    image: "/placeholder.svg",
-    category: "Misc",
-    status: "available"
-  },
-  {
-    id: 3,
-    type: "Found",
-    title: "Student ID Card - Priya Sharma",
-    description: "Found in CR-7 classroom",
-    location: "CR-7, Academic Block",
-    date: "2024-08-01",
-    image: "/placeholder.svg",
-    category: "ID Card",
-    status: "available"
-  },
-  {
-    id: 4,
-    type: "Lost",
-    title: "Red Notebook - Data Structures",
-    description: "Contains handwritten notes for DS course",
-    location: "Computer Lab 3",
-    date: "2024-07-30",
-    image: "/placeholder.svg",
-    category: "Books",
-    status: "available"
-  }
-];
+interface LostFoundItem {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  category: string;
+  item_type: 'lost' | 'found';
+  image_url?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface FormData {
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  category: string;
+  item_type: 'lost' | 'found';
+}
 
 const testimonials = [
   {
@@ -99,17 +81,92 @@ const testimonials = [
   }
 ];
 
+const categories = [
+  "Electronics",
+  "ID Card",
+  "Books & Stationery",
+  "Accessories",
+  "Miscellaneous"
+];
+
 export default function LostAndFound() {
+  const [items, setItems] = useState<LostFoundItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<LostFoundItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
-  const [filteredItems, setFilteredItems] = useState(mockItems);
   const [showUploadForm, setShowUploadForm] = useState(false);
-  const [uploadType, setUploadType] = useState<"lost" | "found">("lost");
+  const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState<FormData>({
+    title: "",
+    description: "",
+    location: "",
+    date: "",
+    contact_name: "",
+    contact_email: "",
+    contact_phone: "",
+    category: "",
+    item_type: "lost"
+  });
+
   const { toast } = useToast();
 
-  const handleSearch = () => {
-    let filtered = mockItems;
+  // Fetch items from database
+  const fetchItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lost_and_found_items')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setItems((data as LostFoundItem[]) || []);
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load items. Please refresh the page.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Set up real-time subscription
+  useEffect(() => {
+    fetchItems();
+
+    const channel = supabase
+      .channel('lost-and-found-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'lost_and_found_items'
+        },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          fetchItems(); // Refresh data on any change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Filter items based on search and filters
+  useEffect(() => {
+    let filtered = items;
     
     if (searchTerm) {
       filtered = filtered.filter(item => 
@@ -124,46 +181,138 @@ export default function LostAndFound() {
     }
     
     if (selectedType !== "all") {
-      filtered = filtered.filter(item => item.type === selectedType);
+      filtered = filtered.filter(item => item.item_type === selectedType);
+    }
+
+    if (activeTab !== "all") {
+      filtered = filtered.filter(item => item.item_type === activeTab);
     }
     
     setFilteredItems(filtered);
-  };
+  }, [items, searchTerm, selectedCategory, selectedType, activeTab]);
 
-  const handleUnlockContact = (itemId: number) => {
-    toast({
-      title: "Payment Required",
-      description: "Redirecting to payment gateway for ₹10...",
-    });
-    // In a real app, this would integrate with Razorpay/UPI
-    setTimeout(() => {
+  // Handle image selection
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Contact Unlocked! 🎉",
-        description: "You can now contact the person. Check your email for details.",
+        title: "Invalid file type",
+        description: "Please select a JPG or PNG image.",
+        variant: "destructive"
       });
-    }, 2000);
+      return;
+    }
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSelectedImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleFormSubmit = () => {
+  // Upload image to a temporary URL (in a real app, you'd use Supabase Storage)
+  const uploadImage = async (file: File): Promise<string> => {
+    // For demo purposes, we'll use a placeholder URL
+    // In a real implementation, you'd upload to Supabase Storage or another service
+    return "/placeholder.svg";
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploading(true);
+
+    try {
+      // Validate form
+      if (!formData.title || !formData.description || !formData.location || 
+          !formData.date || !formData.contact_name || !formData.contact_email || 
+          !formData.contact_phone || !formData.category) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      let imageUrl = null;
+      if (selectedImage) {
+        imageUrl = await uploadImage(selectedImage);
+      }
+
+      const { error } = await supabase
+        .from('lost_and_found_items')
+        .insert([{
+          ...formData,
+          image_url: imageUrl
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "✅ Posted Successfully!",
+        description: "Your item has been posted and is now visible to everyone.",
+      });
+
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        location: "",
+        date: "",
+        contact_name: "",
+        contact_email: "",
+        contact_phone: "",
+        category: "",
+        item_type: "lost"
+      });
+      setSelectedImage(null);
+      setImagePreview(null);
+      setShowUploadForm(false);
+    } catch (error: any) {
+      console.error('Error submitting item:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to post item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleContactClick = (item: LostFoundItem) => {
     toast({
-      title: "✅ Submitted Successfully!",
-      description: "Your post has been submitted for admin approval. We'll notify you once it goes live.",
+      title: "Contact Information",
+      description: `Name: ${item.contact_name}\nEmail: ${item.contact_email}\nPhone: ${item.contact_phone}`,
     });
-    setShowUploadForm(false);
   };
 
-  React.useEffect(() => {
-    handleSearch();
-  }, [searchTerm, selectedCategory, selectedType]);
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft to-white">
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/30">
       <Navbar />
+      
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-kiit-green to-campus-blue text-white">
+      <section className="py-20 bg-gradient-to-br from-primary to-secondary text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-5xl lg:text-7xl font-poppins font-bold mb-6">
+            <h1 className="text-5xl lg:text-7xl font-bold mb-6">
               🎒 Lost & Found
             </h1>
             <p className="text-xl lg:text-2xl mb-8 opacity-90 leading-relaxed">
@@ -175,9 +324,9 @@ export default function LostAndFound() {
               <Button 
                 size="lg" 
                 variant="secondary"
-                className="bg-white text-kiit-green hover:bg-gray-100 font-semibold px-8 py-4"
+                className="font-semibold px-8 py-4"
                 onClick={() => {
-                  setUploadType("lost");
+                  setFormData(prev => ({ ...prev, item_type: "lost" }));
                   setShowUploadForm(true);
                 }}
               >
@@ -187,9 +336,9 @@ export default function LostAndFound() {
               <Button 
                 size="lg" 
                 variant="outline"
-                className="border-white text-white hover:bg-white hover:text-kiit-green font-semibold px-8 py-4"
+                className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary font-semibold px-8 py-4"
                 onClick={() => {
-                  setUploadType("found");
+                  setFormData(prev => ({ ...prev, item_type: "found" }));
                   setShowUploadForm(true);
                 }}
               >
@@ -212,7 +361,7 @@ export default function LostAndFound() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-poppins font-bold text-gradient mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               🧭 How It Works
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -226,33 +375,33 @@ export default function LostAndFound() {
                 step: "1",
                 icon: <Upload className="w-8 h-8" />,
                 title: "Post Item",
-                description: "Upload lost or found item details (Free!)"
+                description: "Upload lost or found item details with photo"
               },
               {
                 step: "2", 
-                icon: <Shield className="w-8 h-8" />,
-                title: "Admin Approval",
-                description: "We verify and approve in 1-2 hours"
+                icon: <CheckCircle className="w-8 h-8" />,
+                title: "Instant Posting",
+                description: "Your item appears immediately for everyone to see"
               },
               {
                 step: "3",
                 icon: <Search className="w-8 h-8" />,
-                title: "Browse Freely",
-                description: "Everyone can view all items for free"
+                title: "Browse & Search",
+                description: "Everyone can view and search all items for free"
               },
               {
                 step: "4",
                 icon: <Phone className="w-8 h-8" />,
-                title: "Connect",
-                description: "Pay ₹10 to unlock contact details"
+                title: "Connect Directly",
+                description: "Contact details visible to help reunite items"
               }
             ].map((step, index) => (
-              <Card key={index} className="text-center service-card">
+              <Card key={index} className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
-                  <div className="bg-gradient-to-r from-kiit-green to-campus-blue text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="bg-gradient-to-r from-primary to-secondary text-primary-foreground w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                     {step.icon}
                   </div>
-                  <div className="bg-kiit-green text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3 text-sm font-bold">
+                  <div className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-3 text-sm font-bold">
                     {step.step}
                   </div>
                   <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
@@ -261,19 +410,13 @@ export default function LostAndFound() {
               </Card>
             ))}
           </div>
-          
-          <div className="text-center mt-8">
-            <p className="text-sm text-muted-foreground italic">
-              "Just a little fee to prevent spam — we're not making money here."
-            </p>
-          </div>
         </div>
       </section>
 
       {/* Search and Filter Section */}
-      <section className="py-8 bg-white/50">
+      <section className="py-8 bg-muted/50">
         <div className="container mx-auto px-4">
-          <div className="glass-card p-6">
+          <Card className="p-6">
             <div className="flex flex-col lg:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label htmlFor="search">🔍 Search Items</Label>
@@ -288,165 +431,136 @@ export default function LostAndFound() {
               
               <div className="w-full lg:w-48">
                 <Label>Category</Label>
-                <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Items</SelectItem>
-                    <SelectItem value="Lost">Lost Items</SelectItem>
-                    <SelectItem value="Found">Found Items</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="w-full lg:w-48">
-                <Label>Item Type</Label>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="Electronics">Electronics</SelectItem>
-                    <SelectItem value="ID Card">ID Cards</SelectItem>
-                    <SelectItem value="Books">Books & Stationery</SelectItem>
-                    <SelectItem value="Misc">Miscellaneous</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               
-              <Button onClick={handleSearch} className="bg-kiit-green hover:bg-kiit-green/90">
-                <Filter className="w-4 h-4 mr-2" />
-                Filter
-              </Button>
+              <div className="w-full lg:w-48">
+                <Label>Type</Label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="lost">Lost Items</SelectItem>
+                    <SelectItem value="found">Found Items</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          </Card>
         </div>
       </section>
 
-      {/* Lost & Found Listings Grid */}
-      <section className="py-16">
+      {/* Tabs for Lost/Found */}
+      <section className="py-8">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-poppins font-bold text-gradient mb-4">
-              📋 Recent Posts
-            </h2>
-            <p className="text-muted-foreground">
-              {filteredItems.length} items found matching your search
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item) => (
-              <Card key={item.id} className="service-card overflow-hidden">
-                <div className="relative">
-                  <img 
-                    src={item.image} 
-                    alt={item.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <Badge 
-                    className={`absolute top-2 left-2 ${
-                      item.type === "Lost" 
-                        ? "bg-red-500 hover:bg-red-600" 
-                        : "bg-green-500 hover:bg-green-600"
-                    }`}
-                  >
-                    {item.type}
-                  </Badge>
-                  <Badge variant="secondary" className="absolute top-2 right-2">
-                    {item.category}
-                  </Badge>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto mb-8">
+              <TabsTrigger value="all">All Items ({items.length})</TabsTrigger>
+              <TabsTrigger value="lost">Lost ({items.filter(i => i.item_type === 'lost').length})</TabsTrigger>
+              <TabsTrigger value="found">Found ({items.filter(i => i.item_type === 'found').length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab}>
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="text-2xl mb-4">⏳</div>
+                  <p>Loading items...</p>
                 </div>
-                
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                    {item.description}
-                  </p>
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {item.location}
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {new Date(item.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                  
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button 
-                        className="w-full bg-gradient-to-r from-kiit-green to-campus-blue hover:opacity-90"
-                        size="sm"
-                      >
-                        <Lock className="w-4 h-4 mr-2" />
-                        Unlock Contact - ₹10
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>🔓 Unlock Contact Details</DialogTitle>
-                        <DialogDescription>
-                          This student has uploaded a {item.type.toLowerCase()} item matching your search. 
-                          Pay just ₹10 to unlock their contact and connect with them.
-                        </DialogDescription>
-                      </DialogHeader>
-                      
-                      <div className="space-y-4">
-                        <div className="p-4 bg-kiit-green-soft rounded-lg">
-                          <h4 className="font-semibold mb-2">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
-                        </div>
-                        
-                        <div className="text-center">
-                          <Button 
-                            onClick={() => handleUnlockContact(item.id)}
-                            className="bg-gradient-to-r from-kiit-green to-campus-blue text-white px-8"
-                          >
-                            Pay ₹10 & Unlock Contact
-                          </Button>
-                        </div>
-                        
-                        <p className="text-xs text-muted-foreground text-center">
-                          Please be respectful. If the item isn't yours, don't misuse contact info.
-                        </p>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🔍</div>
+                  <h3 className="text-xl font-semibold mb-2">No items found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search criteria or be the first to post!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredItems.map((item) => (
+                    <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                      <div className="relative">
+                        <img 
+                          src={item.image_url || "/placeholder.svg"} 
+                          alt={item.title}
+                          className="w-full h-48 object-cover"
+                        />
+                        <Badge 
+                          className={`absolute top-2 left-2 ${
+                            item.item_type === "lost" 
+                              ? "bg-destructive hover:bg-destructive/90" 
+                              : "bg-green-500 hover:bg-green-600"
+                          }`}
+                        >
+                          {item.item_type === "lost" ? "Lost" : "Found"}
+                        </Badge>
+                        <Badge variant="secondary" className="absolute top-2 right-2">
+                          {item.category}
+                        </Badge>
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          {filteredItems.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold mb-2">No items found</h3>
-              <p className="text-muted-foreground">Try adjusting your search criteria</p>
-            </div>
-          )}
+                      
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+                          {item.description}
+                        </p>
+                        
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            {item.location}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Calendar className="w-4 h-4 mr-2" />
+                            {new Date(item.date).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4 mr-2" />
+                            Posted {new Date(item.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full"
+                          onClick={() => handleContactClick(item)}
+                        >
+                          <Phone className="w-4 h-4 mr-2" />
+                          Contact {item.contact_name}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
 
-      {/* Recent Reunions Carousel */}
-      <section className="py-16 bg-white/50">
+      {/* Testimonials */}
+      <section className="py-16 bg-muted/50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-poppins font-bold text-gradient mb-4">
-              🌟 Recent Reunions
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              🌟 Success Stories
             </h2>
             <p className="text-muted-foreground">
-              Happy stories from our community
+              Happy reunions from our community
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="service-card text-center">
+              <Card key={index} className="text-center hover:shadow-lg transition-shadow">
                 <CardContent className="p-6">
                   <div className="text-4xl mb-4">{testimonial.icon}</div>
                   <p className="text-muted-foreground mb-4 italic">
@@ -467,242 +581,254 @@ export default function LostAndFound() {
         </div>
       </section>
 
-      {/* FAQs Section */}
+      {/* FAQ Section */}
       <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl lg:text-4xl font-poppins font-bold text-gradient mb-4">
-                🙋 Frequently Asked Questions
-              </h2>
-            </div>
-            
-            <Accordion type="single" collapsible className="space-y-4">
-              {[
-                {
-                  question: "Is this service paid?",
-                  answer: "Posting items is completely free. Viewing listings is free. Only connecting with the poster costs ₹10 to prevent spam and ensure serious inquiries."
-                },
-                {
-                  question: "Why not make it 100% free?",
-                  answer: "The ₹10 fee ensures only serious people reach out. This prevents spam, false claims, and protects both parties. It's minimal but effective."
-                },
-                {
-                  question: "What if someone lies about an item?",
-                  answer: "All listings are admin-approved before going live. Plus, users can report misuse, and we investigate all reports promptly."
-                },
-                {
-                  question: "How fast is the approval process?",
-                  answer: "Usually within 1-2 hours during college hours. We review each post to ensure authenticity and appropriate content."
-                },
-                {
-                  question: "Can I update or remove my post?",
-                  answer: "Yes! After posting, you'll receive a link via email to edit or delete your post anytime."
-                },
-                {
-                  question: "What payment methods do you accept?",
-                  answer: "We accept UPI, debit/credit cards, and net banking through our secure payment gateway."
-                }
-              ].map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="glass-card px-6">
-                  <AccordionTrigger className="text-left font-semibold">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+        <div className="container mx-auto px-4 max-w-3xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              ❓ Frequently Asked Questions
+            </h2>
           </div>
+          
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Is it really free to post items?</AccordionTrigger>
+              <AccordionContent>
+                Yes! Posting lost or found items is completely free. We believe in helping the KIIT community reunite with their belongings without any barriers.
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="item-2">
+              <AccordionTrigger>How quickly do posts appear?</AccordionTrigger>
+              <AccordionContent>
+                Posts appear instantly! As soon as you submit an item, it's visible to everyone on the platform in real-time.
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="item-3">
+              <AccordionTrigger>What if I find my lost item?</AccordionTrigger>
+              <AccordionContent>
+                Great! Contact us and we'll help mark your item as resolved so others know it's been found.
+              </AccordionContent>
+            </AccordionItem>
+            
+            <AccordionItem value="item-4">
+              <AccordionTrigger>Can I edit my post after submitting?</AccordionTrigger>
+              <AccordionContent>
+                Currently, you'll need to contact us to make changes to your post. We're working on adding edit functionality soon!
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
 
       {/* Upload Form Dialog */}
       <Dialog open={showUploadForm} onOpenChange={setShowUploadForm}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              📤 Post {uploadType === "lost" ? "Lost" : "Found"} Item
+              {formData.item_type === "lost" ? "📋 Post Lost Item" : "📷 Post Found Item"}
             </DialogTitle>
             <DialogDescription>
-              Fill in the details below. Your post will be live after admin approval (1-2 hours).
+              Fill in the details to help reunite items with their owners.
             </DialogDescription>
           </DialogHeader>
           
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleFormSubmit(); }}>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Your Name *</Label>
-                <Input id="name" required />
-              </div>
-              <div>
-                <Label htmlFor="whatsapp">WhatsApp Number *</Label>
-                <Input id="whatsapp" type="tel" required />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="year">Year & Branch *</Label>
-                <Select>
+                <Label htmlFor="item_type">Type *</Label>
+                <Select 
+                  value={formData.item_type} 
+                  onValueChange={(value: 'lost' | 'found') => setFormData(prev => ({ ...prev, item_type: value }))}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select year and branch" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1st-cse">1st Year - CSE</SelectItem>
-                    <SelectItem value="2nd-it">2nd Year - IT</SelectItem>
-                    <SelectItem value="3rd-ece">3rd Year - ECE</SelectItem>
-                    <SelectItem value="4th-mech">4th Year - Mechanical</SelectItem>
+                    <SelectItem value="lost">Lost Item</SelectItem>
+                    <SelectItem value="found">Found Item</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
               <div>
-                <Label htmlFor="email">KIIT Email *</Label>
-                <Input id="email" type="email" required placeholder="your.name@kiit.ac.in" />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="item-name">Item Name *</Label>
-              <Input id="item-name" required placeholder="e.g., Black JBL Earbuds Case" />
-            </div>
-            
-            <div>
-              <Label htmlFor="description">Description *</Label>
-              <Textarea 
-                id="description" 
-                required 
-                placeholder="Detailed description of the item..."
-                rows={3}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="location">Location {uploadType === "lost" ? "Last Seen" : "Found"} *</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="food-court">Food Court</SelectItem>
-                    <SelectItem value="library">Library</SelectItem>
-                    <SelectItem value="academic-block">Academic Block</SelectItem>
-                    <SelectItem value="hostel">Hostel Area</SelectItem>
-                    <SelectItem value="sports-complex">Sports Complex</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="category">Item Category *</Label>
-                <Select>
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="electronics">Electronics</SelectItem>
-                    <SelectItem value="id-card">ID Card</SelectItem>
-                    <SelectItem value="books">Books & Stationery</SelectItem>
-                    <SelectItem value="misc">Miscellaneous</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            
+
             <div>
-              <Label htmlFor="date">Date & Time {uploadType === "lost" ? "Lost" : "Found"} *</Label>
-              <Input id="date" type="datetime-local" required />
-            </div>
-            
-            <div>
-              <Label htmlFor="photo">Upload Photo *</Label>
-              <Input id="photo" type="file" accept="image/*" required />
-              <p className="text-xs text-muted-foreground mt-1">
-                Clear photo helps in identification
-              </p>
-            </div>
-            
-            {uploadType === "lost" && (
-              <div>
-                <Label htmlFor="proof">Upload Proof (Optional)</Label>
-                <Input id="proof" type="file" accept="image/*" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Any proof of ownership (purchase receipt, etc.)
-                </p>
-              </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="hostel">Hostel Block *</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select hostel block" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="block-1">Block 1</SelectItem>
-                    <SelectItem value="block-2">Block 2</SelectItem>
-                    <SelectItem value="block-3">Block 3</SelectItem>
-                    <SelectItem value="block-4">Block 4</SelectItem>
-                    <SelectItem value="block-5">Block 5</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="room">Room Number *</Label>
-                <Input id="room" required placeholder="e.g., 245" />
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="notes">Additional Notes (Optional)</Label>
-              <Textarea 
-                id="notes" 
-                placeholder="Any additional information..."
-                rows={2}
+              <Label htmlFor="title">Item Name *</Label>
+              <Input
+                id="title"
+                placeholder="e.g., Black JBL Earbuds, Blue Water Bottle"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                required
               />
             </div>
-            
+
+            <div>
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                placeholder="Describe the item in detail (color, brand, distinguishing features, etc.)"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                required
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="location">Location *</Label>
+                <Input
+                  id="location"
+                  placeholder="e.g., Food Court, Library 2nd Floor"
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Photo (Optional)</Label>
+              <div className="mt-2">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={removeImage}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label htmlFor="image-upload" className="cursor-pointer">
+                      <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload image (JPG/PNG, max 5MB)
+                      </p>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+              <h4 className="font-semibold">Contact Information</h4>
+              
+              <div>
+                <Label htmlFor="contact_name">Your Name *</Label>
+                <Input
+                  id="contact_name"
+                  placeholder="Your full name"
+                  value={formData.contact_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contact_name: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contact_email">Email *</Label>
+                  <Input
+                    id="contact_email"
+                    type="email"
+                    placeholder="your.email@kiit.ac.in"
+                    value={formData.contact_email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="contact_phone">Phone *</Label>
+                  <Input
+                    id="contact_phone"
+                    placeholder="Your phone number"
+                    value={formData.contact_phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-4 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowUploadForm(false)}
-                className="flex-1"
-              >
+              <Button type="button" variant="outline" onClick={() => setShowUploadForm(false)}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                className="flex-1 bg-gradient-to-r from-kiit-green to-campus-blue"
-              >
-                Submit for Approval
+              <Button type="submit" disabled={uploading} className="flex-1">
+                {uploading ? "Posting..." : `Post ${formData.item_type === "lost" ? "Lost" : "Found"} Item`}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Sticky Bottom CTA */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-        <Button 
+      {/* Sticky CTA */}
+      <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+        <Button
           size="lg"
-          className="rounded-full shadow-lg bg-kiit-green hover:bg-kiit-green/90"
+          className="rounded-full shadow-lg"
           onClick={() => {
-            document.querySelector('#search')?.scrollIntoView({ behavior: 'smooth' });
+            setFormData(prev => ({ ...prev, item_type: "lost" }));
+            setShowUploadForm(true);
           }}
         >
-          <Search className="w-5 h-5 mr-2" />
-          Search Items
-        </Button>
-        <Button 
-          size="lg"
-          className="rounded-full shadow-lg bg-gradient-to-r from-campus-blue to-campus-purple"
-          onClick={() => setShowUploadForm(true)}
-        >
           <Plus className="w-5 h-5 mr-2" />
-          Post Item
+          Report Lost
+        </Button>
+        <Button
+          size="lg"
+          variant="secondary"
+          className="rounded-full shadow-lg"
+          onClick={() => {
+            setFormData(prev => ({ ...prev, item_type: "found" }));
+            setShowUploadForm(true);
+          }}
+        >
+          <Camera className="w-5 h-5 mr-2" />
+          Report Found
         </Button>
       </div>
     </div>
