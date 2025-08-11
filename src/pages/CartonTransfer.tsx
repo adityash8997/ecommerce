@@ -12,6 +12,8 @@ import { ArrowLeft, Package, Users, Truck, Clock, CheckCircle, MessageCircle, Ph
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 
 const CartonTransfer = () => {
   const navigate = useNavigate();
@@ -171,28 +173,7 @@ const CartonTransfer = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 glassmorphism border-b border-white/10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-kiit-green hover:text-kiit-green-dark"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-            onClick={() => window.open('https://wa.me/919876543210', '_blank')}
-          >
-            <MessageCircle className="w-4 h-4" />
-            Need Help?
-          </Button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 text-center">
@@ -555,6 +536,7 @@ const CartonTransfer = () => {
           📲 Chat with Team
         </Button>
       </div>
+      <Footer />
     </div>
   );
 };

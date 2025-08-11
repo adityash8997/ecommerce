@@ -12,6 +12,8 @@ import { ArrowLeft, Upload, Printer, TruckIcon, DollarSign, Download, CheckCircl
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 
 const PrintoutOnDemand = () => {
   console.log('PrintoutOnDemand component is rendering');
@@ -221,19 +223,7 @@ const PrintoutOnDemand = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-campus-blue/20 via-background to-campus-purple/20">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 glassmorphism border-b border-white/10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-campus-blue hover:text-campus-blue/80"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 text-center">
@@ -625,6 +615,7 @@ const PrintoutOnDemand = () => {
           </Tabs>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };

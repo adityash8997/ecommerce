@@ -15,6 +15,8 @@ import { CalendarIcon, Clock, MapPin, Camera, Users, Star, CheckCircle, Info, Ca
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-campus.png";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 export default function CampusTourBooking() {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -148,6 +150,7 @@ export default function CampusTourBooking() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -756,6 +759,7 @@ export default function CampusTourBooking() {
           </Button>
         </div>
       </section>
+      <Footer />
     </div>
   );
 }

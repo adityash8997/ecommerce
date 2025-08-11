@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 // Mock data for demonstration
 const studyMaterials = {
@@ -179,6 +181,7 @@ export default function StudyMaterial() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft to-white">
+      <Navbar />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-6">
@@ -568,6 +571,7 @@ export default function StudyMaterial() {
           </div>
         </DialogContent>
       </Dialog>
+      <Footer />
     </div>
   );
 }
