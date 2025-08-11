@@ -113,28 +113,12 @@ const services = [
     emoji: "🌃"
   },
   {
-    icon: Timer,
-    title: "Queue-Free Print System",
-    description: "One student prints for all. Save time. Split cost.",
-    price: "₹1.5/page",
-    gradient: "from-campus-orange to-kiit-green",
-    emoji: "🖨️"
-  },
-  {
     icon: Trophy,
     title: "Sports Events Hub",
     description: "See tryout dates, match schedules, and urgent team alerts.",
     price: "Free",
     gradient: "from-kiit-green to-campus-blue",
     emoji: "🎾"
-  },
-  {
-    icon: MapPin,
-    title: "Recreation Discovery",
-    description: "Find common rooms, guitar classes, foosball tables, movie rooms.",
-    price: "Free",
-    gradient: "from-campus-blue to-campus-purple",
-    emoji: "🎬"
   },
   {
     icon: Search,
@@ -216,15 +200,15 @@ export const ServicesGrid = () => {
       navigate("/handwritten-assignments");
     } else if (index === 8) { // Study Material by Seniors service
       navigate("/study-material");
-    } else if (index === 15) { // Lost & Found Portal service
+    } else if (index === 13) { // Lost & Found Portal service
       navigate("/lost-and-found");
-    } else if (index === 18) { // SplitSaathi service
+    } else if (index === 16) { // SplitSaathi service
       navigate("/split-saathi");
-    } else if (index === 19) { // Book Buyback & Resale service
+    } else if (index === 17) { // Book Buyback & Resale service
       navigate("/book-buyback");
-    } else if (index === 20) { // KIIT Saathi Celebrations service
+    } else if (index === 18) { // KIIT Saathi Celebrations service
       navigate("/celebrations");
-    } else if (index === 21) { // KIIT Saathi Meetups service
+    } else if (index === 19) { // KIIT Saathi Meetups service
       navigate("/meetups");
     }
   };
