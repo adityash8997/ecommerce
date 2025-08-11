@@ -189,29 +189,27 @@ const services = [
 export const ServicesGrid = () => {
   const navigate = useNavigate();
 
-  const handleServiceClick = (index: number) => {
-    if (index === 0) { // Carton Packing service
-      navigate("/carton-transfer");
-    } else if (index === 1) { // Printouts on Demand service
-      navigate("/printout-on-demand");
-    } else if (index === 2) { // Senior Connect service
-      navigate("/senior-connect");
-    } else if (index === 3) { // Handwritten Assignments service
-      navigate("/handwritten-assignments");
-    } else if (index === 8) { // Study Material by Seniors service
-      navigate("/study-material");
-    } else if (index === 13) { // Lost & Found Portal service
-      navigate("/lost-and-found");
-    } else if (index === 14) { // Campus Tour Booking service  
-      navigate("/campus-tour-booking");
-    } else if (index === 16) { // SplitSaathi service
-      navigate("/split-saathi");
-    } else if (index === 17) { // Book Buyback & Resale service
-      navigate("/book-buyback");
-    } else if (index === 18) { // KIIT Saathi Celebrations service
-      navigate("/celebrations");
-    } else if (index === 19) { // KIIT Saathi Meetups service
-      navigate("/meetups");
+  const handleServiceClick = (service: typeof services[0]) => {
+    const routeMap: Record<string, string> = {
+      "Carton Packing & Hostel Transfers": "/carton-transfer",
+      "Printouts on Demand": "/printout-on-demand", 
+      "Senior Connect": "/senior-connect",
+      "Handwritten Assignments": "/handwritten-assignments",
+      "Study Material by Seniors": "/study-material",
+      "Lost & Found Portal": "/lost-and-found",
+      "Campus Tour Booking": "/campus-tour-booking",
+      "SplitSaathi – Group Expense Manager": "/split-saathi",
+      "Book Buyback & Resale": "/book-buyback",
+      "KIIT Saathi Celebrations": "/celebrations",
+      "KIIT Saathi Meetups": "/meetups"
+    };
+
+    const route = routeMap[service.title];
+    if (route) {
+      navigate(route);
+    } else {
+      // Show coming soon for services without pages
+      alert("🚀 Coming Soon! This service is under development and will be available soon.");
     }
   };
 
@@ -273,7 +271,7 @@ export const ServicesGrid = () => {
                       variant="ghost" 
                       size="sm" 
                       className="opacity-0 group-hover:opacity-100 transition-all duration-300"
-                      onClick={() => handleServiceClick(index)}
+                      onClick={() => handleServiceClick(service)}
                     >
                       Try Now
                       <ArrowRight className="w-4 h-4 ml-1" />
