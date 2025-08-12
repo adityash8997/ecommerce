@@ -68,7 +68,10 @@ export default function BookBuyback() {
     formData: guestFormData,
     updateFormData: updateGuestFormData,
     resetForm: resetGuestForm
-  } = useGuestForm({ storageKey: 'book-buyback' });
+  } = useGuestForm({ 
+    key: 'book-buyback',
+    initialData: {} as SellFormData 
+  });
 
   const {
     semesterBooks,
