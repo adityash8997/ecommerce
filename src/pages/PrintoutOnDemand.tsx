@@ -5,19 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Upload, Printer, TruckIcon, DollarSign, Download, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Printer, TruckIcon, DollarSign, Shield, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { HelperDashboard } from '@/components/HelperDashboard';
+import { PrintJobCard } from '@/components/PrintJobCard';
+import { usePrintJobManager } from '@/hooks/usePrintJobManager';
+import { useAuth } from '@/hooks/useAuth';
 
 const PrintoutOnDemand = () => {
-  console.log('PrintoutOnDemand component is rendering');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { jobs, loading, createPrintJob, loadMyJobs } = usePrintJobManager();
   const [activeTab, setActiveTab] = useState('student');
   
   // Student form state
@@ -29,60 +32,49 @@ const PrintoutOnDemand = () => {
     paperSize: 'A4',
     bindingOption: '',
     deliveryLocation: '',
-    deliveryTime: '',
+    deliveryType: 'pickup',
+    pickupLocation: '',
     additionalNotes: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Helper state
-  const [helperData, setHelperData] = useState({
-    name: '',
-    contact: '',
-    email: ''
-  });
-  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [helperStats, setHelperStats] = useState({ totalJobs: 0, totalEarnings: 0 });
-  const [helperId, setHelperId] = useState<string | null>(null);
-
-  // Load available jobs for helpers
-  const loadAvailableJobs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('print_jobs')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setAvailableJobs(data || []);
-    } catch (error) {
-      console.error('Error loading jobs:', error);
-    }
-  };
-
+  // Load user's jobs when on dashboard tab
   useEffect(() => {
-    if (activeTab === 'helper') {
-      loadAvailableJobs();
+    if (activeTab === 'dashboard' && user) {
+      loadMyJobs();
     }
-  }, [activeTab]);
+  }, [activeTab, user, loadMyJobs]);
 
   const calculateCosts = () => {
     if (!pageCount || !formData.copies) return { printing: 0, service: 0, helper: 0, total: 0 };
     
     const totalPages = pageCount * formData.copies;
+    const extraDeliveryFee = formData.deliveryType === 'delivery' ? 50 : 0;
     
     if (formData.printType === 'black_white') {
       const printing = totalPages * 5;
       const service = totalPages * 5;
       const helper = totalPages * 5;
-      return { printing, service, helper, total: printing + service + helper };
+      return { 
+        printing, 
+        service, 
+        helper, 
+        total: printing + service + helper + extraDeliveryFee,
+        delivery: extraDeliveryFee
+      };
     } else {
       const printing = totalPages * 10;
       const service = totalPages * 8;
       const helper = totalPages * 7;
-      return { printing, service, helper, total: printing + service + helper };
+      return { 
+        printing, 
+        service, 
+        helper, 
+        total: printing + service + helper + extraDeliveryFee,
+        delivery: extraDeliveryFee
+      };
     }
   };
 
@@ -94,16 +86,18 @@ const PrintoutOnDemand = () => {
         return;
       }
       
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/jpg'];
       if (!allowedTypes.includes(file.type)) {
-        toast.error('Only PDF, JPG, and PNG files are allowed');
+        toast.error('Only PDF, DOCX, JPG, and PNG files are allowed');
         return;
       }
       
       setSelectedFile(file);
-      // Simulate page count calculation
+      // Estimate page count based on file type
       if (file.type === 'application/pdf') {
-        setPageCount(Math.floor(Math.random() * 10) + 1);
+        setPageCount(Math.floor(Math.random() * 10) + 1); // In real app, use PDF parser
+      } else if (file.type.includes('word')) {
+        setPageCount(Math.floor(file.size / 50000) + 1); // Rough estimate
       } else {
         setPageCount(1);
       }
@@ -117,140 +111,98 @@ const PrintoutOnDemand = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('Please sign in to submit a print job');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const costs = calculateCosts();
+      const formWithPageCount = { ...formData, pageCount };
       
-      const jobData = {
-        file_name: selectedFile.name,
-        file_url: 'temp-url', // In real app, upload to storage first
-        file_size: selectedFile.size,
-        page_count: pageCount,
-        copies: formData.copies,
-        print_type: formData.printType,
-        paper_size: formData.paperSize,
-        binding_option: formData.bindingOption,
-        delivery_location: formData.deliveryLocation,
-        delivery_time: formData.deliveryTime,
-        additional_notes: formData.additionalNotes,
-        student_name: formData.studentName,
-        student_contact: formData.studentContact,
-        total_cost: costs.total,
-        printing_cost: costs.printing,
-        service_fee: costs.service,
-        helper_fee: costs.helper
-      };
-
-      const { error } = await supabase.from('print_jobs').insert([jobData]);
+      const success = await createPrintJob(formWithPageCount, selectedFile, costs);
       
-      if (error) throw error;
-      
-      toast.success('🎉 Print job submitted! You\'ll be notified when a helper accepts it.');
-      
-      // Reset form
-      setFormData({
-        studentName: '',
-        studentContact: '',
-        copies: 1,
-        printType: 'black_white',
-        paperSize: 'A4',
-        bindingOption: '',
-        deliveryLocation: '',
-        deliveryTime: '',
-        additionalNotes: ''
-      });
-      setSelectedFile(null);
-      setPageCount(0);
+      if (success) {
+        // Reset form
+        setFormData({
+          studentName: '',
+          studentContact: '',
+          copies: 1,
+          printType: 'black_white',
+          paperSize: 'A4',
+          bindingOption: '',
+          deliveryLocation: '',
+          deliveryType: 'pickup',
+          pickupLocation: '',
+          additionalNotes: ''
+        });
+        setSelectedFile(null);
+        setPageCount(0);
+      }
       
     } catch (error) {
-      toast.error('Failed to submit print job. Please try again.');
       console.error('Error submitting job:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleHelperSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const { data, error } = await supabase
-        .from('print_helpers')
-        .insert([helperData])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      setHelperId(data.id);
-      toast.success('🎉 Welcome! You can now accept print jobs.');
-      
-    } catch (error) {
-      toast.error('Failed to sign up as helper. Please try again.');
-      console.error('Error signing up:', error);
-    }
-  };
-
-  const handleAcceptJob = async (jobId: string) => {
-    if (!helperId) {
-      toast.error('Please sign up as a helper first');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('print_jobs')
-        .update({ 
-          status: 'accepted', 
-          helper_id: helperId,
-          accepted_at: new Date().toISOString(),
-          secure_download_token: crypto.randomUUID(),
-          token_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        })
-        .eq('id', jobId);
-      
-      if (error) throw error;
-      
-      toast.success('Job accepted! Download link generated.');
-      loadAvailableJobs();
-      
-    } catch (error) {
-      toast.error('Failed to accept job. Please try again.');
-      console.error('Error accepting job:', error);
-    }
-  };
+  // This logic is now handled by HelperDashboard component
 
   const costs = calculateCosts();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-campus-blue/20 via-background to-campus-purple/20">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-campus-blue/20 via-background to-campus-purple/20">
+        <Navbar />
 
-      {/* Hero Section */}
-      <section className="container mx-auto px-4 py-12 text-center">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-bold text-campus-blue mb-6 animate-fade-in">
-            🖨️ Printouts on Demand
-          </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in">
-            Too lazy to go out? Send a PDF, get it printed & delivered!
-          </p>
-        </div>
-      </section>
+        {/* Hero Section */}
+        <section className="container mx-auto px-4 py-12 text-center">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl md:text-6xl font-bold text-campus-blue mb-6 animate-fade-in">
+              🖨️ Printouts on Demand
+            </h1>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 animate-fade-in">
+              Secure, fast, and convenient printing service
+            </p>
+            
+            {/* Privacy Notice */}
+            <Card className="glassmorphism max-w-2xl mx-auto mb-8">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 text-yellow-700">
+                  <Shield className="w-5 h-5" />
+                  <div className="text-left">
+                    <p className="font-semibold">Privacy & Security Notice</p>
+                    <p className="text-sm">
+                      Please do not upload confidential documents. Files are encrypted and only accessible 
+                      to assigned helpers. We are not responsible for any data leaks.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
 
-      {/* Main Content */}
-      <section className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
-              <TabsTrigger value="student" className="flex items-center gap-2">
-                <Printer className="w-4 h-4" />
-                Request a Print
-              </TabsTrigger>
-              <TabsTrigger value="helper" className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Help & Earn
-              </TabsTrigger>
-            </TabsList>
+        {/* Main Content */}
+        <section className="container mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-8">
+                <TabsTrigger value="student" className="flex items-center gap-2">
+                  <Printer className="w-4 h-4" />
+                  Request Print
+                </TabsTrigger>
+                <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  My Orders
+                </TabsTrigger>
+                <TabsTrigger value="helper" className="flex items-center gap-2">
+                  <TruckIcon className="w-4 h-4" />
+                  Help & Earn
+                </TabsTrigger>
+              </TabsList>
 
             {/* Student Tab */}
             <TabsContent value="student" className="space-y-8">
@@ -288,11 +240,11 @@ const PrintoutOnDemand = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="file">Upload File (PDF, JPG, PNG - Max 20MB)</Label>
+                        <Label htmlFor="file">Upload File (PDF, DOCX, JPG, PNG - Max 20MB)</Label>
                         <Input
                           id="file"
                           type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
+                          accept=".pdf,.docx,.jpg,.jpeg,.png"
                           onChange={handleFileChange}
                           className="cursor-pointer"
                           required
@@ -358,7 +310,20 @@ const PrintoutOnDemand = () => {
                         </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Delivery Type</Label>
+                        <Select value={formData.deliveryType} onValueChange={(value) => setFormData({...formData, deliveryType: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pickup">Pickup from Helper (Free)</SelectItem>
+                            <SelectItem value="delivery">Delivery to Location (+₹50)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {formData.deliveryType === 'delivery' ? (
                         <div>
                           <Label htmlFor="deliveryLocation">Delivery Location</Label>
                           <Input
@@ -369,16 +334,17 @@ const PrintoutOnDemand = () => {
                             placeholder="e.g., Hostel 1, Room 205"
                           />
                         </div>
+                      ) : (
                         <div>
-                          <Label htmlFor="deliveryTime">Preferred Delivery Time</Label>
+                          <Label htmlFor="pickupLocation">Preferred Pickup Location (Optional)</Label>
                           <Input
-                            id="deliveryTime"
-                            value={formData.deliveryTime}
-                            onChange={(e) => setFormData({...formData, deliveryTime: e.target.value})}
-                            placeholder="e.g., After 6 PM"
+                            id="pickupLocation"
+                            value={formData.pickupLocation}
+                            onChange={(e) => setFormData({...formData, pickupLocation: e.target.value})}
+                            placeholder="Helper will specify pickup location"
                           />
                         </div>
-                      </div>
+                      )}
 
                       <div>
                         <Label htmlFor="additionalNotes">Additional Notes (Optional)</Label>
@@ -396,7 +362,7 @@ const PrintoutOnDemand = () => {
                         className="w-full py-6 text-lg"
                         disabled={isSubmitting || !selectedFile}
                       >
-                        {isSubmitting ? 'Submitting...' : 'Pay & Confirm Order 💳'}
+                        {isSubmitting ? 'Submitting...' : 'Submit Print Job'}
                       </Button>
                     </form>
                   </CardContent>
@@ -431,6 +397,12 @@ const PrintoutOnDemand = () => {
                             <span>Print Type:</span>
                             <span className="font-medium">
                               {formData.printType === 'black_white' ? 'Black & White' : 'Color'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Delivery:</span>
+                            <span className="font-medium">
+                              {formData.deliveryType === 'delivery' ? 'Home Delivery' : 'Pickup'}
                             </span>
                           </div>
                           
