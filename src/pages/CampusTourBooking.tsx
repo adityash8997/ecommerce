@@ -17,18 +17,68 @@ import { useToast } from "@/hooks/use-toast";
 import heroImage from "@/assets/hero-campus.png";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { GuestBrowsingBanner } from "@/components/GuestBrowsingBanner";
+import { useGuestForm } from "@/hooks/useGuestForm";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CampusTourBooking() {
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const { user } = useAuth();
   const { toast } = useToast();
+  
+  const {
+    formData,
+    updateFormData,
+    resetForm,
+    requireAuth,
+    isAuthenticated
+  } = useGuestForm({
+    key: 'campusTour',
+    initialData: {
+      selectedDate: null as Date | null,
+      selectedSlot: '',
+      guestName: '',
+      contactNumber: '',
+      email: '',
+      groupSize: 1,
+      specialRequests: ''
+    },
+    onAuthenticated: (data) => {
+      handleBookingSubmission(data);
+    }
+  });
+
+  const handleBookingSubmission = async (data = formData) => {
+    try {
+      // Here you would normally make an API call to submit the booking
+      toast({
+        title: "Booking Request Submitted!",
+        description: "We'll call you within 12 hours to confirm your booking and send your campus entry pass.",
+      });
+      resetForm();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit booking. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleBooking = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Booking Request Submitted!",
-      description: "We'll call you within 12 hours to confirm your booking and send your campus entry pass.",
-    });
+    
+    // Validate form
+    if (!formData.selectedDate || !formData.selectedSlot || !formData.guestName || !formData.contactNumber) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Require authentication before final booking
+    requireAuth(() => handleBookingSubmission());
   };
 
   const morningItinerary = [
@@ -464,6 +514,11 @@ export default function CampusTourBooking() {
       <section id="booking" className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto">
+            <GuestBrowsingBanner 
+              message="Explore tour options and prepare your booking"
+              action="sign in to confirm your campus tour"
+              className="mb-6"
+            />
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
               Book Your Campus Tour
             </h2>
@@ -472,7 +527,10 @@ export default function CampusTourBooking() {
               <CardHeader>
                 <CardTitle>Tour Booking Form</CardTitle>
                 <CardDescription>
-                  Fill in your details and we'll call you within 12 hours to confirm your booking and send your campus entry pass.
+                  {isAuthenticated 
+                    ? "Complete your booking details and we'll call you within 12 hours to confirm."
+                    : "Fill in your details, then sign in to complete your booking."
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -480,17 +538,36 @@ export default function CampusTourBooking() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name">Full Name *</Label>
-                      <Input id="name" required placeholder="Enter your full name" />
+                      <Input 
+                        id="name" 
+                        required 
+                        placeholder="Enter your full name"
+                        value={formData.guestName}
+                        onChange={(e) => updateFormData({guestName: e.target.value})}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="email">Email *</Label>
-                      <Input id="email" type="email" required placeholder="Enter your email" />
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        required 
+                        placeholder="Enter your email"
+                        value={formData.email}
+                        onChange={(e) => updateFormData({email: e.target.value})}
+                      />
                     </div>
                   </div>
                   
                   <div>
                     <Label htmlFor="phone">Phone Number *</Label>
-                    <Input id="phone" required placeholder="Enter your phone number" />
+                    <Input 
+                      id="phone" 
+                      required 
+                      placeholder="Enter your phone number"
+                      value={formData.contactNumber}
+                      onChange={(e) => updateFormData({contactNumber: e.target.value})}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -502,18 +579,18 @@ export default function CampusTourBooking() {
                             variant="outline"
                             className={cn(
                               "w-full justify-start text-left font-normal",
-                              !selectedDate && "text-muted-foreground"
+                              !formData.selectedDate && "text-muted-foreground"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                            {formData.selectedDate ? format(formData.selectedDate, "PPP") : "Pick a date"}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={selectedDate}
-                            onSelect={setSelectedDate}
+                            selected={formData.selectedDate}
+                            onSelect={(date) => updateFormData({selectedDate: date})}
                             disabled={(date) => date < new Date(Date.now() + 24 * 60 * 60 * 1000)}
                             initialFocus
                             className="pointer-events-auto"
@@ -523,7 +600,10 @@ export default function CampusTourBooking() {
                     </div>
                     <div>
                       <Label>Tour Slot *</Label>
-                      <Select onValueChange={setSelectedSlot}>
+                      <Select 
+                        value={formData.selectedSlot}
+                        onValueChange={(value) => updateFormData({selectedSlot: value})}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select tour time" />
                         </SelectTrigger>
@@ -535,35 +615,23 @@ export default function CampusTourBooking() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="adults">Number of Adults</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 Adult</SelectItem>
-                          <SelectItem value="2">2 Adults</SelectItem>
-                          <SelectItem value="3">3 Adults</SelectItem>
-                          <SelectItem value="4">4+ Adults</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="children">Number of Children</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">No Children</SelectItem>
-                          <SelectItem value="1">1 Child</SelectItem>
-                          <SelectItem value="2">2 Children</SelectItem>
-                          <SelectItem value="3">3+ Children</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label htmlFor="groupSize">Group Size</Label>
+                    <Select 
+                      value={formData.groupSize.toString()}
+                      onValueChange={(value) => updateFormData({groupSize: parseInt(value)})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Person</SelectItem>
+                        <SelectItem value="2">2 People</SelectItem>
+                        <SelectItem value="3">3 People</SelectItem>
+                        <SelectItem value="4">4 People</SelectItem>
+                        <SelectItem value="5">5+ People</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div>
@@ -572,6 +640,8 @@ export default function CampusTourBooking() {
                       id="requests" 
                       placeholder="Any specific places you'd like to visit or special requirements..."
                       className="min-h-[100px]"
+                      value={formData.specialRequests}
+                      onChange={(e) => updateFormData({specialRequests: e.target.value})}
                     />
                   </div>
                   
@@ -589,7 +659,7 @@ export default function CampusTourBooking() {
                   </div>
                   
                   <Button type="submit" className="w-full" size="lg">
-                    Submit Booking Request
+                    {isAuthenticated ? "Submit Booking Request" : "Sign In & Submit Booking"}
                   </Button>
                 </form>
               </CardContent>

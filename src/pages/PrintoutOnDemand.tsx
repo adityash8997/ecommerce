@@ -17,7 +17,7 @@ import { HelperDashboard } from '@/components/HelperDashboard';
 import { PrintJobCard } from '@/components/PrintJobCard';
 import { usePrintJobManager } from '@/hooks/usePrintJobManager';
 import { useAuth } from '@/hooks/useAuth';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { GuestBrowsingBanner } from '@/components/GuestBrowsingBanner';
 
 const PrintoutOnDemand = () => {
   const navigate = useNavigate();
@@ -212,6 +212,12 @@ const PrintoutOnDemand = () => {
 
             {/* Student Tab */}
             <TabsContent value="student" className="space-y-8">
+              <GuestBrowsingBanner 
+                message="Explore our printing service and calculate costs"
+                action="sign in to upload files and place orders"
+                className="mb-6"
+              />
+              
               {/* Privacy Notice */}
               <Card className="glassmorphism border-red-200 bg-red-50/50">
                 <CardContent className="p-6">
@@ -241,14 +247,15 @@ const PrintoutOnDemand = () => {
 
               <div className="grid lg:grid-cols-2 gap-8">
                 {/* Order Form */}
-                <Card className="glassmorphism">
-                  <CardHeader>
-                    <CardTitle className="text-campus-blue">Order Details</CardTitle>
-                    <CardDescription>Fill in your print requirements</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ProtectedRoute>
-                      <form onSubmit={handleStudentSubmit} className="space-y-6">
+                 <Card className="glassmorphism">
+                   <CardHeader>
+                     <CardTitle className="text-campus-blue">Order Details</CardTitle>
+                     <CardDescription>
+                       {user ? "Fill in your print requirements" : "Sign in to submit print orders"}
+                     </CardDescription>
+                   </CardHeader>
+                   <CardContent>
+                       <form onSubmit={handleStudentSubmit} className="space-y-6">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
                             <Label htmlFor="studentName">Full Name</Label>
@@ -392,16 +399,15 @@ const PrintoutOnDemand = () => {
                           />
                         </div>
 
-                        <Button 
-                          type="submit" 
-                          className="w-full py-6 text-lg"
-                          disabled={isLoading || !selectedFile || !privacyAccepted}
-                        >
-                          {isLoading ? 'Submitting...' : 'Pay & Confirm Order 💳'}
-                        </Button>
-                      </form>
-                    </ProtectedRoute>
-                  </CardContent>
+                         <Button 
+                           type="submit" 
+                           className="w-full py-6 text-lg"
+                           disabled={isLoading || !selectedFile || !privacyAccepted || !user}
+                         >
+                           {isLoading ? 'Submitting...' : user ? 'Pay & Confirm Order 💳' : 'Sign In to Submit Order'}
+                          </Button>
+                       </form>
+                   </CardContent>
                 </Card>
 
                 {/* Order Summary */}
@@ -494,7 +500,18 @@ const PrintoutOnDemand = () => {
 
             {/* My Orders Tab */}
             <TabsContent value="orders" className="space-y-6">
-              <ProtectedRoute>
+              {!user ? (
+                <Card className="glassmorphism">
+                  <CardContent className="p-8 text-center">
+                    <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Sign In Required</h3>
+                    <p className="text-muted-foreground mb-4">Please sign in to view your print orders</p>
+                    <Button onClick={() => window.location.href = '/auth'}>
+                      Sign In
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
                 <Card className="glassmorphism">
                   <CardHeader>
                     <CardTitle className="text-campus-blue flex items-center gap-2">
@@ -523,16 +540,27 @@ const PrintoutOnDemand = () => {
                         ))}
                       </div>
                     )}
-                  </CardContent>
+                   </CardContent>
                 </Card>
-              </ProtectedRoute>
+              )}
             </TabsContent>
 
             {/* Helper Tab */}
             <TabsContent value="helper" className="space-y-8">
-              <ProtectedRoute>
+              {!user ? (
+                <Card className="glassmorphism">
+                  <CardContent className="p-8 text-center">
+                    <DollarSign className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">Sign In Required</h3>
+                    <p className="text-muted-foreground mb-4">Please sign in to start helping and earning</p>
+                    <Button onClick={() => window.location.href = '/auth'}>
+                      Sign In
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
                 <HelperDashboard />
-              </ProtectedRoute>
+              )}
             </TabsContent>
           </Tabs>
         </div>

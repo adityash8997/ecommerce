@@ -12,21 +12,38 @@ import { ArrowLeft, Package, Users, Truck, Clock, CheckCircle, MessageCircle, Ph
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { GuestBrowsingBanner } from '@/components/GuestBrowsingBanner';
+import { useGuestForm } from '@/hooks/useGuestForm';
+import { useAuth } from '@/hooks/useAuth';
 
 const CartonTransfer = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    fullName: '',
-    mobileNumber: '',
-    hostelName: '',
-    roomNumber: '',
-    numberOfBoxes: 1,
-    needTape: false,
-    pickupSlot: '',
-    paymentMethod: 'upi'
+  const { user } = useAuth();
+  
+  const {
+    formData,
+    updateFormData,
+    resetForm,
+    requireAuth,
+    isAuthenticated
+  } = useGuestForm({
+    key: 'cartonTransfer',
+    initialData: {
+      fullName: '',
+      mobileNumber: '',
+      hostelName: '',
+      roomNumber: '',
+      numberOfBoxes: 1,
+      needTape: false,
+      pickupSlot: '',
+      paymentMethod: 'upi'
+    },
+    onAuthenticated: (data) => {
+      // When user logs in, proceed with booking
+      handleBookingSubmission(data);
+    }
   });
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -69,49 +86,50 @@ const CartonTransfer = () => {
     setTotalPrice(price);
   }, [formData.numberOfBoxes, formData.needTape]);
 
-  const handleBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
+  const validateForm = () => {
     if (!formData.fullName.trim()) {
       toast.error('Please enter your full name');
-      return;
+      return false;
     }
     
     if (!formData.mobileNumber.trim() || formData.mobileNumber.length !== 10) {
       toast.error('Please enter a valid 10-digit mobile number');
-      return;
+      return false;
     }
     
     if (!formData.hostelName) {
       toast.error('Please select your hostel');
-      return;
+      return false;
     }
     
     if (!formData.roomNumber.trim()) {
       toast.error('Please enter your room number');
-      return;
+      return false;
     }
     
     if (!formData.pickupSlot) {
       toast.error('Please select a pickup time slot');
-      return;
+      return false;
     }
     
+    return true;
+  };
+
+  const handleBookingSubmission = async (data = formData) => {
     setIsBooking(true);
     
     try {
       // Submit to edge function
-      const { data, error } = await supabase.functions.invoke('submit-carton-booking', {
+      const { data: result, error } = await supabase.functions.invoke('submit-carton-booking', {
         body: {
-          fullName: formData.fullName,
-          mobileNumber: formData.mobileNumber,
-          hostelName: formData.hostelName,
-          roomNumber: formData.roomNumber,
-          numberOfBoxes: formData.numberOfBoxes,
-          needTape: formData.needTape,
-          pickupSlot: formData.pickupSlot,
-          paymentMethod: formData.paymentMethod,
+          fullName: data.fullName,
+          mobileNumber: data.mobileNumber,
+          hostelName: data.hostelName,
+          roomNumber: data.roomNumber,
+          numberOfBoxes: data.numberOfBoxes,
+          needTape: data.needTape,
+          pickupSlot: data.pickupSlot,
+          paymentMethod: data.paymentMethod,
           totalPrice: totalPrice
         }
       });
@@ -121,6 +139,7 @@ const CartonTransfer = () => {
       }
 
       setBookingSuccess(true);
+      resetForm();
       toast.success('🎉 Booking confirmed! Check your WhatsApp for details.');
     } catch (error: any) {
       console.error('Booking error:', error);
@@ -128,6 +147,15 @@ const CartonTransfer = () => {
     } finally {
       setIsBooking(false);
     }
+  };
+
+  const handleBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    // Require authentication before final booking
+    requireAuth(() => handleBookingSubmission());
   };
 
   if (bookingSuccess) {
@@ -173,9 +201,8 @@ const CartonTransfer = () => {
   }
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">
-        <Navbar />
+    <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">
+      <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 text-center">
@@ -286,10 +313,17 @@ const CartonTransfer = () => {
       {/* Booking Form */}
       <section id="booking-form" className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto">
+          <GuestBrowsingBanner 
+            message="Fill out the form below to prepare your booking"
+            action="sign in to confirm your carton transfer"
+            className="mb-6"
+          />
           <Card className="glassmorphism shadow-2xl">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl text-kiit-green">📋 Book Your Carton Transfer</CardTitle>
-              <CardDescription className="text-lg">No login required! Quick and easy booking.</CardDescription>
+              <CardDescription className="text-lg">
+                {isAuthenticated ? 'Complete your booking below' : 'Fill out the form, then sign in to complete'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleBooking} className="space-y-6">
@@ -301,7 +335,7 @@ const CartonTransfer = () => {
                       id="fullName"
                       required
                       value={formData.fullName}
-                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                      onChange={(e) => updateFormData({fullName: e.target.value})}
                       placeholder="Enter your full name"
                       className="mt-2"
                     />
@@ -316,7 +350,7 @@ const CartonTransfer = () => {
                       value={formData.mobileNumber}
                       onChange={(e) => {
                         const value = e.target.value.replace(/\D/g, '');
-                        setFormData({...formData, mobileNumber: value});
+                        updateFormData({mobileNumber: value});
                       }}
                       placeholder="9876543210"
                       className="mt-2"
@@ -328,7 +362,7 @@ const CartonTransfer = () => {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="hostelName" className="text-base font-semibold">Hostel Name *</Label>
-                    <Select value={formData.hostelName} onValueChange={(value) => setFormData({...formData, hostelName: value})}>
+                    <Select value={formData.hostelName} onValueChange={(value) => updateFormData({hostelName: value})}>
                       <SelectTrigger className="mt-2">
                         <SelectValue placeholder="Select your hostel" />
                       </SelectTrigger>
@@ -345,7 +379,7 @@ const CartonTransfer = () => {
                       id="roomNumber"
                       required
                       value={formData.roomNumber}
-                      onChange={(e) => setFormData({...formData, roomNumber: e.target.value})}
+                      onChange={(e) => updateFormData({roomNumber: e.target.value})}
                       placeholder="e.g., 205"
                       className="mt-2"
                     />
@@ -355,7 +389,7 @@ const CartonTransfer = () => {
                 {/* Box Selection */}
                 <div>
                   <Label className="text-base font-semibold">Number of Boxes *</Label>
-                  <Select value={formData.numberOfBoxes.toString()} onValueChange={(value) => setFormData({...formData, numberOfBoxes: parseInt(value)})}>
+                  <Select value={formData.numberOfBoxes.toString()} onValueChange={(value) => updateFormData({numberOfBoxes: parseInt(value)})}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -378,14 +412,14 @@ const CartonTransfer = () => {
                   <Switch
                     id="needTape"
                     checked={formData.needTape}
-                    onCheckedChange={(checked) => setFormData({...formData, needTape: checked})}
+                    onCheckedChange={(checked) => updateFormData({needTape: checked})}
                   />
                 </div>
 
                 {/* Pickup Slot */}
                 <div>
                   <Label className="text-base font-semibold">Preferred Pickup Slot *</Label>
-                  <Select value={formData.pickupSlot} onValueChange={(value) => setFormData({...formData, pickupSlot: value})}>
+                  <Select value={formData.pickupSlot} onValueChange={(value) => updateFormData({pickupSlot: value})}>
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Choose your pickup time" />
                     </SelectTrigger>
@@ -407,7 +441,7 @@ const CartonTransfer = () => {
                   <Label className="text-base font-semibold">Payment Method *</Label>
                   <RadioGroup 
                     value={formData.paymentMethod} 
-                    onValueChange={(value) => setFormData({...formData, paymentMethod: value})}
+                    onValueChange={(value) => updateFormData({paymentMethod: value})}
                     className="flex gap-6 mt-2"
                   >
                     <div className="flex items-center space-x-2">
@@ -540,7 +574,6 @@ const CartonTransfer = () => {
         </div>
         <Footer />
       </div>
-    </ProtectedRoute>
   );
 };
 

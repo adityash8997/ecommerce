@@ -34,8 +34,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
 import { useSecureLostAndFound } from "@/hooks/useSecureLostAndFound";
 import { DatabaseErrorFallback } from "@/components/DatabaseErrorFallback";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
+import { GuestBrowsingBanner } from "@/components/GuestBrowsingBanner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LostFoundItem {
   id: string;
@@ -94,6 +95,7 @@ const categories = [
 ];
 
 export default function LostAndFound() {
+  const { user } = useAuth();
   const { 
     items, 
     loading, 
@@ -215,6 +217,17 @@ export default function LostAndFound() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user is authenticated before allowing submission
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to post an item.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -234,8 +247,6 @@ export default function LostAndFound() {
         ...formData,
         image_url: imageUrl || undefined
       });
-
-      
 
       toast({
         title: "✅ Posted Successfully!",
@@ -303,6 +314,14 @@ export default function LostAndFound() {
                 variant="secondary"
                 className="font-semibold px-8 py-4"
                 onClick={() => {
+                  if (!user) {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to post a lost item.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
                   setFormData(prev => ({ ...prev, item_type: "lost" }));
                   setShowUploadForm(true);
                 }}
@@ -315,6 +334,14 @@ export default function LostAndFound() {
                 variant="outline"
                 className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary font-semibold px-8 py-4"
                 onClick={() => {
+                  if (!user) {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to post a found item.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
                   setFormData(prev => ({ ...prev, item_type: "found" }));
                   setShowUploadForm(true);
                 }}
@@ -393,6 +420,11 @@ export default function LostAndFound() {
       {/* Search and Filter Section */}
       <section className="py-8 bg-muted/50">
         <div className="container mx-auto px-4">
+          <GuestBrowsingBanner 
+            message="Browse all lost and found items freely"
+            action="sign in to post items"
+            className="mb-6"
+          />
           <Card className="p-6">
             <div className="flex flex-col lg:flex-row gap-4 items-end">
               <div className="flex-1">
