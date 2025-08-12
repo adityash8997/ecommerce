@@ -37,6 +37,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Check for authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Get user ID from auth header
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const requestData: BookSubmissionRequest = await req.json();
     console.log("Received book request:", requestData);
 
@@ -45,18 +65,21 @@ const handler = async (req: Request): Promise<Response> => {
       const { data, error } = await supabase
         .from('book_submissions')
         .insert([{
+          user_id: user.id,
           full_name: requestData.fullName,
           roll_number: requestData.rollNumber,
           contact_number: requestData.contactNumber,
-          email: requestData.email!,
-          book_titles: requestData.bookTitles!,
-          branch: requestData.branch!,
-          year_of_study: requestData.yearOfStudy!,
-          book_condition: requestData.bookCondition!,
-          photo_urls: requestData.photoUrls || [],
-          pickup_location: requestData.pickupLocation!,
-          terms_accepted: requestData.termsAccepted!
-        }]);
+          email: requestData.email || user.email,
+          book_titles: requestData.bookTitles,
+          branch: requestData.branch,
+          year_of_study: requestData.yearOfStudy,
+          book_condition: requestData.bookCondition,
+          photo_urls: requestData.photoUrls,
+          pickup_location: requestData.pickupLocation,
+          terms_accepted: requestData.termsAccepted
+        }])
+        .select()
+        .single();
 
       if (error) {
         console.error("Database error:", error);
@@ -67,53 +90,54 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "KIIT Saathi <onboarding@resend.dev>",
         to: ["kiitsaathi@gmail.com"],
-        subject: "New Book Selling Request",
+        subject: "New Book Selling Request! 📚",
         html: `
           <h2>New Book Selling Request</h2>
-          <p><strong>Student:</strong> ${requestData.fullName} (${requestData.rollNumber})</p>
+          <p><strong>Student:</strong> ${requestData.fullName}</p>
+          <p><strong>Roll Number:</strong> ${requestData.rollNumber}</p>
           <p><strong>Contact:</strong> ${requestData.contactNumber}</p>
-          <p><strong>Email:</strong> ${requestData.email}</p>
+          <p><strong>Email:</strong> ${requestData.email || user.email}</p>
           <p><strong>Books:</strong> ${requestData.bookTitles}</p>
-          <p><strong>Branch & Year:</strong> ${requestData.branch} - ${requestData.yearOfStudy}</p>
+          <p><strong>Branch:</strong> ${requestData.branch}</p>
+          <p><strong>Year:</strong> ${requestData.yearOfStudy}</p>
           <p><strong>Condition:</strong> ${requestData.bookCondition}</p>
           <p><strong>Pickup Location:</strong> ${requestData.pickupLocation}</p>
-          ${requestData.photoUrls && requestData.photoUrls.length > 0 ? 
-            `<p><strong>Photo URLs:</strong> ${requestData.photoUrls.join(', ')}</p>` : ''}
+          <p>Please contact the student to arrange pickup and pricing.</p>
         `,
       });
 
       // Send confirmation email to student
-      if (requestData.email) {
-        await resend.emails.send({
-          from: "KIIT Saathi <onboarding@resend.dev>",
-          to: [requestData.email],
-          subject: "Book Selling Request Received! 📚",
-          html: `
-            <h2>Thanks for your book submission, ${requestData.fullName}! 📚💙</h2>
-            <p>We've received your request to sell your books and our team will reach out within 24 hours.</p>
-            <p><strong>What happens next:</strong></p>
-            <ul>
-              <li>Our team will review your book details</li>
-              <li>We'll calculate a fair price based on condition & demand</li>
-              <li>If approved, we'll contact you to arrange pickup</li>
-            </ul>
-            <p>Meanwhile, start dreaming about how you'll spend your extra cash! 😄</p>
-            <p>Questions? Reply to this email.</p>
-            <p>Best regards,<br>The KIIT Saathi Team</p>
-          `,
-        });
-      }
+      await resend.emails.send({
+        from: "KIIT Saathi <onboarding@resend.dev>",
+        to: [requestData.email || user.email!],
+        subject: "Book Selling Request Received - KIIT Saathi",
+        html: `
+          <h2>Thank you for your book selling request!</h2>
+          <p>Dear ${requestData.fullName},</p>
+          <p>We have received your request to sell books. Here are the details:</p>
+          <ul>
+            <li><strong>Books:</strong> ${requestData.bookTitles}</li>
+            <li><strong>Condition:</strong> ${requestData.bookCondition}</li>
+            <li><strong>Pickup Location:</strong> ${requestData.pickupLocation}</li>
+          </ul>
+          <p>Our team will review your submission and contact you within 24 hours with a quote and pickup details.</p>
+          <p>Best regards,<br>The KIIT Saathi Team</p>
+        `,
+      });
 
     } else if (requestData.type === 'buy') {
       // Handle book purchase request
       const { data, error } = await supabase
         .from('book_purchase_requests')
         .insert([{
+          user_id: user.id,
           full_name: requestData.fullName,
           roll_number: requestData.rollNumber,
           contact_number: requestData.contactNumber,
-          book_set_needed: requestData.bookSetNeeded!
-        }]);
+          book_set_needed: requestData.bookSetNeeded
+        }])
+        .select()
+        .single();
 
       if (error) {
         console.error("Database error:", error);
@@ -124,12 +148,15 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "KIIT Saathi <onboarding@resend.dev>",
         to: ["kiitsaathi@gmail.com"],
-        subject: "New Book Purchase Request",
+        subject: "New Book Purchase Request! 📖",
         html: `
           <h2>New Book Purchase Request</h2>
-          <p><strong>Student:</strong> ${requestData.fullName} (${requestData.rollNumber})</p>
+          <p><strong>Student:</strong> ${requestData.fullName}</p>
+          <p><strong>Roll Number:</strong> ${requestData.rollNumber}</p>
           <p><strong>Contact:</strong> ${requestData.contactNumber}</p>
+          <p><strong>Email:</strong> ${user.email}</p>
           <p><strong>Book Set Needed:</strong> ${requestData.bookSetNeeded}</p>
+          <p>Please check inventory and contact the student with availability and pricing.</p>
         `,
       });
     }
@@ -140,8 +167,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: requestData.type === 'sell' 
-          ? "Book selling request submitted successfully!" 
-          : "Book purchase request submitted successfully!"
+          ? "Book selling request submitted successfully! We'll contact you soon with a quote."
+          : "Book purchase request submitted successfully! We'll contact you with availability and pricing."
       }),
       {
         status: 200,

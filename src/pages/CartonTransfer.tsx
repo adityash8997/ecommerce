@@ -12,6 +12,7 @@ import { ArrowLeft, Package, Users, Truck, Clock, CheckCircle, MessageCircle, Ph
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
@@ -172,8 +173,9 @@ const CartonTransfer = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">
-      <Navbar />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">
+        <Navbar />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 text-center">
@@ -535,9 +537,10 @@ const CartonTransfer = () => {
           <MessageCircle className="w-5 h-5 mr-2" />
           📲 Chat with Team
         </Button>
+        </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </ProtectedRoute>
   );
 };
 

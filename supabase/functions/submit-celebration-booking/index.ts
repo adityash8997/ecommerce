@@ -30,13 +30,34 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Check for authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Get user ID from auth header
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const requestData: CelebrationBookingRequest = await req.json();
     console.log("Received celebration booking:", requestData);
 
-    // Save to database
+    // Save to database with user_id
     const { data, error } = await supabase
       .from('celebration_bookings')
       .insert([{
+        user_id: user.id,
         name: requestData.name,
         contact_number: requestData.contactNumber,
         celebration_type: requestData.celebrationType,

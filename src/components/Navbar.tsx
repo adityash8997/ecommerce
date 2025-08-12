@@ -1,14 +1,27 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Smartphone, LogIn, Home } from "lucide-react";
+import { Menu, X, Smartphone, LogIn, Home, LogOut, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import kiitMascot from "@/assets/kiit-mascot.png";
 
 export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success('Successfully signed out');
+      navigate('/');
+    } catch (error) {
+      toast.error('Error signing out');
+    }
+  };
 
   const navItems = [
     { label: "Services", href: "#services" },
@@ -135,14 +148,33 @@ export const Navbar = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="hover:bg-kiit-green/10 hover:text-kiit-green transition-all duration-300"
-            >
-              <LogIn className="w-4 h-4 mr-2" />
-              Login
-            </Button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 text-sm text-foreground">
+                  <User className="w-4 h-4" />
+                  {user.email}
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="hover:bg-red-500/10 hover:text-red-500 transition-all duration-300"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/auth')}
+                className="hover:bg-kiit-green/10 hover:text-kiit-green transition-all duration-300"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Button>
+            )}
             <Button 
               size="sm" 
               className="gradient-primary text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
@@ -194,14 +226,36 @@ export const Navbar = () => {
             ))}
             
             <div className="flex flex-col gap-3 pt-4 border-t border-white/20">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-kiit-green/30 hover:bg-kiit-green/10"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Login
-              </Button>
+              {user ? (
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2 text-sm text-foreground">
+                    <User className="w-4 h-4" />
+                    {user.email}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="border-red-500/30 hover:bg-red-500/10 text-red-500"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    navigate('/auth');
+                    setIsOpen(false);
+                  }}
+                  className="border-kiit-green/30 hover:bg-kiit-green/10"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Login
+                </Button>
+              )}
               <Button 
                 size="sm" 
                 className="gradient-primary text-white font-semibold shadow-lg"

@@ -30,15 +30,37 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const bookingData: CartonBookingRequest = await req.json();
+    // Check for authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
-    // Create Supabase client with service role key
+    // Create Supabase client with service role key for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Insert booking into database
+    // Get user ID from auth header
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const bookingData: CartonBookingRequest = await req.json();
+    console.log("Received carton booking:", bookingData);
+
+    // Insert booking into database with user_id
     const { data: booking, error: dbError } = await supabase
       .from("carton_transfer_bookings")
       .insert({
+        user_id: user.id,
         full_name: bookingData.fullName,
         mobile_number: bookingData.mobileNumber,
         hostel_name: bookingData.hostelName,
@@ -57,38 +79,40 @@ const handler = async (req: Request): Promise<Response> => {
       throw dbError;
     }
 
-    // Send confirmation email to admin
-    const adminEmailResponse = await resend.emails.send({
-      from: "KIIT Saathi <noreply@kiitsaathi.com>",
+    // Send notification email to admin
+    await resend.emails.send({
+      from: "KIIT Saathi <onboarding@resend.dev>",
       to: ["kiitsaathi@gmail.com"],
-      subject: "New Carton Transfer Booking",
+      subject: "New Carton Transfer Booking! 📦",
       html: `
-        <h2>New Carton Transfer Booking Received</h2>
-        <p><strong>Booking ID:</strong> ${booking.id}</p>
-        <p><strong>Student Name:</strong> ${bookingData.fullName}</p>
-        <p><strong>Mobile:</strong> ${bookingData.mobileNumber}</p>
-        <p><strong>Hostel:</strong> ${bookingData.hostelName}</p>
-        <p><strong>Room:</strong> ${bookingData.roomNumber}</p>
-        <p><strong>Boxes:</strong> ${bookingData.numberOfBoxes}</p>
-        <p><strong>Tape Required:</strong> ${bookingData.needTape ? 'Yes' : 'No'}</p>
+        <h2>New Carton Transfer Booking</h2>
+        <p><strong>Customer:</strong> ${bookingData.fullName}</p>
+        <p><strong>Contact:</strong> ${bookingData.mobileNumber}</p>
+        <p><strong>Location:</strong> ${bookingData.hostelName}, Room ${bookingData.roomNumber}</p>
         <p><strong>Pickup Slot:</strong> ${bookingData.pickupSlot}</p>
+        <p><strong>Number of Boxes:</strong> ${bookingData.numberOfBoxes}</p>
+        <p><strong>Tape Required:</strong> ${bookingData.needTape ? 'Yes' : 'No'}</p>
         <p><strong>Payment Method:</strong> ${bookingData.paymentMethod}</p>
-        <p><strong>Total Amount:</strong> ₹${bookingData.totalPrice}</p>
-        <p><strong>Booking Time:</strong> ${new Date().toLocaleString()}</p>
+        <p><strong>Total Price:</strong> ₹${bookingData.totalPrice}</p>
+        <p><strong>User Email:</strong> ${user.email}</p>
+        <p>Please coordinate with the customer for pickup.</p>
       `,
     });
 
-    console.log("Admin email sent:", adminEmailResponse);
+    console.log("Carton booking processed successfully");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Booking confirmed successfully!",
-        bookingId: booking.id 
+        message: "Booking submitted successfully! We'll contact you soon.",
+        bookingId: booking.id
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
       }
     );
   } catch (error: any) {
@@ -97,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }
