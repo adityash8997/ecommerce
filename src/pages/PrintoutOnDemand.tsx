@@ -15,7 +15,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { HelperDashboard } from '@/components/HelperDashboard';
 import { PrintJobCard } from '@/components/PrintJobCard';
-import { usePrintJobManager, PrintJob } from '@/hooks/usePrintJobManager';
+import { usePrintJobManager } from '@/hooks/usePrintJobManager';
 import { useAuth } from '@/hooks/useAuth';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 
@@ -41,7 +41,7 @@ const PrintoutOnDemand = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [myJobs, setMyJobs] = useState<PrintJob[]>([]);
+  const [myJobs, setMyJobs] = useState<any[]>([]);
 
   // Load user's jobs
   const loadMyJobs = async () => {

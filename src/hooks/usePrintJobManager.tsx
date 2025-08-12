@@ -16,8 +16,8 @@ export interface PrintJob {
   binding_option?: string;
   delivery_location: string;
   delivery_time?: string;
-  delivery_type: string;
-  delivery_fee: number;
+  delivery_type?: string;
+  delivery_fee?: number;
   additional_notes?: string;
   student_name: string;
   student_contact: string;
@@ -28,9 +28,12 @@ export interface PrintJob {
   status: string;
   created_at: string;
   updated_at: string;
-  user_id: string;
+  user_id?: string;
   helper_id?: string;
-  privacy_acknowledged: boolean;
+  privacy_acknowledged?: boolean;
+  accepted_at?: string;
+  printed_at?: string;
+  delivered_at?: string;
 }
 
 export function usePrintJobManager() {
@@ -78,16 +81,30 @@ export function usePrintJobManager() {
         return false;
       }
 
-      // Create print job record
+      // Create print job record using proper typing
+      const insertData = {
+        file_name: jobData.file_name,
+        file_url: jobData.file_url || '',
+        file_size: jobData.file_size,
+        page_count: jobData.page_count,
+        copies: jobData.copies,
+        print_type: jobData.print_type,
+        paper_size: jobData.paper_size,
+        binding_option: jobData.binding_option,
+        delivery_location: jobData.delivery_location,
+        delivery_time: jobData.delivery_time,
+        additional_notes: jobData.additional_notes,
+        student_name: jobData.student_name,
+        student_contact: jobData.student_contact,
+        total_cost: jobData.total_cost,
+        printing_cost: jobData.printing_cost,
+        service_fee: jobData.service_fee,
+        helper_fee: jobData.helper_fee
+      };
+
       const { error } = await supabase
         .from('print_jobs')
-        .insert({
-          ...jobData,
-          user_id: user.id,
-          file_storage_path: filePath,
-          privacy_acknowledged: true,
-          status: 'pending'
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -203,7 +220,7 @@ export function usePrintJobManager() {
     }
   }, [user]);
 
-  const fetchJobs = useCallback(async (filters?: { status?: string; helper_id?: string }): Promise<PrintJob[]> => {
+  const fetchJobs = useCallback(async (filters?: { status?: string; helper_id?: string }): Promise<any[]> => {
     try {
       let query = supabase.from('print_jobs').select('*');
       

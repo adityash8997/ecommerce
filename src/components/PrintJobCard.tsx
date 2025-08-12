@@ -3,10 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Download, MapPin, Clock, FileText, User, Phone } from 'lucide-react';
-import { PrintJob } from '@/hooks/usePrintJobManager';
 
 interface PrintJobCardProps {
-  job: PrintJob;
+  job: any;
   userType: 'customer' | 'helper';
   onAccept?: (jobId: string) => void;
   onUpdateStatus?: (jobId: string, status: string) => void;

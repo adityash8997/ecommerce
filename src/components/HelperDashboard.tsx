@@ -5,16 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PrintJobCard } from './PrintJobCard';
-import { usePrintJobManager, PrintJob } from '@/hooks/usePrintJobManager';
+import { usePrintJobManager } from '@/hooks/usePrintJobManager';
 import { useAuth } from '@/hooks/useAuth';
 import { DollarSign, FileText, Clock, CheckCircle } from 'lucide-react';
 
 export function HelperDashboard() {
   const { user } = useAuth();
   const { acceptJob, updateJobStatus, downloadFile, fetchJobs, isLoading } = usePrintJobManager();
-  const [availableJobs, setAvailableJobs] = useState<PrintJob[]>([]);
-  const [myJobs, setMyJobs] = useState<PrintJob[]>([]);
-  const [completedJobs, setCompletedJobs] = useState<PrintJob[]>([]);
+  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [myJobs, setMyJobs] = useState<any[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalJobs: 0, totalEarnings: 0, activeJobs: 0 });
 
   const loadJobs = async () => {
