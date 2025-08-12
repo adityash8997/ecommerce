@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,8 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useGuestForm } from "@/hooks/useGuestForm";
+import { GuestBrowsingBanner } from "@/components/GuestBrowsingBanner";
 import { 
   BookOpen, 
   Upload, 
@@ -25,111 +30,132 @@ import {
   Phone,
   Mail,
   GraduationCap,
-  Package
+  Package,
+  Calendar as CalendarIcon,
+  Gift,
+  DollarSign,
+  Target,
+  TrendingUp,
+  Clock
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { useBookBuyback } from "@/hooks/useBookBuyback";
+import { BookSelectionGrid } from "@/components/BookSelectionGrid";
+import { PricingSummary } from "@/components/PricingSummary";
+import { BuyBooksSection } from "@/components/BuyBooksSection";
+import { format } from "date-fns";
 
-const sellBookSchema = z.object({
+// Updated form schemas for new comprehensive system
+const sellFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   rollNumber: z.string().min(1, "Roll number is required"),
   contactNumber: z.string().min(10, "Valid contact number is required"),
   email: z.string().email("Valid email is required"),
-  bookTitles: z.string().min(1, "Book titles are required"),
-  branch: z.string().min(1, "Branch is required"),
-  yearOfStudy: z.string().min(1, "Year of study is required"),
-  bookCondition: z.string().min(1, "Book condition is required"),
   pickupLocation: z.string().min(1, "Pickup location is required"),
+  upiId: z.string().min(1, "UPI ID is required for payment"),
+  pickupDate: z.date().refine(date => date > new Date(), "Pickup date must be in the future"),
   termsAccepted: z.boolean().refine(val => val === true, {
     message: "You must accept the terms"
   })
 });
 
-const buyBookSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  rollNumber: z.string().min(1, "Roll number is required"),
-  contactNumber: z.string().min(10, "Valid contact number is required"),
-  bookSetNeeded: z.string().min(1, "Book set details are required")
-});
-
-type SellBookFormData = z.infer<typeof sellBookSchema>;
-type BuyBookFormData = z.infer<typeof buyBookSchema>;
+type SellFormData = z.infer<typeof sellFormSchema>;
 
 export default function BookBuyback() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const { user } = useAuth();
+  const {
+    formData: guestFormData,
+    updateFormData: updateGuestFormData,
+    resetForm: resetGuestForm
+  } = useGuestForm({ storageKey: 'book-buyback' });
 
-  const sellForm = useForm<SellBookFormData>({
-    resolver: zodResolver(sellBookSchema)
+  const {
+    semesterBooks,
+    selectedSemester,
+    selectedBooks,
+    isLoading,
+    setSelectedSemester,
+    fetchSemesterBooks,
+    addBookToSelection,
+    removeBookFromSelection,
+    submitSellRequest,
+    calculatePrice,
+    getTotalEstimatedPrice,
+    isFullSemesterSet,
+    getBonusAmount,
+    getFinalTotal
+  } = useBookBuyback();
+
+  const [pickupDate, setPickupDate] = useState<Date>();
+  const [currentStep, setCurrentStep] = useState<'semester' | 'books' | 'form'>('semester');
+
+  const sellForm = useForm<SellFormData>({
+    resolver: zodResolver(sellFormSchema),
+    defaultValues: guestFormData
   });
 
-  const buyForm = useForm<BuyBookFormData>({
-    resolver: zodResolver(buyBookSchema)
-  });
-
-  const handleSellSubmit = async (data: SellBookFormData) => {
-    setIsLoading(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke('submit-book-request', {
-        body: {
-          type: 'sell',
-          ...data,
-          photoUrls
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success! 🎉",
-        description: "Thanks! Our team will reach out within 24 hours. Meanwhile, start dreaming about how you'll spend your extra cash 😄"
-      });
-      
-      sellForm.reset();
-      setPhotoUrls([]);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to submit request. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+  // Load semester books when semester is selected
+  useEffect(() => {
+    if (selectedSemester) {
+      fetchSemesterBooks(selectedSemester);
+      setCurrentStep('books');
     }
+  }, [selectedSemester]);
+
+  // Update guest form data when form changes
+  useEffect(() => {
+    const subscription = sellForm.watch((value) => {
+      updateGuestFormData(value);
+    });
+    return () => subscription.unsubscribe();
+  }, [sellForm.watch, updateGuestFormData]);
+
+  const handleSemesterSelect = (semester: number) => {
+    setSelectedSemester(semester);
   };
 
-  const handleBuySubmit = async (data: BuyBookFormData) => {
-    setIsLoading(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke('submit-book-request', {
-        body: {
-          type: 'buy',
-          ...data
-        }
-      });
-
-      if (error) throw error;
-
+  const handleProceedToForm = () => {
+    if (selectedBooks.length === 0) {
       toast({
-        title: "Success! 🎉",
-        description: "We've received your request and will contact you soon with available book sets!"
-      });
-      
-      buyForm.reset();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to submit request. Please try again.",
+        title: "No books selected",
+        description: "Please select at least one book to proceed.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
+      return;
+    }
+    setCurrentStep('form');
+  };
+
+  const handleSellSubmit = async (data: SellFormData) => {
+    if (!user) {
+      // Redirect to auth for final submission
+      window.location.href = '/auth?redirect=/book-buyback';
+      return;
+    }
+
+    try {
+      await submitSellRequest({
+        ...data,
+        pickup_scheduled_at: pickupDate,
+      });
+      
+      // Reset everything
+      sellForm.reset();
+      resetGuestForm();
+      setSelectedSemester(null);
+      setPickupDate(undefined);
+      setCurrentStep('semester');
+    } catch (error) {
+      // Error is handled by the hook
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft to-background">
       <Navbar />
+      
+      {!user && <GuestBrowsingBanner message="You'll need to sign in before confirming your book sale" />}
       
       {/* Hero Section */}
       <section className="py-20 px-4">
@@ -149,8 +175,15 @@ export default function BookBuyback() {
             <span className="font-semibold text-kiit-green block mt-2">More cash for you, more savings for juniors.</span>
           </p>
 
-          <div className="flex justify-center mb-12">
-            <img src="/placeholder.svg" alt="Students exchanging books" className="w-96 h-64 object-contain" />
+          <div className="flex justify-center gap-4 mb-12">
+            <Button size="lg" className="bg-gradient-to-r from-kiit-green to-campus-blue text-white">
+              <Package className="w-5 h-5 mr-2" />
+              Sell Your Books
+            </Button>
+            <Button variant="outline" size="lg">
+              <BookOpen className="w-5 h-5 mr-2" />
+              Buy Pre-Loved Books
+            </Button>
           </div>
         </div>
       </section>
@@ -162,34 +195,44 @@ export default function BookBuyback() {
             How It Works
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="glass-card text-center hover-lift">
               <CardContent className="p-6">
                 <div className="bg-gradient-to-r from-kiit-green to-campus-blue p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Upload className="w-8 h-8 text-white" />
+                  <Target className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">1. List Your Books</h3>
-                <p className="text-muted-foreground">Fill out a short form telling us what you have.</p>
+                <h3 className="text-lg font-semibold mb-2">1. Select Semester</h3>
+                <p className="text-muted-foreground text-sm">Choose your semester to view available books</p>
               </CardContent>
             </Card>
 
             <Card className="glass-card text-center hover-lift">
               <CardContent className="p-6">
                 <div className="bg-gradient-to-r from-campus-blue to-campus-purple p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Star className="w-8 h-8 text-white" />
+                  <BookOpen className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">2. Get a Fair Price</h3>
-                <p className="text-muted-foreground">We calculate based on condition & demand.</p>
+                <h3 className="text-lg font-semibold mb-2">2. Pick Books & Condition</h3>
+                <p className="text-muted-foreground text-sm">Select books and specify their condition</p>
               </CardContent>
             </Card>
 
             <Card className="glass-card text-center hover-lift">
               <CardContent className="p-6">
                 <div className="bg-gradient-to-r from-campus-purple to-campus-orange p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <MapPin className="w-8 h-8 text-white" />
+                  <DollarSign className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">3. We Pick Them Up</h3>
-                <p className="text-muted-foreground">No extra hassle; we'll collect from your hostel or meet nearby.</p>
+                <h3 className="text-lg font-semibold mb-2">3. Get Fair Price</h3>
+                <p className="text-muted-foreground text-sm">See instant pricing based on condition & demand</p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card text-center hover-lift">
+              <CardContent className="p-6">
+                <div className="bg-gradient-to-r from-campus-orange to-kiit-green p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Clock className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">4. Schedule Pickup</h3>
+                <p className="text-muted-foreground text-sm">Worker verifies & pays instantly</p>
               </CardContent>
             </Card>
           </div>
@@ -234,11 +277,11 @@ export default function BookBuyback() {
         </div>
       </section>
 
-      {/* Main Forms Section */}
+      {/* Main Interactive Section */}
       <section className="py-16 px-4">
-        <div className="container mx-auto max-w-4xl">
+        <div className="container mx-auto">
           <Tabs defaultValue="sell" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsList className="grid w-full grid-cols-2 mb-8 max-w-md mx-auto">
               <TabsTrigger value="sell" className="flex items-center gap-2">
                 <Package className="w-4 h-4" />
                 Sell Your Books
@@ -249,312 +292,319 @@ export default function BookBuyback() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Sell Books Form */}
+            {/* Sell Books Section */}
             <TabsContent value="sell">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-poppins text-gradient">
-                    Sell Your Books
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={sellForm.handleSubmit(handleSellSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="fullName" className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Full Name *
-                        </Label>
-                        <Input 
-                          id="fullName"
-                          {...sellForm.register("fullName")}
-                          placeholder="Your full name"
-                        />
-                        {sellForm.formState.errors.fullName && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.fullName.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="rollNumber" className="flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4" />
-                          Roll Number *
-                        </Label>
-                        <Input 
-                          id="rollNumber"
-                          {...sellForm.register("rollNumber")}
-                          placeholder="Your roll number"
-                        />
-                        {sellForm.formState.errors.rollNumber && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.rollNumber.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="contactNumber" className="flex items-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          Contact Number *
-                        </Label>
-                        <Input 
-                          id="contactNumber"
-                          {...sellForm.register("contactNumber")}
-                          placeholder="Your contact number"
-                        />
-                        {sellForm.formState.errors.contactNumber && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.contactNumber.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="email" className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          Email ID *
-                        </Label>
-                        <Input 
-                          id="email"
-                          type="email"
-                          {...sellForm.register("email")}
-                          placeholder="your.email@kiit.ac.in"
-                        />
-                        {sellForm.formState.errors.email && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.email.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="bookTitles" className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4" />
-                        Book Title(s) & Edition *
-                      </Label>
-                      <Textarea 
-                        id="bookTitles"
-                        {...sellForm.register("bookTitles")}
-                        placeholder="List your books with editions (e.g., Mathematics 3 by RK Jain, Engineering Graphics by ND Bhatt 53rd Edition)"
-                        rows={3}
-                      />
-                      {sellForm.formState.errors.bookTitles && (
-                        <p className="text-sm text-destructive mt-1">
-                          {sellForm.formState.errors.bookTitles.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="branch">Branch *</Label>
-                        <Select onValueChange={(value) => sellForm.setValue("branch", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select branch" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CSE">CSE</SelectItem>
-                            <SelectItem value="IT">IT</SelectItem>
-                            <SelectItem value="ECE">ECE</SelectItem>
-                            <SelectItem value="EEE">EEE</SelectItem>
-                            <SelectItem value="MECH">MECH</SelectItem>
-                            <SelectItem value="CIVIL">CIVIL</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {sellForm.formState.errors.branch && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.branch.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="yearOfStudy">Year of Study *</Label>
-                        <Select onValueChange={(value) => sellForm.setValue("yearOfStudy", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1st Year">1st Year</SelectItem>
-                            <SelectItem value="2nd Year">2nd Year</SelectItem>
-                            <SelectItem value="3rd Year">3rd Year</SelectItem>
-                            <SelectItem value="4th Year">4th Year</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {sellForm.formState.errors.yearOfStudy && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.yearOfStudy.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="bookCondition">Book Condition *</Label>
-                        <Select onValueChange={(value) => sellForm.setValue("bookCondition", value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Mint">Mint</SelectItem>
-                            <SelectItem value="Good">Good</SelectItem>
-                            <SelectItem value="Fair">Fair</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {sellForm.formState.errors.bookCondition && (
-                          <p className="text-sm text-destructive mt-1">
-                            {sellForm.formState.errors.bookCondition.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="pickupLocation" className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        Preferred Pickup Location *
-                      </Label>
-                      <Input 
-                        id="pickupLocation"
-                        {...sellForm.register("pickupLocation")}
-                        placeholder="e.g., Kalinga Hostel Gate, CS Building, Campus 15"
-                      />
-                      {sellForm.formState.errors.pickupLocation && (
-                        <p className="text-sm text-destructive mt-1">
-                          {sellForm.formState.errors.pickupLocation.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="termsAccepted"
-                        checked={sellForm.watch("termsAccepted")}
-                        onCheckedChange={(checked) => sellForm.setValue("termsAccepted", checked as boolean)}
-                      />
-                      <Label htmlFor="termsAccepted" className="text-sm">
-                        I confirm these books are original and belong to me *
-                      </Label>
-                    </div>
-                    {sellForm.formState.errors.termsAccepted && (
-                      <p className="text-sm text-destructive">
-                        {sellForm.formState.errors.termsAccepted.message}
+              <div className="max-w-7xl mx-auto">
+                {/* Step 1: Semester Selection */}
+                {currentStep === 'semester' && (
+                  <div className="space-y-8">
+                    <div className="text-center">
+                      <h3 className="text-3xl font-poppins font-bold text-gradient mb-4">
+                        Which semester books do you want to sell?
+                      </h3>
+                      <p className="text-muted-foreground text-lg">
+                        Select your semester to see all available books with instant pricing
                       </p>
-                    )}
+                    </div>
 
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-kiit-green to-campus-blue text-white font-semibold py-3"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Submitting..." : "Submit Book Request"}
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                      <Card 
+                        className="glass-card cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                        onClick={() => handleSemesterSelect(1)}
+                      >
+                        <CardContent className="p-8 text-center">
+                          <div className="bg-gradient-to-r from-kiit-green to-campus-blue p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                            <span className="text-2xl font-bold text-white">1st</span>
+                          </div>
+                          <h4 className="text-xl font-semibold mb-2">1st Semester</h4>
+                          <p className="text-muted-foreground text-sm">
+                            Mathematics, Programming, Chemistry & more
+                          </p>
+                          <Badge className="mt-3" variant="secondary">7 Books Available</Badge>
+                        </CardContent>
+                      </Card>
+
+                      <Card 
+                        className="glass-card cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                        onClick={() => handleSemesterSelect(2)}
+                      >
+                        <CardContent className="p-8 text-center">
+                          <div className="bg-gradient-to-r from-campus-blue to-campus-purple p-4 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                            <span className="text-2xl font-bold text-white">2nd</span>
+                          </div>
+                          <h4 className="text-xl font-semibold mb-2">2nd Semester</h4>
+                          <p className="text-muted-foreground text-sm">
+                            Physics, C++, Mechanics & more
+                          </p>
+                          <Badge className="mt-3" variant="secondary">5 Books Available</Badge>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Book Selection */}
+                {currentStep === 'books' && selectedSemester && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-2xl font-poppins font-bold text-gradient">
+                            {selectedSemester === 1 ? '1st' : '2nd'} Semester Books
+                          </h3>
+                          <p className="text-muted-foreground">
+                            Select books and their condition to see pricing
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setCurrentStep('semester')}
+                        >
+                          Change Semester
+                        </Button>
+                      </div>
+
+                      <BookSelectionGrid
+                        semesterBooks={semesterBooks}
+                        selectedBooks={selectedBooks}
+                        onAddBook={addBookToSelection}
+                        onRemoveBook={removeBookFromSelection}
+                        calculatePrice={calculatePrice}
+                      />
+
+                      {selectedBooks.length > 0 && (
+                        <div className="mt-8 text-center">
+                          <Button 
+                            size="lg" 
+                            onClick={handleProceedToForm}
+                            className="bg-gradient-to-r from-kiit-green to-campus-blue text-white"
+                          >
+                            Proceed to Seller Details
+                            <ArrowRight className="ml-2 w-5 h-5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <PricingSummary
+                        selectedBooks={selectedBooks}
+                        totalEstimatedPrice={getTotalEstimatedPrice()}
+                        isFullSemesterSet={isFullSemesterSet()}
+                        bonusAmount={getBonusAmount()}
+                        finalTotal={getFinalTotal()}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Seller Form */}
+                {currentStep === 'form' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2">
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-2xl font-poppins text-gradient">
+                                Seller Details & Pickup
+                              </CardTitle>
+                              <p className="text-muted-foreground">
+                                Final step - provide your details for pickup and payment
+                              </p>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setCurrentStep('books')}
+                            >
+                              Back to Books
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <form onSubmit={sellForm.handleSubmit(handleSellSubmit)} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="fullName" className="flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  Full Name *
+                                </Label>
+                                <Input 
+                                  {...sellForm.register("fullName")}
+                                  placeholder="Your full name"
+                                />
+                                {sellForm.formState.errors.fullName && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {sellForm.formState.errors.fullName.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div>
+                                <Label htmlFor="rollNumber" className="flex items-center gap-2">
+                                  <GraduationCap className="w-4 h-4" />
+                                  Roll Number *
+                                </Label>
+                                <Input 
+                                  {...sellForm.register("rollNumber")}
+                                  placeholder="Your roll number"
+                                />
+                                {sellForm.formState.errors.rollNumber && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {sellForm.formState.errors.rollNumber.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="contactNumber" className="flex items-center gap-2">
+                                  <Phone className="w-4 h-4" />
+                                  Contact Number *
+                                </Label>
+                                <Input 
+                                  {...sellForm.register("contactNumber")}
+                                  placeholder="Your contact number"
+                                />
+                                {sellForm.formState.errors.contactNumber && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {sellForm.formState.errors.contactNumber.message}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div>
+                                <Label htmlFor="email" className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4" />
+                                  Email ID *
+                                </Label>
+                                <Input 
+                                  type="email"
+                                  {...sellForm.register("email")}
+                                  placeholder="your.email@kiit.ac.in"
+                                />
+                                {sellForm.formState.errors.email && (
+                                  <p className="text-sm text-destructive mt-1">
+                                    {sellForm.formState.errors.email.message}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="pickupLocation" className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4" />
+                                Pickup Location *
+                              </Label>
+                              <Input 
+                                {...sellForm.register("pickupLocation")}
+                                placeholder="e.g., Kalinga Hostel Gate, CS Building, Campus 15"
+                              />
+                              {sellForm.formState.errors.pickupLocation && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {sellForm.formState.errors.pickupLocation.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4" />
+                                UPI ID for Payment *
+                              </Label>
+                              <Input 
+                                {...sellForm.register("upiId")}
+                                placeholder="your-upi@bankname"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Payment will be made immediately after book verification
+                              </p>
+                              {sellForm.formState.errors.upiId && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {sellForm.formState.errors.upiId.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label className="flex items-center gap-2">
+                                <CalendarIcon className="w-4 h-4" />
+                                Preferred Pickup Date *
+                              </Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-left font-normal"
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {pickupDate ? format(pickupDate, "PPP") : "Pick a date"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar
+                                    mode="single"
+                                    selected={pickupDate}
+                                    onSelect={setPickupDate}
+                                    disabled={(date) => date < new Date()}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              {sellForm.formState.errors.pickupDate && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {sellForm.formState.errors.pickupDate.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                checked={sellForm.watch("termsAccepted")}
+                                onCheckedChange={(checked) => sellForm.setValue("termsAccepted", checked as boolean)}
+                              />
+                              <Label className="text-sm">
+                                I confirm these books are original and belong to me. I agree to the terms and conditions. *
+                              </Label>
+                            </div>
+                            {sellForm.formState.errors.termsAccepted && (
+                              <p className="text-sm text-destructive">
+                                {sellForm.formState.errors.termsAccepted.message}
+                              </p>
+                            )}
+
+                            <Button 
+                              type="submit" 
+                              className="w-full bg-gradient-to-r from-kiit-green to-campus-blue text-white font-semibold py-3"
+                              disabled={isLoading}
+                            >
+                              {isLoading ? "Submitting..." : user ? "Confirm Book Sale" : "Sign In & Confirm Sale"}
+                              <ArrowRight className="ml-2 w-5 h-5" />
+                            </Button>
+                          </form>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div>
+                      <PricingSummary
+                        selectedBooks={selectedBooks}
+                        totalEstimatedPrice={getTotalEstimatedPrice()}
+                        isFullSemesterSet={isFullSemesterSet()}
+                        bonusAmount={getBonusAmount()}
+                        finalTotal={getFinalTotal()}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
-            {/* Buy Books Form */}
+            {/* Buy Books Section */}
             <TabsContent value="buy">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-poppins text-gradient">
-                    Buy Pre-Loved Books
-                  </CardTitle>
-                  <p className="text-muted-foreground">
-                    Reserve book sets from seniors at discounted prices
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={buyForm.handleSubmit(handleBuySubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="buyFullName" className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          Full Name *
-                        </Label>
-                        <Input 
-                          id="buyFullName"
-                          {...buyForm.register("fullName")}
-                          placeholder="Your full name"
-                        />
-                        {buyForm.formState.errors.fullName && (
-                          <p className="text-sm text-destructive mt-1">
-                            {buyForm.formState.errors.fullName.message}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="buyRollNumber" className="flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4" />
-                          Roll Number *
-                        </Label>
-                        <Input 
-                          id="buyRollNumber"
-                          {...buyForm.register("rollNumber")}
-                          placeholder="Your roll number"
-                        />
-                        {buyForm.formState.errors.rollNumber && (
-                          <p className="text-sm text-destructive mt-1">
-                            {buyForm.formState.errors.rollNumber.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="buyContactNumber" className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Contact Number *
-                      </Label>
-                      <Input 
-                        id="buyContactNumber"
-                        {...buyForm.register("contactNumber")}
-                        placeholder="Your contact number"
-                      />
-                      {buyForm.formState.errors.contactNumber && (
-                        <p className="text-sm text-destructive mt-1">
-                          {buyForm.formState.errors.contactNumber.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="bookSetNeeded" className="flex items-center gap-2">
-                        <BookOpen className="w-4 h-4" />
-                        Book Set Needed *
-                      </Label>
-                      <Textarea 
-                        id="bookSetNeeded"
-                        {...buyForm.register("bookSetNeeded")}
-                        placeholder="Describe the books you need (e.g., 2nd Year CSE complete set, Mathematics 3 books, etc.)"
-                        rows={3}
-                      />
-                      {buyForm.formState.errors.bookSetNeeded && (
-                        <p className="text-sm text-destructive mt-1">
-                          {buyForm.formState.errors.bookSetNeeded.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-campus-blue to-campus-purple text-white font-semibold py-3"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Submitting..." : "Reserve Book Set"}
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+              <BuyBooksSection />
             </TabsContent>
           </Tabs>
         </div>

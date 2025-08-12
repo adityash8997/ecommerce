@@ -44,6 +44,60 @@ export type Database = {
         }
         Relationships: []
       }
+      book_inventory: {
+        Row: {
+          buyer_id: string | null
+          condition: string
+          created_at: string
+          id: string
+          seller_submission_id: string | null
+          selling_price: number
+          semester_book_id: string
+          sold_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id?: string | null
+          condition: string
+          created_at?: string
+          id?: string
+          seller_submission_id?: string | null
+          selling_price: number
+          semester_book_id: string
+          sold_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string | null
+          condition?: string
+          created_at?: string
+          id?: string
+          seller_submission_id?: string | null
+          selling_price?: number
+          semester_book_id?: string
+          sold_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_inventory_seller_submission_id_fkey"
+            columns: ["seller_submission_id"]
+            isOneToOne: false
+            referencedRelation: "book_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_inventory_semester_book_id_fkey"
+            columns: ["semester_book_id"]
+            isOneToOne: false
+            referencedRelation: "semester_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       book_purchase_requests: {
         Row: {
           admin_notes: string | null
@@ -86,60 +140,189 @@ export type Database = {
       book_submissions: {
         Row: {
           admin_notes: string | null
+          bank_account: string | null
+          bonus_amount: number | null
+          bonus_applicable: boolean | null
           book_condition: string
           book_titles: string
           branch: string
           contact_number: string
           created_at: string
           email: string
+          final_price: number | null
           full_name: string
           id: string
+          ifsc_code: string | null
+          payment_status: string | null
           photo_urls: string[] | null
           pickup_location: string
+          pickup_scheduled_at: string | null
           roll_number: string
+          selected_books: Json | null
+          semester: number | null
           status: string
           terms_accepted: boolean
+          total_estimated_price: number | null
           updated_at: string
+          upi_id: string | null
           user_id: string | null
+          verification_notes: string | null
+          worker_verified: boolean | null
           year_of_study: string
         }
         Insert: {
           admin_notes?: string | null
+          bank_account?: string | null
+          bonus_amount?: number | null
+          bonus_applicable?: boolean | null
           book_condition: string
           book_titles: string
           branch: string
           contact_number: string
           created_at?: string
           email: string
+          final_price?: number | null
           full_name: string
           id?: string
+          ifsc_code?: string | null
+          payment_status?: string | null
           photo_urls?: string[] | null
           pickup_location: string
+          pickup_scheduled_at?: string | null
           roll_number: string
+          selected_books?: Json | null
+          semester?: number | null
           status?: string
           terms_accepted?: boolean
+          total_estimated_price?: number | null
           updated_at?: string
+          upi_id?: string | null
           user_id?: string | null
+          verification_notes?: string | null
+          worker_verified?: boolean | null
           year_of_study: string
         }
         Update: {
           admin_notes?: string | null
+          bank_account?: string | null
+          bonus_amount?: number | null
+          bonus_applicable?: boolean | null
           book_condition?: string
           book_titles?: string
           branch?: string
           contact_number?: string
           created_at?: string
           email?: string
+          final_price?: number | null
           full_name?: string
           id?: string
+          ifsc_code?: string | null
+          payment_status?: string | null
           photo_urls?: string[] | null
           pickup_location?: string
+          pickup_scheduled_at?: string | null
           roll_number?: string
+          selected_books?: Json | null
+          semester?: number | null
           status?: string
           terms_accepted?: boolean
+          total_estimated_price?: number | null
           updated_at?: string
+          upi_id?: string | null
           user_id?: string | null
+          verification_notes?: string | null
+          worker_verified?: boolean | null
           year_of_study?: string
+        }
+        Relationships: []
+      }
+      book_verifications: {
+        Row: {
+          final_amount: number
+          id: string
+          photos_after_verification: Json | null
+          price_adjustments: Json | null
+          submission_id: string
+          verification_notes: string | null
+          verified_at: string
+          verified_books: Json
+          worker_id: string
+        }
+        Insert: {
+          final_amount: number
+          id?: string
+          photos_after_verification?: Json | null
+          price_adjustments?: Json | null
+          submission_id: string
+          verification_notes?: string | null
+          verified_at?: string
+          verified_books: Json
+          worker_id: string
+        }
+        Update: {
+          final_amount?: number
+          id?: string
+          photos_after_verification?: Json | null
+          price_adjustments?: Json | null
+          submission_id?: string
+          verification_notes?: string | null
+          verified_at?: string
+          verified_books?: Json
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_verifications_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "book_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "book_verifications_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "book_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      book_workers: {
+        Row: {
+          contact: string
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          password_hash: string
+          total_verifications: number | null
+          updated_at: string
+          worker_code: string
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          password_hash: string
+          total_verifications?: number | null
+          updated_at?: string
+          worker_code: string
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          password_hash?: string
+          total_verifications?: number | null
+          updated_at?: string
+          worker_code?: string
         }
         Relationships: []
       }
@@ -654,6 +837,45 @@ export type Database = {
           id?: string
           role?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      semester_books: {
+        Row: {
+          author: string
+          base_price: number
+          book_name: string
+          created_at: string
+          demand_multiplier: number
+          edition: string
+          id: string
+          publisher: string | null
+          semester: number
+          updated_at: string
+        }
+        Insert: {
+          author: string
+          base_price?: number
+          book_name: string
+          created_at?: string
+          demand_multiplier?: number
+          edition: string
+          id?: string
+          publisher?: string | null
+          semester: number
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          base_price?: number
+          book_name?: string
+          created_at?: string
+          demand_multiplier?: number
+          edition?: string
+          id?: string
+          publisher?: string | null
+          semester?: number
+          updated_at?: string
         }
         Relationships: []
       }
