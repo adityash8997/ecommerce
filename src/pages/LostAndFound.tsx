@@ -32,6 +32,9 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { useSecureLostAndFound } from "@/hooks/useSecureLostAndFound";
+import { DatabaseErrorFallback } from "@/components/DatabaseErrorFallback";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LostFoundItem {
@@ -41,14 +44,15 @@ interface LostFoundItem {
   location: string;
   date: string;
   contact_name: string;
-  contact_email: string;
-  contact_phone: string;
+  contact_email?: string;
+  contact_phone?: string;
   category: string;
   item_type: 'lost' | 'found';
   image_url?: string;
   status: string;
   created_at: string;
   updated_at: string;
+  user_id?: string;
 }
 
 interface FormData {
@@ -90,14 +94,22 @@ const categories = [
 ];
 
 export default function LostAndFound() {
-  const [items, setItems] = useState<LostFoundItem[]>([]);
+  const { 
+    items, 
+    loading, 
+    error, 
+    addItem, 
+    updateItem, 
+    refreshItems, 
+    clearError 
+  } = useSecureLostAndFound();
+  
   const [filteredItems, setFilteredItems] = useState<LostFoundItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -115,54 +127,6 @@ export default function LostAndFound() {
   });
 
   const { toast } = useToast();
-
-  // Fetch items from database
-  const fetchItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('lost_and_found_items')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setItems((data as LostFoundItem[]) || []);
-    } catch (error) {
-      console.error('Error fetching items:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load items. Please refresh the page.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Set up real-time subscription
-  useEffect(() => {
-    fetchItems();
-
-    const channel = supabase
-      .channel('lost-and-found-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'lost_and_found_items'
-        },
-        (payload) => {
-          console.log('Real-time update:', payload);
-          fetchItems(); // Refresh data on any change
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   // Filter items based on search and filters
   useEffect(() => {
@@ -266,14 +230,12 @@ export default function LostAndFound() {
         imageUrl = await uploadImage(selectedImage);
       }
 
-      const { error } = await supabase
-        .from('lost_and_found_items')
-        .insert([{
-          ...formData,
-          image_url: imageUrl
-        }]);
+      await addItem({
+        ...formData,
+        image_url: imageUrl || undefined
+      });
 
-      if (error) throw error;
+      
 
       toast({
         title: "✅ Posted Successfully!",
@@ -488,7 +450,12 @@ export default function LostAndFound() {
             </TabsList>
 
             <TabsContent value={activeTab}>
-              {loading ? (
+              {error ? (
+                <DatabaseErrorFallback 
+                  error={error} 
+                  onRetry={refreshItems}
+                />
+              ) : loading ? (
                 <div className="text-center py-12">
                   <div className="text-2xl mb-4">⏳</div>
                   <p>Loading items...</p>
