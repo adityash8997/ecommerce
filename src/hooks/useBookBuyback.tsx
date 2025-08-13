@@ -172,6 +172,7 @@ export function useBookBuyback() {
 
   // Fetch available books for buying
   const fetchAvailableBooks = async (filters: any = {}) => {
+    console.log('fetchAvailableBooks called with filters:', filters);
     try {
       let query = supabase
         .from('book_inventory')

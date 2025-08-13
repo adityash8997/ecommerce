@@ -150,6 +150,10 @@ Beautiful, vibrant colors inspired by campus life and modern design
     background: var(--gradient-primary);
   }
   
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
   .gradient-soft {
     background: var(--gradient-soft);
   }
