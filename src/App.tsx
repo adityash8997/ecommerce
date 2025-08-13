@@ -14,6 +14,7 @@ import SplitSaathi from "./pages/SplitSaathi";
 import GroupDashboard from "./pages/GroupDashboard";
 import StudyMaterial from "./pages/StudyMaterial";
 import BookBuyback from "./pages/BookBuyback";
+import BuyPrelovedBooks from "./pages/BuyPrelovedBooks";
 import Celebrations from "./pages/Celebrations";
 import PrintoutOnDemand from "./pages/PrintoutOnDemand";
 import Meetups from "./pages/Meetups";
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/split-saathi/group/:groupId" element={<GroupDashboard />} />
           <Route path="/study-material" element={<StudyMaterial />} />
           <Route path="/book-buyback" element={<BookBuyback />} />
+          <Route path="/buy-preloved-books" element={<BuyPrelovedBooks />} />
           <Route path="/celebrations" element={<Celebrations />} />
           <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
           <Route path="/meetups" element={<Meetups />} />
