@@ -182,7 +182,7 @@ export function useBookBuyback() {
         .eq('status', 'available');
 
       if (filters.semester) {
-        query = query.eq('semester_books.semester', filters.semester);
+        query = query.eq('semester_book.semester', filters.semester);
       }
       if (filters.condition) {
         query = query.eq('condition', filters.condition);
@@ -194,9 +194,15 @@ export function useBookBuyback() {
 
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching books:', error);
+        throw error;
+      }
+      
+      console.log('Fetched books:', data);
       return data || [];
     } catch (error: any) {
+      console.error('Error in fetchAvailableBooks:', error);
       toast({
         title: "Error",
         description: "Failed to load available books",
