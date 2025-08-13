@@ -58,8 +58,8 @@ const BuyPrelovedBooks = () => {
   
   // Filter states
   const [filters, setFilters] = useState({
-    semester: '',
-    condition: '',
+    semester: 'all',
+    condition: 'all',
     minPrice: '',
     maxPrice: '',
     search: ''
@@ -73,8 +73,8 @@ const BuyPrelovedBooks = () => {
     setIsLoading(true);
     try {
       const books = await fetchAvailableBooks({
-        semester: filters.semester ? parseInt(filters.semester) : undefined,
-        condition: filters.condition || undefined,
+        semester: filters.semester !== 'all' && filters.semester ? parseInt(filters.semester) : undefined,
+        condition: filters.condition !== 'all' && filters.condition ? filters.condition : undefined,
         minPrice: filters.minPrice ? parseFloat(filters.minPrice) : undefined,
         maxPrice: filters.maxPrice ? parseFloat(filters.maxPrice) : undefined
       });
@@ -248,7 +248,7 @@ const BuyPrelovedBooks = () => {
                     <SelectValue placeholder="Select Semester" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Semesters</SelectItem>
+                    <SelectItem value="all">All Semesters</SelectItem>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
                       <SelectItem key={sem} value={sem.toString()}>
                         Semester {sem}
@@ -262,7 +262,7 @@ const BuyPrelovedBooks = () => {
                     <SelectValue placeholder="Book Condition" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Conditions</SelectItem>
+                    <SelectItem value="all">All Conditions</SelectItem>
                     {bookConditions.map(condition => (
                       <SelectItem key={condition.value} value={condition.value}>
                         {condition.emoji} {condition.label}
@@ -331,12 +331,12 @@ const BuyPrelovedBooks = () => {
               <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-xl font-semibold mb-2">No books found</h3>
               <p className="text-muted-foreground mb-4">
-                {Object.values(filters).some(v => v) 
+                {Object.values(filters).some(v => v && v !== 'all') 
                   ? "Try adjusting your filters to see more books"
                   : "Be the first to sell your books and help fellow students!"
                 }
               </p>
-              <Button onClick={() => setFilters({ semester: '', condition: '', minPrice: '', maxPrice: '', search: '' })}>
+              <Button onClick={() => setFilters({ semester: 'all', condition: 'all', minPrice: '', maxPrice: '', search: '' })}>
                 Clear Filters
               </Button>
             </Card>
