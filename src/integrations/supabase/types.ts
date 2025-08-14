@@ -1233,6 +1233,7 @@ export type Database = {
           id: string
           publisher: string | null
           semester: number
+          subject_category: string | null
           updated_at: string
         }
         Insert: {
@@ -1245,6 +1246,7 @@ export type Database = {
           id?: string
           publisher?: string | null
           semester: number
+          subject_category?: string | null
           updated_at?: string
         }
         Update: {
@@ -1257,7 +1259,68 @@ export type Database = {
           id?: string
           publisher?: string | null
           semester?: number
+          subject_category?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      semester_combos: {
+        Row: {
+          book_ids: string[]
+          combo_name: string
+          combo_price: number
+          created_at: string | null
+          description: string | null
+          discount_percentage: number | null
+          id: string
+          semester_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          book_ids: string[]
+          combo_name: string
+          combo_price: number
+          created_at?: string | null
+          description?: string | null
+          discount_percentage?: number | null
+          id?: string
+          semester_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          book_ids?: string[]
+          combo_name?: string
+          combo_price?: number
+          created_at?: string | null
+          description?: string | null
+          discount_percentage?: number | null
+          id?: string
+          semester_number?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      semesters: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          semester_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          semester_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          semester_number?: number
+          updated_at?: string | null
         }
         Relationships: []
       }
