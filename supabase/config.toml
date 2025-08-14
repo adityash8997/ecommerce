@@ -1,1 +1,4 @@
 project_id = "jzkzqpeorsehwvwcyjkf"
+
+[functions.submit-assignment-request]
+verify_jwt = false

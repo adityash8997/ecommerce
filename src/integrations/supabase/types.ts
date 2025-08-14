@@ -14,6 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_files: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_files_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignment_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignment_helpers: {
+        Row: {
+          contact: string
+          course: string
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          rating: number | null
+          sample_description: string | null
+          specializations: string[] | null
+          total_assignments: number | null
+          updated_at: string
+          user_id: string | null
+          year: string
+        }
+        Insert: {
+          contact: string
+          course: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          rating?: number | null
+          sample_description?: string | null
+          specializations?: string[] | null
+          total_assignments?: number | null
+          updated_at?: string
+          user_id?: string | null
+          year: string
+        }
+        Update: {
+          contact?: string
+          course?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          rating?: number | null
+          sample_description?: string | null
+          specializations?: string[] | null
+          total_assignments?: number | null
+          updated_at?: string
+          user_id?: string | null
+          year?: string
+        }
+        Relationships: []
+      }
+      assignment_requests: {
+        Row: {
+          assigned_at: string | null
+          branch: string
+          completed_at: string | null
+          created_at: string
+          deadline: string
+          delivery_method: string
+          helper_id: string | null
+          hostel_name: string
+          id: string
+          is_urgent: boolean
+          match_handwriting: boolean
+          pages: number
+          room_number: string
+          special_instructions: string | null
+          status: string
+          student_name: string
+          total_price: number
+          updated_at: string
+          user_id: string | null
+          whatsapp_number: string
+          year: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          branch: string
+          completed_at?: string | null
+          created_at?: string
+          deadline: string
+          delivery_method?: string
+          helper_id?: string | null
+          hostel_name: string
+          id?: string
+          is_urgent?: boolean
+          match_handwriting?: boolean
+          pages: number
+          room_number: string
+          special_instructions?: string | null
+          status?: string
+          student_name: string
+          total_price: number
+          updated_at?: string
+          user_id?: string | null
+          whatsapp_number: string
+          year: string
+        }
+        Update: {
+          assigned_at?: string | null
+          branch?: string
+          completed_at?: string | null
+          created_at?: string
+          deadline?: string
+          delivery_method?: string
+          helper_id?: string | null
+          hostel_name?: string
+          id?: string
+          is_urgent?: boolean
+          match_handwriting?: boolean
+          pages?: number
+          room_number?: string
+          special_instructions?: string | null
+          status?: string
+          student_name?: string
+          total_price?: number
+          updated_at?: string
+          user_id?: string | null
+          whatsapp_number?: string
+          year?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           created_at: string

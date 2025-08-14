@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import {
   Upload,
   Clock,
@@ -19,14 +22,27 @@ import {
   FileText,
   Truck,
   Coffee,
-  ArrowLeft
+  ArrowLeft,
+  X,
+  FileImage,
+  AlertTriangle
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
+import { useAssignmentManager } from "@/hooks/useAssignmentManager";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const HandwrittenAssignments = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { helpers, createAssignment, loading } = useAssignmentManager();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [currentStep, setCurrentStep] = useState(1);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     whatsapp: "",
@@ -38,22 +54,143 @@ const HandwrittenAssignments = () => {
     room: "",
     notes: "",
     urgent: false,
-    matchHandwriting: false
+    matchHandwriting: false,
+    deliveryMethod: "hostel_delivery"
   });
 
   const [calculatedPrice, setCalculatedPrice] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const calculatePrice = () => {
     const pages = parseInt(formData.pages) || 0;
     const basePrice = pages * (formData.urgent ? 15 : 10);
     const matchingFee = formData.matchHandwriting ? 20 : 0;
-    const deliveryFee = 10;
+    const deliveryFee = formData.deliveryMethod === 'hostel_delivery' ? 10 : 0;
     const total = basePrice + matchingFee + deliveryFee;
     setCalculatedPrice(total);
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.includes('image/') || file.type === 'application/pdf';
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      
+      if (!isValidType) {
+        toast.error(`${file.name} is not a valid file type. Please upload images or PDFs only.`);
+        return false;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} is too large. Maximum file size is 10MB.`);
+        return false;
+      }
+      return true;
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+    
+    // Auto-detect pages from PDFs or estimate from images
+    const totalPages = validFiles.reduce((acc, file) => {
+      if (file.type === 'application/pdf') {
+        // This is a simplified estimation - in reality you'd use a PDF parser
+        return acc + Math.ceil(file.size / (100 * 1024)); // Rough estimate
+      }
+      return acc + 1; // 1 page per image
+    }, parseInt(formData.pages) || 0);
+
+    setFormData(prev => ({ ...prev, pages: totalPages.toString() }));
+    calculatePrice();
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        return uploadedFiles.length > 0;
+      case 2:
+        return !!(formData.name && formData.whatsapp && formData.year && formData.branch && formData.pages && formData.deadline && formData.hostel && formData.room);
+      case 3:
+        return !!formData.deliveryMethod;
+      default:
+        return true;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+    } else {
+      toast.error('Please complete all required fields before proceeding.');
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast.error('Please log in to submit assignment request');
+      navigate('/auth');
+      return;
+    }
+
+    if (uploadedFiles.length === 0) {
+      toast.error('Please upload at least one assignment file');
+      return;
+    }
+
+    if (!validateStep(2)) {
+      toast.error('Please fill in all required details');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const assignment = await createAssignment(formData, uploadedFiles);
+      
+      if (assignment) {
+        // Send notification email
+        await supabase.functions.invoke('submit-assignment-request', {
+          body: {
+            assignmentId: assignment.id,
+            studentName: formData.name,
+            whatsappNumber: formData.whatsapp,
+            year: formData.year,
+            branch: formData.branch,
+            pages: parseInt(formData.pages),
+            deadline: formData.deadline,
+            deliveryMethod: formData.deliveryMethod,
+            totalPrice: calculatedPrice,
+            fileCount: uploadedFiles.length
+          }
+        });
+
+        toast.success('Assignment request submitted successfully! Check your email for confirmation.');
+        
+        // Reset form
+        setFormData({
+          name: "", whatsapp: "", year: "", branch: "", pages: "", deadline: "",
+          hostel: "", room: "", notes: "", urgent: false, matchHandwriting: false,
+          deliveryMethod: "hostel_delivery"
+        });
+        setUploadedFiles([]);
+        setCurrentStep(1);
+        setCalculatedPrice(0);
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      toast.error('Failed to submit assignment request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const writers = [
@@ -190,155 +327,431 @@ const HandwrittenAssignments = () => {
         </div>
       </section>
 
-      {/* Upload Form */}
+      {/* Step-by-Step Upload Form */}
       <section id="upload-form" className="py-16">
         <div className="container mx-auto px-4">
           <Card className="max-w-4xl mx-auto glass-card">
             <CardHeader>
-              <CardTitle className="text-3xl text-center text-gradient">📤 Assignment Upload Form</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Name</label>
-                  <Input 
-                    placeholder="Your full name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">WhatsApp Number</label>
-                  <Input 
-                    placeholder="+91 99999 99999"
-                    value={formData.whatsapp}
-                    onChange={(e) => handleInputChange('whatsapp', e.target.value)}
-                  />
+              <CardTitle className="text-3xl text-center text-gradient">📤 Assignment Request Form</CardTitle>
+              
+              {/* Progress Indicator */}
+              <div className="flex justify-center mt-6">
+                <div className="flex items-center space-x-4">
+                  {[1, 2, 3, 4].map((step) => (
+                    <div key={step} className="flex items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                        currentStep >= step 
+                          ? 'bg-primary text-white' 
+                          : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {step}
+                      </div>
+                      {step < 4 && (
+                        <div className={`w-12 h-1 mx-2 ${
+                          currentStep > step ? 'bg-primary' : 'bg-gray-200'
+                        }`} />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Year</label>
-                  <Input 
-                    placeholder="1st/2nd/3rd/4th Year"
-                    value={formData.year}
-                    onChange={(e) => handleInputChange('year', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Branch</label>
-                  <Input 
-                    placeholder="CSE/EEE/Mechanical/etc."
-                    value={formData.branch}
-                    onChange={(e) => handleInputChange('branch', e.target.value)}
-                  />
-                </div>
-              </div>
+              <p className="text-center text-muted-foreground mt-4">
+                {currentStep === 1 && "Step 1: Upload Assignment Content (Mandatory)"}
+                {currentStep === 2 && "Step 2: Enter Assignment Details"}
+                {currentStep === 3 && "Step 3: Select Delivery Method"}
+                {currentStep === 4 && "Step 4: Review & Confirm"}
+              </p>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              
+              {/* Step 1: File Upload */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-lg font-semibold mb-4 block">📁 Upload Assignment Files *</Label>
+                    <div 
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 font-medium">Click to upload PDF or images</p>
+                      <p className="text-sm text-gray-500 mt-2">Supported: JPG, PNG, PDF (Max 10MB each)</p>
+                      
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Upload Assignment Files</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-kiit-green transition-colors">
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Click to upload PDF or images</p>
-                  <p className="text-sm text-gray-500 mt-2">Support for multiple files</p>
-                </div>
-              </div>
+                  {/* Uploaded Files Display */}
+                  {uploadedFiles.length > 0 && (
+                    <div className="space-y-3">
+                      <Label className="font-medium">Uploaded Files ({uploadedFiles.length})</Label>
+                      <div className="grid gap-3">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <FileImage className="w-5 h-5 text-primary" />
+                              <div>
+                                <p className="font-medium text-sm">{file.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {(file.size / (1024 * 1024)).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile(index)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Number of Pages</label>
-                  <Input 
-                    type="number"
-                    placeholder="Auto-suggested from PDF"
-                    value={formData.pages}
-                    onChange={(e) => {
-                      handleInputChange('pages', e.target.value);
-                      calculatePrice();
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Deadline</label>
-                  <Input 
-                    type="datetime-local"
-                    value={formData.deadline}
-                    onChange={(e) => handleInputChange('deadline', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Hostel Name</label>
-                  <Input 
-                    placeholder="CV Raman/Kalam/etc."
-                    value={formData.hostel}
-                    onChange={(e) => handleInputChange('hostel', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Room Number</label>
-                  <Input 
-                    placeholder="Room 101"
-                    value={formData.room}
-                    onChange={(e) => handleInputChange('room', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Special Instructions (Optional)</label>
-                <Textarea 
-                  placeholder="Any specific requirements..."
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                />
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="urgent"
-                    checked={formData.urgent}
-                    onChange={(e) => {
-                      handleInputChange('urgent', e.target.checked);
-                      calculatePrice();
-                    }}
-                  />
-                  <label htmlFor="urgent">Urgent (within 24 hrs) - ₹5 extra per page</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    id="match"
-                    checked={formData.matchHandwriting}
-                    onChange={(e) => {
-                      handleInputChange('matchHandwriting', e.target.checked);
-                      calculatePrice();
-                    }}
-                  />
-                  <label htmlFor="match">Match my handwriting - ₹20 extra</label>
-                </div>
-              </div>
-
-              {calculatedPrice > 0 && (
-                <div className="bg-kiit-green/10 p-4 rounded-lg">
-                  <p className="text-lg font-semibold text-kiit-green">
-                    Estimated Total: ₹{calculatedPrice}
-                  </p>
+                  {/* Disclaimer */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-yellow-800 mb-2">Important Disclaimer</p>
+                        <p className="text-sm text-yellow-700">
+                          <strong>Marks depend on the provided content.</strong> KIIT Saathi and the helper are not 
+                          responsible for low marks if the content is copied exactly as provided. Please ensure 
+                          your uploaded content is accurate and complete.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <Button className="w-full gradient-primary text-white py-4 text-lg">
-                Request Writer
-                <CheckCircle className="ml-2" />
-              </Button>
+              {/* Step 2: Assignment Details */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Full Name *</Label>
+                      <Input 
+                        placeholder="Your full name"
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>WhatsApp Number *</Label>
+                      <Input 
+                        placeholder="+91 99999 99999"
+                        value={formData.whatsapp}
+                        onChange={(e) => handleInputChange('whatsapp', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Academic Year *</Label>
+                      <Input 
+                        placeholder="1st/2nd/3rd/4th Year"
+                        value={formData.year}
+                        onChange={(e) => handleInputChange('year', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Branch/Subject *</Label>
+                      <Input 
+                        placeholder="CSE/EEE/Mechanical/etc."
+                        value={formData.branch}
+                        onChange={(e) => handleInputChange('branch', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-green-700">✅ Writer Assigned! You'll get updates via WhatsApp.</p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Number of Pages *</Label>
+                      <Input 
+                        type="number"
+                        placeholder="Auto-detected from files"
+                        value={formData.pages}
+                        onChange={(e) => {
+                          handleInputChange('pages', e.target.value);
+                          calculatePrice();
+                        }}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Deadline *</Label>
+                      <Input 
+                        type="datetime-local"
+                        value={formData.deadline}
+                        onChange={(e) => handleInputChange('deadline', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Hostel Name *</Label>
+                      <Input 
+                        placeholder="CV Raman/Kalam/etc."
+                        value={formData.hostel}
+                        onChange={(e) => handleInputChange('hostel', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Room Number *</Label>
+                      <Input 
+                        placeholder="Room 101"
+                        value={formData.room}
+                        onChange={(e) => handleInputChange('room', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Special Instructions (Optional)</Label>
+                    <Textarea 
+                      placeholder="Any specific requirements, handwriting style preferences, etc."
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange('notes', e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input 
+                        type="checkbox" 
+                        id="urgent"
+                        checked={formData.urgent}
+                        onChange={(e) => {
+                          handleInputChange('urgent', e.target.checked);
+                          calculatePrice();
+                        }}
+                        className="rounded"
+                      />
+                      <Label htmlFor="urgent" className="text-sm">
+                        Urgent delivery (within 24 hrs) - ₹5 extra per page
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input 
+                        type="checkbox" 
+                        id="match"
+                        checked={formData.matchHandwriting}
+                        onChange={(e) => {
+                          handleInputChange('matchHandwriting', e.target.checked);
+                          calculatePrice();
+                        }}
+                        className="rounded"
+                      />
+                      <Label htmlFor="match" className="text-sm">
+                        Match my handwriting style - ₹20 extra
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Delivery Method */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-lg font-semibold mb-4 block">🚚 Choose Delivery Method</Label>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Card 
+                        className={`cursor-pointer transition-colors ${
+                          formData.deliveryMethod === 'hostel_delivery' 
+                            ? 'ring-2 ring-primary bg-primary/5' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => {
+                          handleInputChange('deliveryMethod', 'hostel_delivery');
+                          calculatePrice();
+                        }}
+                      >
+                        <CardContent className="pt-6 text-center">
+                          <Truck className="w-12 h-12 text-primary mx-auto mb-4" />
+                          <h3 className="font-semibold text-lg mb-2">🏠 Hostel Delivery</h3>
+                          <p className="text-muted-foreground mb-2">Delivered directly to your hostel room</p>
+                          <Badge variant="secondary">+ ₹10 delivery fee</Badge>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card 
+                        className={`cursor-pointer transition-colors ${
+                          formData.deliveryMethod === 'pickup' 
+                            ? 'ring-2 ring-primary bg-primary/5' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => {
+                          handleInputChange('deliveryMethod', 'pickup');
+                          calculatePrice();
+                        }}
+                      >
+                        <CardContent className="pt-6 text-center">
+                          <MapPin className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                          <h3 className="font-semibold text-lg mb-2">📍 Campus Pickup</h3>
+                          <p className="text-muted-foreground mb-2">Pick up from helper's location on campus</p>
+                          <Badge variant="outline">Free</Badge>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Review & Confirm */}
+              {currentStep === 4 && (
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-lg font-semibold mb-4 block">📋 Review Your Order</Label>
+                    
+                    <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-600">Student Name</p>
+                          <p className="font-medium">{formData.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">WhatsApp</p>
+                          <p className="font-medium">{formData.whatsapp}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Subject/Branch</p>
+                          <p className="font-medium">{formData.branch}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Academic Year</p>
+                          <p className="font-medium">{formData.year}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Pages</p>
+                          <p className="font-medium">{formData.pages} pages</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Deadline</p>
+                          <p className="font-medium">{new Date(formData.deadline).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Delivery Address</p>
+                          <p className="font-medium">{formData.hostel}, Room {formData.room}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Delivery Method</p>
+                          <p className="font-medium">
+                            {formData.deliveryMethod === 'hostel_delivery' ? '🏠 Hostel Delivery' : '📍 Campus Pickup'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Files Uploaded</p>
+                          <p className="font-medium">{uploadedFiles.length} files</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Special Options</p>
+                          <p className="font-medium">
+                            {formData.urgent && "Urgent, "}
+                            {formData.matchHandwriting && "Handwriting Match, "}
+                            {!formData.urgent && !formData.matchHandwriting && "None"}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {formData.notes && (
+                        <div>
+                          <p className="text-sm text-gray-600">Special Instructions</p>
+                          <p className="font-medium">{formData.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Price Display */}
+              {calculatedPrice > 0 && (
+                <div className="bg-primary/10 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold">Total Amount:</span>
+                    <span className="text-2xl font-bold text-primary">₹{calculatedPrice}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2">
+                    Base: ₹{parseInt(formData.pages || '0') * (formData.urgent ? 15 : 10)} • 
+                    {formData.matchHandwriting && " Handwriting Match: ₹20 •"}
+                    {formData.deliveryMethod === 'hostel_delivery' && " Delivery: ₹10"}
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Previous
+                </Button>
+
+                {currentStep < 4 ? (
+                  <Button
+                    type="button"
+                    onClick={nextStep}
+                    disabled={!validateStep(currentStep)}
+                  >
+                    Next Step
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || !user}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit Request
+                        <CheckCircle className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
+
+              {!user && (
+                <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                  <p className="text-yellow-800">
+                    Please <Button variant="link" onClick={() => navigate('/auth')} className="p-0 h-auto">log in</Button> to submit your assignment request.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
