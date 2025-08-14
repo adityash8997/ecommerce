@@ -176,8 +176,8 @@ export default function BookBuybackSell() {
       listing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       listing.author.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSemester = !selectedSemester || listing.semester?.toString() === selectedSemester;
-    const matchesCondition = !selectedCondition || listing.condition === selectedCondition;
+    const matchesSemester = !selectedSemester || selectedSemester === 'all' || listing.semester?.toString() === selectedSemester;
+    const matchesCondition = !selectedCondition || selectedCondition === 'all' || listing.condition === selectedCondition;
     
     return matchesSearch && matchesSemester && matchesCondition;
   });
@@ -254,7 +254,7 @@ export default function BookBuybackSell() {
                         <SelectValue placeholder="Semester" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Semesters</SelectItem>
+                        <SelectItem value="all">All Semesters</SelectItem>
                         {[1,2,3,4,5,6,7,8].map(sem => (
                           <SelectItem key={sem} value={sem.toString()}>Semester {sem}</SelectItem>
                         ))}
@@ -265,7 +265,7 @@ export default function BookBuybackSell() {
                         <SelectValue placeholder="Condition" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Conditions</SelectItem>
+                        <SelectItem value="all">All Conditions</SelectItem>
                         <SelectItem value="mint">Mint</SelectItem>
                         <SelectItem value="good">Good</SelectItem>
                         <SelectItem value="fair">Fair</SelectItem>
