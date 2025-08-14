@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -1038,16 +1038,16 @@ export type Database = {
       get_lost_item_contact_details: {
         Args: { item_id: string }
         Returns: {
-          contact_name: string
           contact_email: string
+          contact_name: string
           contact_phone: string
         }[]
       }
       get_lost_item_contact_info: {
         Args: { item_id: string }
         Returns: {
-          contact_name: string
           contact_email: string
+          contact_name: string
           contact_phone: string
         }[]
       }
@@ -1056,11 +1056,11 @@ export type Database = {
         Returns: Json
       }
       log_failed_query: {
-        Args: { query_type: string; error_details: string }
+        Args: { error_details: string; query_type: string }
         Returns: undefined
       }
       safe_table_query: {
-        Args: { table_name: string; query_filters?: Json }
+        Args: { query_filters?: Json; table_name: string }
         Returns: Json
       }
     }
