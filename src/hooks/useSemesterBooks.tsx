@@ -3,7 +3,7 @@ import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './use-toast';
 
-export interface SemesterBook {
+interface SemesterBook {
   id: string;
   book_name: string;
   author: string;
@@ -14,7 +14,7 @@ export interface SemesterBook {
   semester: number;
 }
 
-export interface SemesterCombo {
+interface SemesterCombo {
   id: string;
   semester_number: number;
   combo_name: string;
@@ -24,60 +24,58 @@ export interface SemesterCombo {
   book_ids: string[];
 }
 
-export interface BookSelection {
-  type: 'buyback' | 'purchase';
-  semester: number;
+interface BookSelection {
   selectedBooks: string[];
   selectedCombo?: string;
   totalAmount: number;
-  contactInfo: {
+  semester: number;
+  action: 'buy' | 'sell';
+  userDetails: {
     name: string;
     email: string;
     phone: string;
     address?: string;
   };
-  additionalNotes?: string;
 }
 
 export function useSemesterBooks() {
   const { invokeEdgeFunction, isAuthenticated } = useAuthenticatedFetch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [books, setBooks] = useState<SemesterBook[]>([]);
   const [combos, setCombos] = useState<SemesterCombo[]>([]);
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [selectedCombo, setSelectedCombo] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchSemesterData = async (semester: number) => {
     setIsLoading(true);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('get-semester-books', {
-        body: null,
-        headers: {},
-      });
-
-      if (error) throw error;
-
-      const response = await supabase
+      const { data, error } = await supabase
         .from('semester_books')
         .select('*')
         .eq('semester', semester)
         .order('subject_category', { ascending: true });
 
-      if (response.error) throw response.error;
+      if (error) throw error;
 
-      const comboResponse = await supabase
+      const { data: combosData, error: combosError } = await supabase
         .from('semester_combos')
         .select('*')
         .eq('semester_number', semester);
 
-      setBooks(response.data || []);
-      setCombos(comboResponse.data || []);
+      if (combosError) throw combosError;
+
+      setBooks(data || []);
+      setCombos(combosData || []);
+      setSelectedBooks([]);
+      setSelectedCombo(null);
+      
     } catch (error: any) {
       console.error('Error fetching semester data:', error);
       toast({
         title: "Error",
-        description: "Failed to load semester data",
+        description: "Failed to load semester books",
         variant: "destructive"
       });
     } finally {
@@ -87,14 +85,14 @@ export function useSemesterBooks() {
 
   const toggleBookSelection = (bookId: string) => {
     if (selectedCombo) {
+      // If combo is selected, clear it when selecting individual books
+      setSelectedCombo(null);
       toast({
-        title: "Combo Selected",
-        description: "Please deselect the combo first to select individual books",
-        variant: "destructive"
+        title: "Combo Cleared",
+        description: "Individual book selection will replace the combo",
       });
-      return;
     }
-
+    
     setSelectedBooks(prev => 
       prev.includes(bookId) 
         ? prev.filter(id => id !== bookId)
@@ -105,15 +103,17 @@ export function useSemesterBooks() {
   const selectCombo = (comboId: string) => {
     if (selectedBooks.length > 0) {
       toast({
-        title: "Individual Books Selected",
-        description: "Combo selection will replace your individual book selection. Continue?",
+        title: "Individual Books Cleared",
+        description: "Combo selection will replace individual book selection",
       });
     }
+    
     setSelectedBooks([]);
     setSelectedCombo(comboId);
   };
 
-  const deselectCombo = () => {
+  const clearSelection = () => {
+    setSelectedBooks([]);
     setSelectedCombo(null);
   };
 
@@ -129,45 +129,45 @@ export function useSemesterBooks() {
     }, 0);
   };
 
+  const getSelectedBookDetails = () => {
+    return books.filter(book => selectedBooks.includes(book.id));
+  };
+
+  const getSelectedComboDetails = () => {
+    return combos.find(combo => combo.id === selectedCombo);
+  };
+
   const submitSelection = async (selectionData: BookSelection) => {
     if (!isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to submit your selection",
-        variant: "destructive"
-      });
-      return;
+      throw new Error('Authentication required');
     }
 
     setIsSubmitting(true);
+    
     try {
       const result = await invokeEdgeFunction('submit-book-selection', selectionData);
-      
+
       toast({
-        title: "Success!",
-        description: result.message || "Your request has been submitted successfully",
+        title: selectionData.action === 'buy' ? "📚 Order Placed!" : "💰 Buyback Request Submitted!",
+        description: selectionData.action === 'buy' 
+          ? "Your book order has been placed successfully. We'll contact you soon!"
+          : "Your buyback request has been submitted. We'll evaluate and get back to you.",
       });
 
-      // Reset selections
-      setSelectedBooks([]);
-      setSelectedCombo(null);
+      // Clear selection after successful submission
+      clearSelection();
       
       return result;
     } catch (error: any) {
       toast({
         title: "Submission Failed",
-        description: error.message || "Failed to submit your request. Please try again.",
+        description: error.message || "Failed to submit request. Please try again.",
         variant: "destructive"
       });
       throw error;
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const clearSelections = () => {
-    setSelectedBooks([]);
-    setSelectedCombo(null);
   };
 
   return {
@@ -181,9 +181,10 @@ export function useSemesterBooks() {
     fetchSemesterData,
     toggleBookSelection,
     selectCombo,
-    deselectCombo,
+    clearSelection,
     calculateTotal,
-    submitSelection,
-    clearSelections
+    getSelectedBookDetails,
+    getSelectedComboDetails,
+    submitSelection
   };
 }

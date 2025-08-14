@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface SemesterBooksRequest {
+  semester: number;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,63 +17,79 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const url = new URL(req.url);
-    const semesterId = url.searchParams.get('semester');
+    if (req.method === 'GET') {
+      // Get semester from URL params
+      const url = new URL(req.url);
+      const semester = url.searchParams.get('semester');
+      
+      if (!semester) {
+        return new Response(
+          JSON.stringify({ error: 'Semester parameter is required' }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
 
-    if (!semesterId) {
+      // Fetch books for the semester
+      const { data: books, error: booksError } = await supabase
+        .from('semester_books')
+        .select('*')
+        .eq('semester', parseInt(semester))
+        .order('subject_category', { ascending: true });
+
+      if (booksError) {
+        console.error('Error fetching books:', booksError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch books' }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+
+      // Fetch combos for the semester
+      const { data: combos, error: combosError } = await supabase
+        .from('semester_combos')
+        .select('*')
+        .eq('semester_number', parseInt(semester));
+
+      if (combosError) {
+        console.error('Error fetching combos:', combosError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch combos' }),
+          {
+            status: 500,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Semester parameter is required' }),
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        JSON.stringify({ 
+          books: books || [], 
+          combos: combos || [],
+          semester: parseInt(semester)
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
         }
       );
-    }
-
-    // Get books for the specified semester
-    const { data: books, error } = await supabase
-      .from('semester_books')
-      .select('*')
-      .eq('semester', parseInt(semesterId))
-      .order('subject_category', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching semester books:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch semester books' }),
-        { 
-          status: 500, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
-      );
-    }
-
-    // Get semester combos
-    const { data: combos, error: comboError } = await supabase
-      .from('semester_combos')
-      .select('*')
-      .eq('semester_number', parseInt(semesterId));
-
-    if (comboError) {
-      console.error('Error fetching semester combos:', comboError);
     }
 
     return new Response(
-      JSON.stringify({ 
-        books: books || [],
-        combos: combos || []
-      }),
+      JSON.stringify({ error: 'Method not allowed' }),
       {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        },
+        status: 405,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
 
