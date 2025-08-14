@@ -199,7 +199,7 @@ export const ServicesGrid = () => {
       "Lost & Found Portal": "/lost-and-found",
       "Campus Tour Booking": "/campus-tour-booking",
       "SplitSaathi – Group Expense Manager": "/split-saathi",
-      "Book Buyback & Resale": "/buy-preloved-books",
+      "Book Buyback & Resale": "/book-buyback-sell",
       "KIIT Saathi Celebrations": "/celebrations",
       "KIIT Saathi Meetups": "/meetups"
     };

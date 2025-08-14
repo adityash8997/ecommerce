@@ -205,6 +205,60 @@ export type Database = {
         }
         Relationships: []
       }
+      book_buyback_requests: {
+        Row: {
+          admin_notes: string | null
+          books_details: Json
+          contact_number: string
+          created_at: string
+          estimated_total: number | null
+          evaluation_date: string | null
+          final_amount: number | null
+          id: string
+          payment_preference: string
+          pickup_address: string
+          roll_number: string
+          status: string
+          student_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          books_details: Json
+          contact_number: string
+          created_at?: string
+          estimated_total?: number | null
+          evaluation_date?: string | null
+          final_amount?: number | null
+          id?: string
+          payment_preference: string
+          pickup_address: string
+          roll_number: string
+          status?: string
+          student_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          books_details?: Json
+          contact_number?: string
+          created_at?: string
+          estimated_total?: number | null
+          evaluation_date?: string | null
+          final_amount?: number | null
+          id?: string
+          payment_preference?: string
+          pickup_address?: string
+          roll_number?: string
+          status?: string
+          student_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       book_inventory: {
         Row: {
           buyer_id: string | null
@@ -264,6 +318,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      book_listings: {
+        Row: {
+          author: string
+          condition: string
+          contact_info: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          images: Json | null
+          price: number
+          semester: number | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          views: number | null
+        }
+        Insert: {
+          author: string
+          condition: string
+          contact_info?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: Json | null
+          price: number
+          semester?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          views?: number | null
+        }
+        Update: {
+          author?: string
+          condition?: string
+          contact_info?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: Json | null
+          price?: number
+          semester?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          views?: number | null
+        }
+        Relationships: []
       }
       book_orders: {
         Row: {

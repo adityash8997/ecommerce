@@ -4,5 +4,9 @@ project_id = "jzkzqpeorsehwvwcyjkf"
 
 [functions.submit-book-order]
 
+[functions.submit-book-listing]
+
+[functions.submit-buyback-request]
+
 [functions.submit-assignment-request]
 verify_jwt = false
