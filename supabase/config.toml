@@ -1,4 +1,8 @@
 project_id = "jzkzqpeorsehwvwcyjkf"
 
+[functions.submit-campus-tour-booking]
+
+[functions.submit-book-order]
+
 [functions.submit-assignment-request]
 verify_jwt = false

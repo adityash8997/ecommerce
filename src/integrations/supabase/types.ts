@@ -209,8 +209,10 @@ export type Database = {
         Row: {
           buyer_id: string | null
           condition: string
+          contact_info: Json | null
           created_at: string
           id: string
+          photos: Json | null
           seller_submission_id: string | null
           selling_price: number
           semester_book_id: string
@@ -221,8 +223,10 @@ export type Database = {
         Insert: {
           buyer_id?: string | null
           condition: string
+          contact_info?: Json | null
           created_at?: string
           id?: string
+          photos?: Json | null
           seller_submission_id?: string | null
           selling_price: number
           semester_book_id: string
@@ -233,8 +237,10 @@ export type Database = {
         Update: {
           buyer_id?: string | null
           condition?: string
+          contact_info?: Json | null
           created_at?: string
           id?: string
+          photos?: Json | null
           seller_submission_id?: string | null
           selling_price?: number
           semester_book_id?: string
@@ -255,6 +261,62 @@ export type Database = {
             columns: ["semester_book_id"]
             isOneToOne: false
             referencedRelation: "semester_books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      book_orders: {
+        Row: {
+          admin_notes: string | null
+          books: Json
+          buyer_id: string
+          contact_number: string
+          created_at: string
+          delivery_address: string
+          id: string
+          order_status: string
+          payment_method: string
+          payment_status: string
+          seller_submission_id: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          books: Json
+          buyer_id: string
+          contact_number: string
+          created_at?: string
+          delivery_address: string
+          id?: string
+          order_status?: string
+          payment_method?: string
+          payment_status?: string
+          seller_submission_id?: string | null
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          books?: Json
+          buyer_id?: string
+          contact_number?: string
+          created_at?: string
+          delivery_address?: string
+          id?: string
+          order_status?: string
+          payment_method?: string
+          payment_status?: string
+          seller_submission_id?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_orders_seller_submission_id_fkey"
+            columns: ["seller_submission_id"]
+            isOneToOne: false
+            referencedRelation: "book_submissions"
             referencedColumns: ["id"]
           },
         ]
@@ -484,6 +546,60 @@ export type Database = {
           total_verifications?: number | null
           updated_at?: string
           worker_code?: string
+        }
+        Relationships: []
+      }
+      campus_tour_bookings: {
+        Row: {
+          admin_notes: string | null
+          contact_number: string
+          created_at: string
+          email: string | null
+          group_size: number
+          guest_name: string
+          id: string
+          price: number
+          selected_date: string
+          selected_slot: string
+          special_requests: string | null
+          status: string
+          tour_type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          contact_number: string
+          created_at?: string
+          email?: string | null
+          group_size?: number
+          guest_name: string
+          id?: string
+          price?: number
+          selected_date: string
+          selected_slot: string
+          special_requests?: string | null
+          status?: string
+          tour_type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          contact_number?: string
+          created_at?: string
+          email?: string | null
+          group_size?: number
+          guest_name?: string
+          id?: string
+          price?: number
+          selected_date?: string
+          selected_slot?: string
+          special_requests?: string | null
+          status?: string
+          tour_type?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -20,6 +20,7 @@ import { Footer } from "@/components/Footer";
 import { GuestBrowsingBanner } from "@/components/GuestBrowsingBanner";
 import { useGuestForm } from "@/hooks/useGuestForm";
 import { useAuth } from "@/hooks/useAuth";
+import { useCampusTourBooking } from "@/hooks/useCampusTourBooking";
 
 export default function CampusTourBooking() {
   const { user } = useAuth();
@@ -40,27 +41,31 @@ export default function CampusTourBooking() {
       contactNumber: '',
       email: '',
       groupSize: 1,
-      specialRequests: ''
+      specialRequests: '',
+      tourType: 'morning' as 'morning' | 'evening'
     },
     onAuthenticated: (data) => {
       handleBookingSubmission(data);
     }
   });
 
+  const { submitBooking, calculatePrice, isSubmitting } = useCampusTourBooking();
+
   const handleBookingSubmission = async (data = formData) => {
     try {
-      // Here you would normally make an API call to submit the booking
-      toast({
-        title: "Booking Request Submitted!",
-        description: "We'll call you within 12 hours to confirm your booking and send your campus entry pass.",
+      await submitBooking({
+        guestName: data.guestName,
+        contactNumber: data.contactNumber,
+        email: data.email,
+        selectedDate: data.selectedDate,
+        selectedSlot: data.selectedSlot,
+        groupSize: data.groupSize,
+        specialRequests: data.specialRequests,
+        tourType: data.tourType
       });
       resetForm();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit booking. Please try again.",
-        variant: "destructive"
-      });
+      // Error is already handled in the hook
     }
   };
 
