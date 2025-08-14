@@ -211,10 +211,10 @@ const BookBuybackSell = () => {
                               <div className="flex justify-between items-center">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-3">
-                                    <Checkbox 
-                                      checked={selectedCombo === combo.id}
-                                      onChange={() => selectCombo(combo.id)}
-                                    />
+                            <Checkbox 
+                              checked={selectedCombo === combo.id}
+                              onCheckedChange={() => selectCombo(combo.id)}
+                            />
                                     <div>
                                       <h4 className="font-semibold">{combo.combo_name}</h4>
                                       <p className="text-sm text-muted-foreground">{combo.description}</p>
@@ -269,7 +269,7 @@ const BookBuybackSell = () => {
                                 <div className="flex items-start gap-3">
                                   <Checkbox 
                                     checked={selectedBooks.includes(book.id)}
-                                    onChange={() => toggleBookSelection(book.id)}
+                                    onCheckedChange={() => toggleBookSelection(book.id)}
                                   />
                                   <div className="flex-1">
                                     <h4 className="font-semibold line-clamp-2">{book.book_name}</h4>

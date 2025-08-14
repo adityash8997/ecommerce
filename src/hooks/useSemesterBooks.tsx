@@ -109,7 +109,7 @@ export function useSemesterBooks() {
     }
     
     setSelectedBooks([]);
-    setSelectedCombo(comboId);
+    setSelectedCombo(selectedCombo === comboId ? null : comboId);
   };
 
   const clearSelection = () => {
