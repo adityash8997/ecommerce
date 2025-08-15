@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Smartphone, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import kiitMascot from "@/assets/kiit-mascot.png";
 import heroCampus from "@/assets/hero-campus.png";
 
 export const Hero = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden gradient-hero">
       {/* Animated background elements */}
@@ -38,7 +41,11 @@ export const Hero = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="lg" className="glass-button text-white font-semibold px-8 py-4 text-lg group">
+              <Button 
+                size="lg" 
+                className="glass-button text-white font-semibold px-8 py-4 text-lg group"
+                onClick={() => navigate('/auth')}
+              >
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
