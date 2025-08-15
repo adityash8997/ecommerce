@@ -27,7 +27,7 @@ export const Hero = () => {
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-7xl font-poppins font-bold text-white leading-tight">
                 One app that
-                <span className="block text-hero-gradient">solves all</span>
+                <span className="block text-white">solves all</span>
                 your campus needs
               </h1>
               
