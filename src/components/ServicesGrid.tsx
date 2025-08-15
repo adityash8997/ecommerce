@@ -179,7 +179,7 @@ const services = [
   {
     icon: ShoppingBag,
     title: "Food and micro-essentials delivery",
-    description: "From Deepak Momos to Doms pencils — delivery from nearby shops.",
+    description: "From wholesome mini meals to everyday essentials - delivered from trusted campus and nearby stores.",
     price: "₹20 delivery",
     gradient: "from-campus-blue to-campus-purple",
     emoji: "🛍️"
@@ -201,7 +201,8 @@ export const ServicesGrid = () => {
       "SplitSaathi – Group Expense Manager": "/split-saathi",
       "Book Buyback & Resale": "/book-buyback-sell",
       "KIIT Saathi Celebrations": "/celebrations",
-      "KIIT Saathi Meetups": "/meetups"
+      "KIIT Saathi Meetups": "/meetups",
+      "AI Campus Assistant": "/chatbot"
     };
 
     const route = routeMap[service.title];
