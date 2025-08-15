@@ -27,7 +27,7 @@ const services = [
   {
     icon: Package,
     title: "Carton Packing & Hostel Transfers",
-    description: "Moving day? Get cartons, packing, and hostel-to-hostel delivery in one tap.",
+    description: "Making moving day hassle free with cartons, packing and hostel to hostel delivery – All in one tap.",
     price: "₹50/carton",
     gradient: "from-kiit-green to-campus-blue",
     emoji: "📦"
@@ -43,7 +43,7 @@ const services = [
   {
     icon: Users,
     title: "Senior Connect",
-    description: "Talk to seniors, get real answers, and book mentorship calls.",
+    description: "Connect with experienced Seniors with genuine insights & book mentorship sessions with ease.",
     price: "₹99/session",
     gradient: "from-campus-purple to-campus-orange",
     emoji: "🎓"
@@ -51,7 +51,7 @@ const services = [
   {
     icon: PenTool,
     title: "Handwritten Assignments",
-    description: "We write. You relax. Real paper, neat handwriting, delivered on time.",
+    description: "Don't have time to write? We've got real students who'll do it for you - neat, accurate, and on time.",
     price: "₹5/page",
     gradient: "from-campus-orange to-kiit-green",
     emoji: "✍️"
@@ -98,8 +98,8 @@ const services = [
   },
   {
     icon: Shield,
-    title: "Campus Safety Map",
-    description: "Real-time dark path tracker. SOS alert. Feel safer, walk smarter.",
+    title: "Campus Map",
+    description: "Explore the vibrant campus of KIIT and everything it has to offer.",
     price: "Free",
     gradient: "from-campus-purple to-campus-orange",
     emoji: "🌃"
@@ -178,7 +178,7 @@ const services = [
   },
   {
     icon: ShoppingBag,
-    title: "Grocery & Momo Delivery",
+    title: "Food and micro-essentials delivery",
     description: "From Deepak Momos to Doms pencils — delivery from nearby shops.",
     price: "₹20 delivery",
     gradient: "from-campus-blue to-campus-purple",
@@ -229,8 +229,8 @@ export const ServicesGrid = () => {
           </h2>
           
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            From academic help to daily essentials, we've built the complete ecosystem 
-            for your KIIT experience. <span className="font-semibold text-kiit-green">Because campus life is hectic enough already.</span>
+            From academic support to daily essentials, we have built the complete ecosystem 
+            to enrich your KIIT experience. <span className="font-semibold text-kiit-green">Because campus life is hectic enough already.</span>
           </p>
         </div>
 

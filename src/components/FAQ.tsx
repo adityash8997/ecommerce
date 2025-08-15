@@ -8,7 +8,7 @@ const faqs = [
   },
   {
     question: "How much does it cost to use the app?",
-    answer: "Many services are completely free (like our AI assistant, fest updates, safety map). Paid services have transparent pricing - printouts start at ₹2/page, assignments at ₹5/page, mentorship at ₹99/session. No hidden fees, ever! 💰"
+    answer: "Many services are completely free (like our AI assistant, fest updates, campus map). Paid services have transparent pricing - printouts start at ₹2/page, assignments at ₹5/page, mentorship at ₹99/session. No hidden fees, ever! 💰"
   },
   {
     question: "Who are you? Can I trust you with my assignments?",
@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     question: "What if something goes wrong with my order?",
-    answer: "We've got you covered! Every order comes with our 'No Stress' guarantee. Issues with quality? We'll redo it free. Late delivery? You get credits. Unsatisfied? Full refund. Our WhatsApp support responds faster than your crush! 🛡️"
+    answer: "We've got you covered! Every order comes with our student-friendly guarantee. Issues with quality? We'll fix it free. Late delivery? You get service credits. Not satisfied? We'll work it out together or provide a refund. Our support team is always here to help make things right! 🛡️"
   },
   {
     question: "Can my parents track my usage or payments?",
@@ -34,10 +34,6 @@ const faqs = [
     question: "How do I know which seniors are good for mentorship?",
     answer: "All our mentors are verified with academic records and student reviews. You can see their CGPA, branch, placement status, and previous mentee feedback. Plus, first 15 minutes are free to check compatibility! ⭐"
   },
-  {
-    question: "Is the safety map actually reliable for women students?",
-    answer: "Absolutely! We crowdsource data from female students, campus security reports, and lighting audits. Real-time updates, emergency contacts, and SOS features are tested monthly. Your safety isn't a feature - it's our priority. 🚨"
-  }
 ];
 
 export const FAQ = () => {
