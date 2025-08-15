@@ -32,8 +32,7 @@ export const Hero = () => {
               </h1>
               
               <p className="text-xl lg:text-2xl text-white/80 font-inter leading-relaxed">
-                From shifting hostels to grabbing momos, assignments to mentorship — 
-                <span className="font-semibold text-white"> your campus life just got easier!</span>
+                From assignments to mentorship, hostel moves to campus activities - everything you need, in one platform!
               </p>
             </div>
 
