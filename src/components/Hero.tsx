@@ -26,14 +26,14 @@ export const Hero = () => {
             {/* Main Heading */}
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-7xl font-poppins font-bold text-white leading-tight">
-                One App That
-                <span className="block text-hero-gradient">Solves All</span>
-                Campus Problems
+                One app that
+                <span className="block text-hero-gradient">solves all</span>
+                your campus needs
               </h1>
               
               <p className="text-xl lg:text-2xl text-white/80 font-inter leading-relaxed">
-                From hostel moves to momo delivery, assignments to mentorship — 
-                <span className="font-semibold text-white"> we've got your campus life covered!</span>
+                From shifting hostels to grabbing momos, assignments to mentorship — 
+                <span className="font-semibold text-white"> your campus life just got easier!</span>
               </p>
             </div>
 
@@ -44,9 +44,9 @@ export const Hero = () => {
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               
-              <Button variant="outline" size="lg" className="glass-button border-white/30 text-white font-semibold px-8 py-4 text-lg">
-                <Smartphone className="mr-2 w-5 h-5" />
-                Add to Home Screen
+              <Button variant="outline" size="lg" className="glass-button border-white/40 bg-white/10 backdrop-blur-md text-white font-bold px-10 py-4 text-lg shadow-2xl hover:bg-white/20 hover:shadow-glow transition-all duration-300 hover:scale-105">
+                <Smartphone className="mr-3 w-6 h-6" />
+                📱 Add to Home Screen
               </Button>
             </div>
 

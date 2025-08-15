@@ -108,8 +108,8 @@ export const Navbar = () => {
             className="flex items-center gap-3 cursor-pointer hover:scale-105 transition-all duration-300" 
             onClick={() => navigate('/')}
           >
-            <img src={kiitMascot} alt="KIIT Saathi Mascot" className="w-8 h-8 animate-pulse" />
-            <div className="font-poppins font-bold text-xl text-gradient hover:scale-105 transition-transform">
+            <img src={kiitMascot} alt="KIIT Saathi Mascot" className="w-10 h-10 animate-pulse" />
+            <div className="font-poppins font-bold text-2xl lg:text-xl text-gradient hover:scale-105 transition-transform drop-shadow-lg">
               KIIT Saathi
             </div>
           </div>
@@ -118,13 +118,13 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center gap-8">
             <button 
               onClick={() => navigate('/')} 
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-300 font-medium ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 font-semibold text-base ${
                 location.pathname === '/' 
-                  ? 'text-kiit-green bg-kiit-green/10' 
-                  : 'text-foreground hover:text-kiit-green hover:bg-kiit-green/5'
+                  ? 'text-kiit-green bg-kiit-green/15 shadow-md' 
+                  : 'text-foreground hover:text-kiit-green hover:bg-kiit-green/10'
               }`}
             >
-              <Home className="w-4 h-4" />
+              <Home className="w-5 h-5" />
               Home
             </button>
             
