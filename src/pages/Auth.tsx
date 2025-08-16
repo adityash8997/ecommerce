@@ -29,6 +29,22 @@ export default function Auth() {
       }
     };
     checkUser();
+
+    // Listen for auth state changes (including email confirmations)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          toast.success('Successfully signed in!');
+          navigate('/');
+        } else if (event === 'PASSWORD_RECOVERY') {
+          toast.success('Check your email for password recovery instructions.');
+        } else if (event === 'USER_UPDATED') {
+          toast.success('Email confirmed successfully!');
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -37,7 +53,7 @@ export default function Auth() {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -50,7 +66,15 @@ export default function Auth() {
 
       if (error) throw error;
 
-      toast.success('Check your email for the confirmation link!');
+      // Show appropriate message based on whether email confirmation is required
+      if (data?.user && !data.session) {
+        toast.success('🎉 Almost there! Check your email for the confirmation link to activate your account.', {
+          duration: 6000,
+        });
+      } else if (data?.session) {
+        toast.success('Account created successfully!');
+        navigate('/');
+      }
       setEmail('');
       setPassword('');
       setFullName('');

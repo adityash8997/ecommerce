@@ -166,22 +166,14 @@ export const Navbar = () => {
               </>
             ) : (
               <Button 
-                variant="ghost" 
                 size="sm"
                 onClick={() => navigate('/auth')}
-                className="hover:bg-kiit-green/10 hover:text-kiit-green transition-all duration-300"
+                className="gradient-primary text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 <LogIn className="w-4 h-4 mr-2" />
-                Login
+                Sign In
               </Button>
             )}
-            <Button 
-              size="sm" 
-              className="gradient-primary text-white font-semibold hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-            >
-              <Smartphone className="w-4 h-4 mr-2" />
-              Get App
-            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -244,25 +236,17 @@ export const Navbar = () => {
                 </>
               ) : (
                 <Button 
-                  variant="outline" 
                   size="sm"
                   onClick={() => {
                     navigate('/auth');
                     setIsOpen(false);
                   }}
-                  className="border-kiit-green/30 hover:bg-kiit-green/10"
+                  className="gradient-primary text-white font-semibold shadow-lg"
                 >
                   <LogIn className="w-4 h-4 mr-2" />
-                  Login
+                  Sign In
                 </Button>
               )}
-              <Button 
-                size="sm" 
-                className="gradient-primary text-white font-semibold shadow-lg"
-              >
-                <Smartphone className="w-4 h-4 mr-2" />
-                Get App
-              </Button>
             </div>
           </div>
         )}
