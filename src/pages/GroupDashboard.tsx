@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
@@ -52,6 +53,7 @@ const GroupDashboard = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -69,10 +71,14 @@ const GroupDashboard = () => {
   });
 
   useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     if (groupId) {
       loadGroupData();
     }
-  }, [groupId]);
+  }, [groupId, user]);
 
   const loadGroupData = async () => {
     try {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Users, Plus, Calculator, PieChart, Receipt, Heart, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -16,8 +17,10 @@ import { Footer } from "@/components/Footer";
 const SplitSaathi = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
   
   const [groupForm, setGroupForm] = useState({
     name: "",
@@ -49,7 +52,38 @@ const SplitSaathi = () => {
     }));
   };
 
+  useEffect(() => {
+    if (user) {
+      loadUserGroups();
+    }
+  }, [user]);
+
+  const loadUserGroups = async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingGroups(true);
+      const { data: userGroups, error } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setGroups(userGroups || []);
+    } catch (error: any) {
+      console.error('Error loading groups:', error.message);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
   const createGroup = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
     if (!groupForm.name.trim() || groupForm.members.filter(m => m.name.trim()).length === 0) {
       toast({
         title: "Missing Information",
@@ -66,7 +100,8 @@ const SplitSaathi = () => {
         .insert({
           name: groupForm.name,
           description: groupForm.description,
-          currency: groupForm.currency
+          currency: groupForm.currency,
+          created_by: user.id
         })
         .select()
         .single();
@@ -92,7 +127,17 @@ const SplitSaathi = () => {
         description: `${groupForm.name} is ready for expense tracking.`
       });
 
-      // Navigate to group dashboard
+      // Reset form
+      setGroupForm({
+        name: "",
+        description: "",
+        currency: "₹",
+        members: [{ name: "", email_phone: "" }]
+      });
+      setIsCreatingGroup(false);
+      
+      // Reload groups and navigate
+      loadUserGroups();
       navigate(`/split-saathi/group/${group.id}`);
       
     } catch (error: any) {
@@ -102,6 +147,22 @@ const SplitSaathi = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleCreateGroup = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setIsCreatingGroup(true);
+  };
+
+  const handleViewGroups = () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    loadUserGroups();
   };
 
   return (
@@ -139,17 +200,39 @@ const SplitSaathi = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
               size="lg" 
-              onClick={() => setIsCreatingGroup(true)}
+              onClick={handleCreateGroup}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
             >
               <Plus className="w-5 h-5 mr-2" />
-              Create a Group
+              {user ? 'Create a Group' : 'Sign In to Create Group'}
             </Button>
-            <Button size="lg" variant="outline">
+            <Button size="lg" variant="outline" onClick={handleViewGroups}>
               <Users className="w-5 h-5 mr-2" />
-              View My Groups
+              {user ? 'View My Groups' : 'Sign In to View Groups'}
             </Button>
           </div>
+          
+          {/* My Groups Section */}
+          {user && groups.length > 0 && (
+            <div className="mt-12">
+              <h3 className="text-2xl font-bold mb-6">My Groups</h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                {groups.map((group) => (
+                  <Card key={group.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/split-saathi/group/${group.id}`)}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{group.name}</CardTitle>
+                      {group.description && (
+                        <CardDescription>{group.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <Badge variant="secondary">{group.currency}</Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
