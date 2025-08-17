@@ -1500,6 +1500,14 @@ export type Database = {
         Args: { error_message: string }
         Returns: Json
       }
+      is_group_creator: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       log_failed_query: {
         Args: { error_details: string; query_type: string }
         Returns: undefined
