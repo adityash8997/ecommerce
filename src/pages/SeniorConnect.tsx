@@ -21,7 +21,9 @@ import {
   Sparkles,
   ArrowRight,
   MessageSquare,
-  ArrowLeft
+  ArrowLeft,
+  Lightbulb,
+  BookOpen
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -152,8 +154,74 @@ const SeniorConnect = () => {
         </div>
       </section>
 
+      {/* Additional Services */}
+      <section className="py-16 px-4 bg-white/80 backdrop-blur-sm">
+        <div className="container mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-kiit-green mb-4">🚀 More Learning Resources</h2>
+            <p className="text-gray-600">Enhance your skills and access study materials</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-16">
+            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-kiit-green cursor-pointer">
+              <CardHeader className="text-center pb-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-campus-blue to-campus-purple w-fit mx-auto mb-3">
+                  <Lightbulb className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-3xl mb-2">🛠️</div>
+                <CardTitle className="text-lg">Skill-Enhancing Sessions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-4">Learn Figma, AI tools, Excel, freelancing — from your peers.</p>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold px-3 py-1 rounded-full text-sm bg-gradient-to-r from-campus-blue to-campus-purple text-white">
+                    ₹299/workshop
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+                    onClick={() => alert("🚀 Coming Soon! Skill sessions are under development.")}
+                  >
+                    Explore Sessions
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-kiit-green cursor-pointer">
+              <CardHeader className="text-center pb-4">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-kiit-green to-campus-blue w-fit mx-auto mb-3">
+                  <BookOpen className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-3xl mb-2">📚</div>
+                <CardTitle className="text-lg">Study Materials by Seniors</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-4">Seniors' notes, solved papers, lab manuals — shared with you.</p>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold px-3 py-1 rounded-full text-sm bg-gradient-to-r from-kiit-green to-campus-blue text-white">
+                    ₹49/subject
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+                    onClick={() => navigate('/study-material')}
+                  >
+                    View Materials
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       {/* Filter Section */}
-      <section id="filter-section" className="py-16 px-4 bg-white/80 backdrop-blur-sm">
+      <section id="filter-section" className="py-16 px-4 bg-gradient-to-br from-kiit-green-soft to-white">
         <div className="container mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-kiit-green mb-4">🔍 Find Your Perfect Senior</h2>

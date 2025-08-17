@@ -23,6 +23,7 @@ import Meetups from "./pages/Meetups";
 import CampusTourBooking from "./pages/CampusTourBooking";
 import Auth from "./pages/Auth";
 import ChatBotPage from "./pages/ChatBotPage";
+import KiitSocieties from "./pages/KiitSocieties";
 
 console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
 
@@ -52,6 +53,7 @@ const App = () => (
           <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
           <Route path="/meetups" element={<Meetups />} />
           <Route path="/campus-tour-booking" element={<CampusTourBooking />} />
+          <Route path="/kiit-societies" element={<KiitSocieties />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/chatbot" element={<ChatBotPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

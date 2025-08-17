@@ -58,19 +58,11 @@ const services = [
   },
   {
     icon: Calendar,
-    title: "Society Openings",
+    title: "KIIT Societies",
     description: "One calendar. All societies. Never miss an interview again.",
     price: "Free",
     gradient: "from-kiit-green to-campus-blue",
     emoji: "📣"
-  },
-  {
-    icon: PartyPopper,
-    title: "Fest Announcements",
-    description: "All fest updates, registrations, and event highlights — in one place.",
-    price: "Free",
-    gradient: "from-campus-purple to-campus-orange",
-    emoji: "🎊"
   },
   {
     icon: Bot,
@@ -79,14 +71,6 @@ const services = [
     price: "Free",
     gradient: "from-campus-orange to-kiit-green",
     emoji: "🤖"
-  },
-  {
-    icon: BookOpen,
-    title: "Study Material by Seniors",
-    description: "Seniors' notes, solved papers, lab manuals — shared with you.",
-    price: "₹49/subject",
-    gradient: "from-kiit-green to-campus-blue",
-    emoji: "📚"
   },
   {
     icon: MessageCircle,
@@ -105,22 +89,6 @@ const services = [
     emoji: "🌃"
   },
   {
-    icon: Trophy,
-    title: "Sports Events Hub",
-    description: "See tryout dates, match schedules, and urgent team alerts.",
-    price: "Free",
-    gradient: "from-kiit-green to-campus-blue",
-    emoji: "🎾"
-  },
-  {
-    icon: Search,
-    title: "Interview Deadlines Tracker",
-    description: "Track every interview and onboarding deadline.",
-    price: "Free",
-    gradient: "from-campus-purple to-campus-orange",
-    emoji: "🗓️"
-  },
-  {
     icon: Search,
     title: "Lost & Found Portal",
     description: "Lost your ID card? Found someone's AirPods? Report it here.",
@@ -135,14 +103,6 @@ const services = [
     price: "₹500/tour",
     gradient: "from-kiit-green to-campus-blue",
     emoji: "🚗"
-  },
-  {
-    icon: Lightbulb,
-    title: "Skill-Enhancing Sessions",
-    description: "Learn Figma, AI tools, Excel, freelancing — from your peers.",
-    price: "₹299/workshop",
-    gradient: "from-campus-blue to-campus-purple",
-    emoji: "🛠️"
   },
   {
     icon: Calculator,
@@ -195,7 +155,7 @@ export const ServicesGrid = () => {
       "Printouts on Demand": "/printout-on-demand", 
       "Senior Connect": "/senior-connect",
       "Handwritten Assignments": "/handwritten-assignments",
-      "Study Material by Seniors": "/study-material",
+      "KIIT Societies": "/kiit-societies",
       "Lost & Found Portal": "/lost-and-found",
       "Campus Tour Booking": "/campus-tour-booking",
       "SplitSaathi – Group Expense Manager": "/split-saathi",
