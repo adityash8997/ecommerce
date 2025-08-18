@@ -124,7 +124,7 @@ const KiitSocieties = () => {
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold text-kiit-green mb-6 animate-fade-in">
-              📣 KIIT Societies
+              📣 KIIT Societies, Fests and Sports
             </h1>
             <p className="text-xl md:text-2xl text-gray-700 mb-4">
               Your gateway to campus societies, events, and opportunities

@@ -58,7 +58,7 @@ const services = [
   },
   {
     icon: Calendar,
-    title: "KIIT Societies",
+    title: "KIIT Societies, Fests and Sports",
     description: "One calendar. All societies. Never miss an interview again.",
     price: "Free",
     gradient: "from-kiit-green to-campus-blue",
@@ -155,7 +155,7 @@ export const ServicesGrid = () => {
       "Printouts on Demand": "/printout-on-demand", 
       "Senior Connect": "/senior-connect",
       "Handwritten Assignments": "/handwritten-assignments",
-      "KIIT Societies": "/kiit-societies",
+      "KIIT Societies, Fests and Sports": "/kiit-societies",
       "Lost & Found Portal": "/lost-and-found",
       "Campus Tour Booking": "/campus-tour-booking",
       "SplitSaathi – Group Expense Manager": "/split-saathi",
