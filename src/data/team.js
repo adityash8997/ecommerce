@@ -1,5 +1,6 @@
 export const Default = "https://drive.google.com/uc?export=view&id=";
-export const Placeholder = "/team/Krishna.jpg";
+export const Placeholder = null;
+
 
 export const teamData = [
   {
@@ -8,12 +9,13 @@ export const teamData = [
     Instagram: "https://www.instagram.com/_krish_na08",
     Image: "/team/Krishna.jpg",
     Github: "https://github.com/KrishnaMohanty08",
+    role:"Web Developer"
   },
   {
     name: "Vedant Agrawal",
     LinkedIn: "https://www.linkedin.com/in/vedant-agrawal-946353325",
     Instagram: "https://www.instagram.com/agrawal_vedant_16",
-    Image: Placeholder,
+    Image: "/team/Vedant.jpg",
     Github: null,
   },
   {
@@ -27,8 +29,9 @@ export const teamData = [
     name: "Diya Dasgupta",
     LinkedIn: "https://www.linkedin.com/in/diya-dasgupta-747b2a261",
     Instagram: "https://www.instagram.com/hester.05",
-    Image: "/team/Diya.jpg",
+    Image: "/team/diya.jpg",
     Github: null,
+    role:"Marketing"
   },
   {
     name: "Satvik Upadhyaya",
@@ -36,19 +39,22 @@ export const teamData = [
     Instagram: "https://www.instagram.com/being_shelbish1422",
     Image: Placeholder,
     Github: "https://github.com/SATVIKsynopsis",
+    role:"Web Developer"
+
   },
   {
     name: "Anushka Gupta",
     LinkedIn: "https://www.linkedin.com/in/anushka-gupta-4a366b2b6",
     Instagram: "https://www.instagram.com/momsaid_noname",
-    Image: "/team/Anushka.jpg",
+    Image: "/team/anuskha.jpg",
     Github: null,
+    role:"Marketing"
   },
   {
     name: "Shreyansh Duggar",
     LinkedIn: "https://www.linkedin.com/in/shreyanshduggar01",
     Instagram: "https://www.instagram.com/shreyans.h1",
-    Image: "/team/Shreyansh.jpg",
+    Image: "/team/shreyansh.jpg",
     Github: "https://github.com/shr4421",
   },
   {
@@ -69,8 +75,10 @@ export const teamData = [
     name: "Prangshu Mondal",
     LinkedIn: "https://www.linkedin.com/in/prangggshu",
     Instagram: "https://www.instagram.com/prangggshu",
-    Image: "/team/Prangshu.jpg",
+    Image: "/team/prangshu.jpg",
     Github: "https://github.com/prangggshu",
+    role:"Web Developer"
+
   },
   {
     name: "Anushka Sinha",
@@ -97,14 +105,14 @@ export const teamData = [
     name: "Piyush Swain",
     LinkedIn: null,
     Instagram: "https://www.instagram.com/mr_piyush2106",
-    Image: "/team/Piyush.jpg",
+    Image: "/team/piyush.jpg",
     Github: null,
   },
   {
     name: "Aditi Srivastava",
     LinkedIn: "https://www.linkedin.com/in/aditi-srivastava-1a6969386?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
     Instagram: "https://www.instagram.com/adiisaire?igsh=MTRraWhsNWZ0b3k3dA==",
-    Image: "/team/Aditi.jpg",
+    Image: "/team/aditi.jpg",
     Github: null,
   }
 ];

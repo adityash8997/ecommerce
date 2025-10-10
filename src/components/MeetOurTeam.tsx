@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Linkedin, Instagram, Github } from "lucide-react";
 import { teamData } from "@/data/team.js";
+import { error } from "console";
 
 interface TeamMember {
   id?: number;
@@ -29,8 +30,8 @@ const TeamCard = ({ member }: { member: TeamMember }) => {
             <img
               src={member.Image}
               alt={member.name}
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover"
+              onError={() => setImageError(true) }
+              className="w-full h-full object-cover border border-gray-300 hover:border-gray-700"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400">
@@ -42,9 +43,8 @@ const TeamCard = ({ member }: { member: TeamMember }) => {
 
           {/* Hover overlay with social icons */}
           <div
-            className={`absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 ${
-              isHovered ? "opacity-100" : "opacity-0"
-            }`}
+            className={`absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"
+              }`}
           >
             <div className="flex space-x-4" onClick={(e) => e.stopPropagation()}>
               {member.LinkedIn && (
@@ -115,33 +115,34 @@ const MeetOurTeam: React.FC = () => {
 
       {/* Content */}
       <div className="relative max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Meet Our Team
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            The passionate individuals building the future of campus life at KIIT
-          </p>
+        <div className="container mx-auto max-w-6xl relative z-10">
+          {/* Heading */}
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              Meet Our Team          </h2>
+            <p className="text-muted-foreground text-lg italic">
+              Helping you connect with the best.
+            </p>
+          </div>
         </div>
 
-        {/* Team Grid */}
-        <div className="space-y-8">
-          {rows.map((row, rowIndex) => (
-            <div
-              key={rowIndex}
-              className={`grid gap-6 ${
-                rowIndex === 4
-                  ? "grid-cols-1 max-w-xs mx-auto"
-                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-              }`}
-            >
-              {row.map((member, index) => (
-                <TeamCard key={index} member={member} />
-              ))}
-            </div>
-          ))}
+          {/* Team Grid */}
+          <div className="space-y-8">
+            {rows.map((row, rowIndex) => (
+              <div
+                key={rowIndex}
+                className={`grid gap-6 ${rowIndex === 4
+                    ? "grid-cols-1 max-w-xs mx-auto"
+                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                  }`}
+              >
+                {row.map((member, index) => (
+                  <TeamCard key={index} member={member} />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
     </section>
   );
 };
