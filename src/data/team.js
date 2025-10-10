@@ -4,43 +4,12 @@ export const Placeholder = null;
 
 export const teamData = [
   {
-    name: "Krishna Mohanty",
-    LinkedIn: "https://www.linkedin.com/in/krishna-mohanty-67a9082b0",
-    Instagram: "https://www.instagram.com/_krish_na08",
-    Image: "/team/Krishna.jpg",
-    Github: "https://github.com/KrishnaMohanty08",
-    role:"Web Developer"
-  },
-  {
-    name: "Vedant Agrawal",
-    LinkedIn: "https://www.linkedin.com/in/vedant-agrawal-946353325",
-    Instagram: "https://www.instagram.com/agrawal_vedant_16",
-    Image: "/team/Vedant.jpg",
-    Github: null,
-  },
-  {
-    name: "Kirti Kumari",
-    LinkedIn: "https://www.linkedin.com/in/kirti-kumari-246582321",
-    Instagram: "https://www.instagram.com/cocokirti",
-    Image: "/team/Kirti.jpg",
-    Github: null,
-  },
-  {
-    name: "Diya Dasgupta",
-    LinkedIn: "https://www.linkedin.com/in/diya-dasgupta-747b2a261",
-    Instagram: "https://www.instagram.com/hester.05",
-    Image: "/team/diya.jpg",
-    Github: null,
-    role:"Marketing"
-  },
-  {
-    name: "Satvik Upadhyaya",
-    LinkedIn: "https://www.linkedin.com/in/satvik-upadhyaya-073978334",
-    Instagram: "https://www.instagram.com/being_shelbish1422",
-    Image: Placeholder,
-    Github: "https://github.com/SATVIKsynopsis",
-    role:"Web Developer"
-
+    name:"Aditiya Sharma",
+    LinkedIn:"http://www.linkedin.com/in/adityasharma3805",
+    Instagram:"https://www.instagram.com/aditya_sharma3805?igsh=bmpzeGVuYXJvbDdt&utm_source=qr",
+    Image:"/team/Aditya_.jpg",
+    Github:"https://github.com/aditiya-sharma",
+    role:"Founder & Coordinator"
   },
   {
     name: "Anushka Gupta",
@@ -48,21 +17,15 @@ export const teamData = [
     Instagram: "https://www.instagram.com/momsaid_noname",
     Image: "/team/anuskha.jpg",
     Github: null,
-    role:"Marketing"
+    role:"Marketing Lead"
   },
   {
-    name: "Shreyansh Duggar",
-    LinkedIn: "https://www.linkedin.com/in/shreyanshduggar01",
-    Instagram: "https://www.instagram.com/shreyans.h1",
-    Image: "/team/shreyansh.jpg",
-    Github: "https://github.com/shr4421",
-  },
-  {
-    name: "Smit Bharat Patil",
-    LinkedIn: "https://www.linkedin.com/in/sbktckp",
-    Instagram: "https://www.instagram.com/sbktckp",
-    Image: "/team/Smit.jpg",
-    Github: "https://github.com/sbktckp",
+    name: "Piyush Swain",
+    LinkedIn: null,
+    Instagram: "https://www.instagram.com/mr_piyush2106",
+    Image: "/team/piyush.jpg",
+    Github: null,
+    role:"Operations"
   },
   {
     name: "Prajjwal Patel",
@@ -70,6 +33,7 @@ export const teamData = [
     Instagram: null,
     Image: "/team/Prajjwal.jpg",
     Github: "https://github.com/prajj267",
+    role:"Operations"
   },
   {
     name: "Prangshu Mondal",
@@ -81,18 +45,21 @@ export const teamData = [
 
   },
   {
-    name: "Anushka Sinha",
-    LinkedIn: "https://www.linkedin.com/in/anushka-sinha510",
-    Instagram: "https://www.instagram.com/its_ansukaaa04",
-    Image: "/team/AnushkaSinha.jpg",
-    Github: null,
+    name: "Krishna Mohanty",
+    LinkedIn: "https://www.linkedin.com/in/krishna-mohanty-67a9082b0",
+    Instagram: "https://www.instagram.com/_krish_na08",
+    Image: "/team/Krishna.jpg",
+    Github: "https://github.com/KrishnaMohanty08",
+    role:"Web Developer"
   },
   {
-    name: "Siddharth Khubchandani",
-    LinkedIn: "https://www.linkedin.com/in/siddharth-khubchandani-4aa898389",
-    Instagram: "https://www.instagram.com/siddharth.khubchandani",
-    Image: "/team/Siddharth.jpg",
-    Github: null,
+    name: "Satvik Upadhyaya",
+    LinkedIn: "https://www.linkedin.com/in/satvik-upadhyaya-073978334",
+    Instagram: "https://www.instagram.com/being_shelbish1422",
+    Image: Placeholder,
+    Github: "https://github.com/SATVIKsynopsis",
+    role:"Web Developer"
+    
   },
   {
     name: "Aadarsh Gupta",
@@ -100,13 +67,15 @@ export const teamData = [
     Instagram: "https://www.instagram.com/aadarsh._.gupta01",
     Image: Placeholder,
     Github: null,
+    role:"Graphic Designer"
   },
   {
-    name: "Piyush Swain",
-    LinkedIn: null,
-    Instagram: "https://www.instagram.com/mr_piyush2106",
-    Image: "/team/piyush.jpg",
+    name: "Anushka Sinha",
+    LinkedIn: "https://www.linkedin.com/in/anushka-sinha510",
+    Instagram: "https://www.instagram.com/its_ansukaaa04",
+    Image: "/team/AnushkaSinha.jpg",
     Github: null,
+    role:"Graphic Designer"
   },
   {
     name: "Aditi Srivastava",
@@ -114,5 +83,56 @@ export const teamData = [
     Instagram: "https://www.instagram.com/adiisaire?igsh=MTRraWhsNWZ0b3k3dA==",
     Image: "/team/aditi.jpg",
     Github: null,
-  }
+    role:"Graphic Designer"
+  },
+  {
+    name: "Siddharth Khubchandani",
+    LinkedIn: "https://www.linkedin.com/in/siddharth-khubchandani-4aa898389",
+    Instagram: "https://www.instagram.com/siddharth.khubchandani",
+    Image: "/team/Siddharth.jpg",
+    Github: null,
+    role:"Video Editor"
+  },
+  {
+    name: "Vedant Agrawal",
+    LinkedIn: "https://www.linkedin.com/in/vedant-agrawal-946353325",
+    Instagram: "https://www.instagram.com/agrawal_vedant_16",
+    Image: "/team/Vedant.jpg",
+    Github: null,
+    role:"Video Editor"
+  },
+  {
+    name: "Smit Bharat Patil",
+    LinkedIn: "https://www.linkedin.com/in/sbktckp",
+    Instagram: "https://www.instagram.com/sbktckp",
+    Image: "/team/Smit.jpg",
+    Github: "https://github.com/sbktckp",
+    role:"Marketing"
+  },
+  {
+    name: "Kirti Kumari",
+    LinkedIn: "https://www.linkedin.com/in/kirti-kumari-246582321",
+    Instagram: "https://www.instagram.com/cocokirti",
+    Image: "/team/Kirti.jpg",
+    Github: null,
+    role:"Marketing"
+  },
+  {
+    name: "Diya Dasgupta",
+    LinkedIn: "https://www.linkedin.com/in/diya-dasgupta-747b2a261",
+    Instagram: "https://www.instagram.com/hester.05",
+    Image: "/team/diya.jpg",
+    Github: null,
+    role:"Marketing"
+  },
+  {
+    name: "Shreyansh Duggar",
+    LinkedIn: "https://www.linkedin.com/in/shreyanshduggar01",
+    Instagram: "https://www.instagram.com/shreyans.h1",
+    Image: "/team/shreyansh.jpg",
+    Github: "https://github.com/shr4421",
+    role:"Marketing"
+  },
+  
+  
 ];

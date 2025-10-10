@@ -14,47 +14,87 @@ interface TeamMember {
 }
 
 const TeamCard = ({ member }: { member: TeamMember }) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div
-      className="relative h-80 rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-lg transition-transform duration-300 hover:scale-105"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="flex flex-col items-center justify-center h-full p-6">
-        {/* Image with hover overlay */}
-        <div className="relative w-40 h-40 rounded-full overflow-hidden mb-4 bg-gray-200">
-          {!imageError && member.Image ? (
-            <img
-              src={member.Image}
-              alt={member.name}
-              onError={() => setImageError(true) }
-              className="w-full h-full object-cover border border-gray-300 hover:border-gray-700"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400">
-              <span className="text-white text-4xl font-bold">
-                {member.name.charAt(0)}
-              </span>
+    <div className="[perspective:1000px] h-80">
+      <div
+        className={`relative w-full h-full [transform-style:preserve-3d] transition-transform duration-500 ${
+          isFlipped ? "[transform:rotateY(180deg)]" : ""
+        }`}
+        onMouseEnter={() => setIsFlipped(true)}
+        onMouseLeave={() => setIsFlipped(false)}
+      >
+        {/* FRONT FACE */}
+        <div className="hover:cursor-pointer hover:kiit-green-soft absolute inset-0 [backface-visibility:hidden] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-lg">
+          <div className="flex flex-col items-center justify-center h-full p-6">
+            {/* Image */}
+            <div className="relative w-40 h-40 rounded-full overflow-hidden mb-4 bg-gray-200">
+              {!imageError && member.Image ? (
+                <img
+                  src={member.Image}
+                  alt={member.name}
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover border border-gray-300"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400">
+                  <span className="text-white text-4xl font-bold">
+                    {member.name.charAt(0)}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Hover overlay with social icons */}
-          <div
-            className={`absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"
-              }`}
-          >
-            <div className="flex space-x-4" onClick={(e) => e.stopPropagation()}>
+            {/* Member info */}
+            <h3 className="text-xl font-semibold text-gray-800 text-center">
+              {member.name}
+            </h3>
+            {/* {member.role && (
+              <p className="text-semibold text-green-600 text-center mt-1">
+                {member.role}
+              </p>
+            )} */}
+          </div>
+        </div>
+
+        {/* BACK FACE */}
+        <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-2xl bg-kiit-green-light overflow-hidden  shadow-lg shadow-kiit-green-dark
+">
+          <div className="flex flex-col items-center justify-center h-full p-6 text-white">
+            <div className="relative w-40 h-40 rounded-full overflow-hidden mb-4 bg-gray-200">
+              {!imageError && member.Image ? (
+                <img
+                  src={member.Image}
+                  alt={member.name}
+                  onError={() => setImageError(true)}
+                  className="w-full h-full object-cover border border-gray-300 rounded-full border-4 border-white"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-400">
+                  <span className="text-white text-4xl font-bold">
+                    {member.name.charAt(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+            <h3 className="text-2xl font-bold mb-2">{member.name}</h3>
+            {member.role && (
+              <p className="text-lg mb-6 opacity-90">{member.role}</p>
+            )}
+            
+            {/* Social Icons */}
+            <div className="flex space-x-6">
               {member.LinkedIn && (
                 <a
                   href={member.LinkedIn}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="transform hover:scale-110 transition-transform duration-200"
+                  className="transform hover:scale-125 transition-transform duration-200"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Linkedin className="w-7 h-7 text-white hover:text-blue-400" />
+                  <Linkedin className="w-8 h-8 text-white hover:text-blue-200" />
                 </a>
               )}
               {member.Instagram && (
@@ -62,32 +102,27 @@ const TeamCard = ({ member }: { member: TeamMember }) => {
                   href={member.Instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="transform hover:scale-110 transition-transform duration-200"
+                  className="transform hover:scale-125 transition-transform duration-200"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Instagram className="w-7 h-7 text-white hover:text-pink-400" />
+                  <Instagram className="w-8 h-8 text-white hover:text-pink-200" />
                 </a>
               )}
+              
               {member.Github && (
                 <a
                   href={member.Github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="transform hover:scale-110 transition-transform duration-200"
+                  className="transform hover:scale-125 transition-transform duration-200"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Github className="w-7 h-7 text-white hover:text-gray-300" />
+                  <Github className="w-8 h-8 text-white hover:text-gray-200" />
                 </a>
               )}
             </div>
           </div>
         </div>
-
-        {/* Member info */}
-        <h3 className="text-xl font-semibold text-gray-800 text-center">
-          {member.name}
-        </h3>
-        {member.role && (
-          <p className="text-sm text-gray-600 text-center mt-1">{member.role}</p>
-        )}
       </div>
     </div>
   );
