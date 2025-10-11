@@ -55,7 +55,7 @@ export const teamData = [
     name: "Satvik Upadhyaya",
     LinkedIn: "https://www.linkedin.com/in/satvik-upadhyaya-073978334",
     Instagram: "https://www.instagram.com/being_shelbish1422",
-    Image: Placeholder,
+    Image: "/team/Satvik.jpg",
     Github: "https://github.com/SATVIKsynopsis",
     role:"Web Developer"
     
@@ -64,7 +64,7 @@ export const teamData = [
     name: "Aadarsh Gupta",
     LinkedIn: "https://www.linkedin.com/in/aadarshgupta01",
     Instagram: "https://www.instagram.com/aadarsh._.gupta01",
-    Image: Placeholder,
+    Image: "/team/Aadarsh.jpg",
     Github: null,
     role:"Graphic Designer"
   },
