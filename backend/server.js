@@ -5,73 +5,35 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenAI } from '@google/genai';
-import multer from 'multer';
-import fs from 'fs';
-import { createRequire } from 'module';
-
-// Use createRequire to import CommonJS modules
-const require = createRequire(import.meta.url);
-const pdfreader = require('pdfreader');
-// Uncomment below to add OCR capability for scanned PDFs
-// const Tesseract = require('tesseract.js');
-// const pdf2pic = require("pdf2pic");
 
 const app = express();
-
-// Configure multer for file uploads
-const upload = multer({
-  dest: 'uploads/',
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
-    }
-  }
-});
-
-// Initialize Gemini AI with new SDK
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const allowedOrigins = [
   "http://localhost:8080",
   "http://10.5.83.177:8080",
   "http://localhost:5173",
   "https://kiitsaathi.vercel.app",
-  "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
-  "https://kiitsaathi-git-satvik-resume-aditya-sharmas-projects-3c0e452b.vercel.app", // ✅ new correct one
-  "https://kiitsaathi-git-satvik-adityash8997s-projects.vercel.app"
+  "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app"
 ];
 
 // CORS configuration
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests from localhost, Vercel, and Render preview URLs
-      if (
-        !origin ||
-        origin.includes("localhost") ||
-        origin.endsWith(".vercel.app") ||
-        origin.endsWith(".onrender.com")
-      ) {
-        callback(null, true);
-      } else {
-        console.warn("❌ Blocked by CORS:", origin);
-        callback(new Error("CORS not allowed for this origin"));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 
 // Error handling middleware
-
 app.use((err, req, res, next) => {
   if (err.message === "Not allowed by CORS") {
     return res.status(403).json({ error: 'CORS policy violation' });
@@ -92,8 +54,7 @@ app.get('/health', async (req, res) => {
       status: 'OK', 
       timestamp: new Date().toISOString(),
       supabase: error ? 'Error' : 'Connected',
-      razorpay: process.env.RAZORPAY_KEY_ID ? 'Configured' : 'Missing',
-      gemini: process.env.GEMINI_API_KEY ? 'Configured' : 'Missing'
+      razorpay: process.env.RAZORPAY_KEY_ID ? 'Configured' : 'Missing'
     });
   } catch (error) {
     res.status(500).json({ 
@@ -109,31 +70,40 @@ app.get('/test', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
 
-// Test Gemini API endpoint
-app.get('/test-gemini', async (req, res) => {
+// Test Lost & Found order creation (simplified)
+app.post('/test-lost-found-order', async (req, res) => {
   try {
-    // Use the new SDK format with confirmed working model
-    const resp = await ai.models.generateContent({
-      model: "gemini-2.0-flash-001",
-      contents: "Hello, this is a test for resume analysis"
-    });
-    const text = resp.text;
+    console.log('🧪 Test Lost & Found Order Request:', req.body);
+    const { amount } = req.body;
     
-    res.json({ 
-      success: true, 
-      workingModel: "gemini-2.0-flash-001",
-      message: 'Gemini API is working!',
-      response: text 
+    // Check if Razorpay is available
+    if (!razorpay) {
+      return res.status(500).json({ 
+        error: 'Razorpay not configured',
+        details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
+      });
+    }
+    
+    // Simple Razorpay order creation test
+    const order = await razorpay.orders.create({
+      amount: amount || 1500, // Default 15 rupees in paise
+      currency: 'INR',
+      receipt: 'test_' + Date.now(),
+      notes: {
+        test: 'true'
+      }
     });
+    
+    console.log('✅ Test order created:', order.id);
+    res.json({ success: true, order });
   } catch (error) {
-    console.error('Gemini API test failed:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message,
-      details: error.toString()
-    });
+    console.error('❌ Test order error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
+
+
+
 
 // Razorpay instance - only create if environment variables are available
 let razorpay = null;
@@ -157,7 +127,6 @@ console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing
 console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? `✅ Set (${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 20)}...)` : '❌ Missing');
 console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? '✅ Set' : '❌ Missing');
 console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? '✅ Set' : '❌ Missing');
-console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
 
 // Supabase instance
 const supabase = createClient(
@@ -165,7 +134,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-/* ==================== PAYMENT & ORDER ROUTES ==================== */
+
 
 // ✅ Check if user has paid for contact unlock for a specific item
 app.get('/has-paid-contact', async (req, res) => {
@@ -340,37 +309,7 @@ app.get('/orders', async (req, res) => {
   }
 });
 
-// Test Lost & Found order creation (simplified)
-app.post('/test-lost-found-order', async (req, res) => {
-  try {
-    console.log('🧪 Test Lost & Found Order Request:', req.body);
-    const { amount } = req.body;
-    
-    // Check if Razorpay is available
-    if (!razorpay) {
-      return res.status(500).json({ 
-        error: 'Razorpay not configured',
-        details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
-      });
-    }
-    
-    // Simple Razorpay order creation test
-    const order = await razorpay.orders.create({
-      amount: amount || 1500, // Default 15 rupees in paise
-      currency: 'INR',
-      receipt: 'test_' + Date.now(),
-      notes: {
-        test: 'true'
-      }
-    });
-    
-    console.log('✅ Test order created:', order.id);
-    res.json({ success: true, order });
-  } catch (error) {
-    console.error('❌ Test order error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 // Create order for Lost & Found contact unlock
 app.post('/create-lost-found-order', async (req, res) => {
@@ -608,687 +547,6 @@ app.get('/has-paid-lost-found-contact', async (req, res) => {
   }
 });
 
-/* ==================== RESUME ATS ANALYSIS ROUTES ==================== */
-
-// ATS Resume Analysis endpoint using Gemini AI (Form Data)
-app.post('/analyze-resume-form', async (req, res) => {
-  try {
-    const { resumeData } = req.body;
-
-    if (!resumeData) {
-      return res.status(400).json({ error: 'Resume data is required' });
-    }
-
-    // Convert resume data to a comprehensive text format
-    const resumeText = formatResumeForAnalysis(resumeData);
-
-    // Comprehensive ATS analysis prompt
-    const prompt = `
-You are an expert ATS (Applicant Tracking System) resume analyzer and career counselor. Analyze the following resume and provide a detailed assessment:
-
-RESUME CONTENT:
-${resumeText}
-
-Please provide a comprehensive analysis in the following JSON format:
-{
-  "atsScore": number (0-100),
-  "overallGrade": "A+/A/B+/B/C+/C/D+/D/F",
-  "summary": "Brief 2-3 sentence overall assessment",
-  "strengths": [
-    "List of specific strengths found in the resume"
-  ],
-  "criticalIssues": [
-    "Major problems that significantly hurt ATS compatibility"
-  ],
-  "improvements": [
-    "Specific, actionable improvement suggestions"
-  ],
-  "sectionAnalysis": {
-    "personalInfo": {
-      "score": number (0-100),
-      "feedback": "Detailed feedback on contact information",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    },
-    "summary": {
-      "score": number (0-100),
-      "feedback": "Analysis of professional summary",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    },
-    "experience": {
-      "score": number (0-100),
-      "feedback": "Analysis of work experience section",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    },
-    "education": {
-      "score": number (0-100),
-      "feedback": "Analysis of education section",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    },
-    "skills": {
-      "score": number (0-100),
-      "feedback": "Analysis of skills section",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    },
-    "projects": {
-      "score": number (0-100),
-      "feedback": "Analysis of projects section",
-      "issues": ["specific issues"],
-      "suggestions": ["specific improvements"]
-    }
-  },
-  "keywordAnalysis": {
-    "score": number (0-100),
-    "industryKeywords": {
-      "found": ["keywords found in resume"],
-      "missing": ["important keywords missing"],
-      "suggestions": ["keyword suggestions for improvement"]
-    },
-    "technicalSkills": {
-      "found": ["technical skills found"],
-      "missing": ["important technical skills missing"],
-      "suggestions": ["technical skills to add"]
-    }
-  },
-  "formatAnalysis": {
-    "score": number (0-100),
-    "issues": [
-      "Formatting issues that hurt ATS readability"
-    ],
-    "suggestions": [
-      "Formatting improvements for better ATS compatibility"
-    ]
-  },
-  "lengthAnalysis": {
-    "score": number (0-100),
-    "currentLength": "assessment of current resume length",
-    "recommendations": "recommendations for resume length"
-  },
-  "careerLevel": "entry/mid/senior",
-  "recommendedImprovements": [
-    {
-      "priority": "high/medium/low",
-      "category": "content/format/keywords",
-      "issue": "specific issue description",
-      "solution": "specific solution",
-      "impact": "expected impact on ATS score"
-    }
-  ],
-  "industrySpecificAdvice": "Advice specific to the person's industry/field",
-  "nextSteps": [
-    "Prioritized list of next steps to improve the resume"
-  ]
-}
-
-ANALYSIS CRITERIA:
-1. ATS Compatibility: How well will ATS systems parse this resume?
-2. Keyword Optimization: Are relevant industry keywords present?
-3. Format and Structure: Is the format clean and ATS-friendly?
-4. Content Quality: Is the content compelling and achievement-focused?
-5. Completeness: Are all necessary sections present and well-developed?
-6. Professional Presentation: Does it look professional and error-free?
-
-Focus on:
-- Quantified achievements
-- Action verbs usage
-- Industry-relevant keywords
-- ATS-friendly formatting
-- Professional presentation
-- Content gaps or weaknesses
-- Specific, actionable improvements
-
-Provide honest, constructive feedback that will help improve both ATS compatibility and human readability.
-`;
-
-    // Use new SDK format for generating content
-    const resp = await ai.models.generateContent({
-      model: "gemini-2.0-flash-001",
-      contents: prompt
-    });
-    const analysisText = resp.text;
-
-    // Try to extract JSON from the response
-    let analysisResult;
-    try {
-      // Look for JSON in the response
-      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        analysisResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('No JSON found in response');
-      }
-    } catch (parseError) {
-      console.error('Error parsing Gemini response:', parseError);
-      console.log('Raw response:', analysisText);
-      
-      // Fallback analysis if JSON parsing fails
-      analysisResult = createFallbackAnalysis(resumeData, analysisText);
-    }
-
-    res.json({
-      success: true,
-      analysis: analysisResult,
-      rawResponse: analysisText // For debugging
-    });
-
-  } catch (error) {
-    console.error('Error analyzing resume:', error);
-    res.status(500).json({ 
-      error: 'Failed to analyze resume',
-      message: error.message 
-    });
-  }
-});
-
-// File upload endpoint for PDF resume analysis
-app.post('/analyze-resume-ats', upload.single('resume'), async (req, res) => {
-  try {
-    // Handle file upload
-    if (req.file) {
-      const filePath = req.file.path;
-      
-      try {
-        // Read the uploaded PDF file
-        const fileBuffer = fs.readFileSync(filePath);
-        
-        // Extract text content from PDF using pdfreader
-        console.log('Extracting text from PDF...');
-        console.log('PDF file path:', filePath);
-        console.log('PDF file size:', req.file.size, 'bytes');
-        
-        const extractedText = await extractTextFromPDF(filePath);
-        
-        console.log('Raw extracted text:', extractedText);
-        console.log('Extracted text length:', extractedText ? extractedText.length : 0);
-        
-        if (!extractedText || extractedText.trim().length < 10) {
-          // More lenient check and better error message
-          console.log('✅ PDF structure parsed successfully, but no text content found');
-          console.log('📄 This appears to be a scanned/image-based PDF');
-          console.log('🔄 Switching to fallback analysis mode...');
-          
-          // Return a fallback analysis instead of throwing an error
-          const fileInfo = {
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            mimeType: req.file.mimetype
-          };
-          
-          const fallbackAnalysis = createAdvancedFallbackAnalysis(fileInfo);
-          fallbackAnalysis.note = "PDF appears to be image-based or scanned - analysis based on best practices";
-          fallbackAnalysis.extractionError = "Unable to extract text from PDF. This could be due to: 1) Scanned/image-based PDF (most common), 2) Password protection, 3) Complex formatting, 4) Corrupted file";
-          fallbackAnalysis.recommendations = [
-            "For scanned PDFs: Try converting to text-based PDF using Adobe Acrobat or similar tools",
-            "Alternative: Use the form-based resume builder for detailed AI analysis",
-            "Ensure your PDF has selectable text (try copying text from the PDF)",
-            "Consider recreating your resume in a word processor and exporting as PDF"
-          ];
-          fallbackAnalysis.atsScore = 75; // Higher score for scanned PDFs that might still be readable by some ATS
-          fallbackAnalysis.summary = `Uploaded resume appears to be scanned/image-based (${fileInfo.fileName}). While the file format is professional, modern ATS systems work best with text-based PDFs. Consider the recommendations below.`;
-          
-          // Clean up the uploaded file
-          fs.unlinkSync(filePath);
-          
-          console.log('📤 Sending fallback analysis to frontend...');
-          console.log('📊 ATS Score:', fallbackAnalysis.atsScore);
-          console.log('📝 Analysis type:', 'Scanned PDF fallback');
-          
-          return res.json({
-            success: true,
-            analysis: fallbackAnalysis,
-            source: 'fallback_scanned_pdf_analysis',
-            extractedTextLength: extractedText ? extractedText.length : 0,
-            warning: 'PDF appears to be scanned/image-based - analysis based on best practices',
-            userMessage: 'Your PDF seems to be scanned or image-based. For the most accurate ATS analysis, try uploading a text-based PDF or use our form-based resume builder.',
-            nextSteps: [
-              'Try copying text from your PDF - if you can\'t select text, it\'s image-based',
-              'Use our Resume Builder for detailed AI analysis',
-              'Convert scanned PDF to text-based PDF using online tools'
-            ]
-          });
-        }
-        
-        console.log('PDF text extracted successfully, length:', extractedText.length);
-        
-        // Use Gemini for comprehensive analysis with the actual resume content
-        const prompt = `
-You are an expert ATS (Applicant Tracking System) resume analyzer and career counselor. Analyze the following resume content and provide comprehensive feedback.
-
-RESUME CONTENT:
-${extractedText}
-
-ADDITIONAL FILE INFO:
-- File Name: ${req.file.originalname}
-- File Size: ${req.file.size} bytes
-- Extracted Text Length: ${extractedText.length} characters
-
-Please provide a detailed analysis in the following JSON format:
-{
-  "atsScore": number (0-100),
-  "overallGrade": "A+/A/B+/B/C+/C/D+/D/F",
-  "summary": "Brief 2-3 sentence overall assessment of the resume",
-  "strengths": [
-    "List of specific strengths found in the resume"
-  ],
-  "criticalIssues": [
-    "Major problems that significantly hurt ATS compatibility"
-  ],
-  "improvements": [
-    "Specific, actionable improvement suggestions"
-  ],
-  "detailedRecommendations": [
-    "Priority 1: Most critical improvement needed",
-    "Priority 2: Important enhancement",
-    "Priority 3: Additional optimization",
-    "Priority 4: Format improvement",
-    "Priority 5: Content enhancement"
-  ],
-  "keywordAnalysis": {
-    "matchedKeywords": ["professional keywords likely present"],
-    "missingKeywords": ["important keywords that should be added"],
-    "keywordDensity": number (0-100)
-  },
-  "sectionAnalysis": {
-    "personalInfo": {
-      "score": number (0-100),
-      "feedback": "Analysis of contact information section"
-    },
-    "experience": {
-      "score": number (0-100),
-      "feedback": "Analysis of work experience section"
-    },
-    "education": {
-      "score": number (0-100),
-      "feedback": "Analysis of education section"
-    },
-    "skills": {
-      "score": number (0-100),
-      "feedback": "Analysis of skills section"
-    }
-  },
-  "formatAnalysis": {
-    "score": number (0-100),
-    "feedback": "Analysis of formatting and ATS readability"
-  }
-}
-
-Key factors to analyze:
-- ATS compatibility and parsing ability
-- Professional presentation and formatting
-- Keyword optimization for relevant roles
-- Content quality and achievement focus
-- Section organization and completeness
-- Industry best practices compliance
-
-Provide specific, actionable recommendations that will improve both ATS performance and human readability.
-`;
-
-        // Use new SDK format for generating content
-        const resp = await ai.models.generateContent({
-          model: "gemini-2.0-flash-001",
-          contents: prompt
-        });
-        const analysisText = resp.text;
-
-        // Clean up the uploaded file
-        fs.unlinkSync(filePath);
-
-        // Try to extract JSON from the response
-        let analysisResult;
-        try {
-          const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            analysisResult = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error('No JSON found in response');
-          }
-        } catch (parseError) {
-          console.error('Error parsing Gemini response:', parseError);
-          console.log('Raw Gemini response:', analysisText);
-          
-          // Create a fallback analysis if JSON parsing fails
-          const fileInfo = {
-            fileName: req.file.originalname,
-            fileSize: req.file.size,
-            mimeType: req.file.mimetype
-          };
-          analysisResult = createAdvancedFallbackAnalysis(fileInfo);
-          analysisResult.note = "AI analysis completed with formatting assistance";
-          analysisResult.extractedTextLength = extractedText.length;
-        }
-
-        return res.json({
-          success: true,
-          analysis: analysisResult,
-          source: 'gemini_ai_analysis',
-          model: 'gemini-2.0-flash-001',
-          extractedTextLength: extractedText.length
-        });
-
-      } catch (fileError) {
-        // Clean up the uploaded file on error
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-        throw fileError;
-      }
-    } else {
-      // No file provided
-      return res.status(400).json({ error: 'PDF file is required for this endpoint' });
-    }
-
-  } catch (error) {
-    console.error('Error analyzing resume:', error);
-    res.status(500).json({ 
-      error: 'Failed to analyze resume',
-      message: error.message 
-    });
-  }
-});
-
-// Helper function to format resume data for analysis
-function formatResumeForAnalysis(resumeData) {
-  let text = '';
-  
-  // Personal Information
-  text += `PERSONAL INFORMATION:\n`;
-  text += `Name: ${resumeData.personalInfo?.fullName || 'N/A'}\n`;
-  text += `Email: ${resumeData.personalInfo?.email || 'N/A'}\n`;
-  text += `Phone: ${resumeData.personalInfo?.phone || 'N/A'}\n`;
-  text += `City: ${resumeData.personalInfo?.city || 'N/A'}\n`;
-  if (resumeData.personalInfo?.linkedin) text += `LinkedIn: ${resumeData.personalInfo.linkedin}\n`;
-  if (resumeData.personalInfo?.portfolio) text += `Portfolio: ${resumeData.personalInfo.portfolio}\n`;
-  text += `\n`;
-
-  // Professional Summary
-  if (resumeData.summary) {
-    text += `PROFESSIONAL SUMMARY:\n${resumeData.summary}\n\n`;
-  }
-
-  // Education
-  if (resumeData.education?.length > 0) {
-    text += `EDUCATION:\n`;
-    resumeData.education.forEach(edu => {
-      text += `- ${edu.degree} from ${edu.institution} (${edu.startDate} - ${edu.endDate})`;
-      if (edu.cgpa) text += ` - CGPA: ${edu.cgpa}`;
-      text += `\n`;
-    });
-    text += `\n`;
-  }
-
-  // Experience
-  if (resumeData.experience?.length > 0) {
-    text += `WORK EXPERIENCE:\n`;
-    resumeData.experience.forEach(exp => {
-      text += `${exp.title} at ${exp.company} (${exp.startDate} - ${exp.endDate})\n`;
-      if (exp.bullets?.length > 0) {
-        exp.bullets.forEach(bullet => {
-          text += `• ${bullet}\n`;
-        });
-      }
-      text += `\n`;
-    });
-  }
-
-  // Projects
-  if (resumeData.projects?.length > 0) {
-    text += `PROJECTS:\n`;
-    resumeData.projects.forEach(project => {
-      text += `${project.name}\n`;
-      text += `Description: ${project.description}\n`;
-      if (project.technologies?.length > 0) {
-        text += `Technologies: ${project.technologies.join(', ')}\n`;
-      }
-      if (project.link) text += `Link: ${project.link}\n`;
-      text += `\n`;
-    });
-  }
-
-  // Skills
-  if (resumeData.skills) {
-    text += `SKILLS:\n`;
-    if (resumeData.skills.technical?.length > 0) {
-      text += `Technical Skills: ${resumeData.skills.technical.join(', ')}\n`;
-    }
-    if (resumeData.skills.soft?.length > 0) {
-      text += `Soft Skills: ${resumeData.skills.soft.join(', ')}\n`;
-    }
-    text += `\n`;
-  }
-
-  // Additional sections
-  if (resumeData.certifications?.length > 0) {
-    text += `CERTIFICATIONS:\n${resumeData.certifications.map(cert => `• ${cert}`).join('\n')}\n\n`;
-  }
-
-  if (resumeData.awards?.length > 0) {
-    text += `AWARDS:\n${resumeData.awards.map(award => `• ${award}`).join('\n')}\n\n`;
-  }
-
-  if (resumeData.languages?.length > 0) {
-    text += `LANGUAGES:\n${resumeData.languages.join(', ')}\n\n`;
-  }
-
-  return text;
-}
-
-// Fallback analysis function
-function createFallbackAnalysis(resumeData, rawText) {
-  // Basic analysis when Gemini JSON parsing fails
-  let score = 50; // Base score
-  const strengths = [];
-  const improvements = [];
-
-  // Basic checks
-  if (resumeData.personalInfo?.email?.includes('@')) {
-    score += 10;
-    strengths.push('Valid email address provided');
-  }
-
-  if (resumeData.experience?.length > 0) {
-    score += 15;
-    strengths.push('Work experience included');
-  } else {
-    improvements.push('Add work experience or internships');
-  }
-
-  if (resumeData.projects?.length > 0) {
-    score += 10;
-    strengths.push('Projects section included');
-  }
-
-  if (resumeData.skills?.technical?.length > 0) {
-    score += 10;
-    strengths.push('Technical skills listed');
-  }
-
-  return {
-    atsScore: Math.min(score, 100),
-    overallGrade: score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : 'D',
-    summary: 'Analysis completed with basic scoring due to processing limitations.',
-    strengths,
-    improvements,
-    criticalIssues: improvements.slice(0, 3),
-    rawAnalysis: rawText
-  };
-}
-
-// Advanced fallback analysis function for file uploads
-function createAdvancedFallbackAnalysis(fileInfo) {
-  const analysis = {
-    atsScore: 82,
-    overallGrade: "B+",
-    summary: `Successfully uploaded PDF resume (${fileInfo.fileName}). Analysis based on best practices for ATS optimization. Consider the recommendations below to improve your resume's performance.`,
-    strengths: [
-      "Resume uploaded in PDF format, which is ATS-compatible",
-      "Professional file format maintained",
-      "Document appears to be properly structured"
-    ],
-    criticalIssues: [
-      "Unable to perform content analysis without text extraction",
-      "Recommend using form-based analysis for detailed feedback"
-    ],
-    improvements: [
-      "Ensure all text is selectable and searchable (not embedded in images)",
-      "Use standard section headings: Summary, Experience, Education, Skills",
-      "Include relevant industry keywords throughout your resume",
-      "Quantify achievements with specific numbers and percentages",
-      "Use bullet points for easy scanning"
-    ],
-    detailedRecommendations: [
-      "Priority 1: Verify your PDF contains searchable text by trying to select and copy text from it",
-      "Priority 2: Include a professional summary at the top highlighting your key qualifications",
-      "Priority 3: Use consistent formatting with clear section breaks and standard fonts",
-      "Priority 4: Tailor keywords to match specific job descriptions you're applying for",
-      "Priority 5: Include quantifiable achievements (e.g., 'Increased sales by 25%')",
-      "Priority 6: Ensure contact information is complete and professional",
-      "Priority 7: Keep the resume to 1-2 pages for optimal ATS processing"
-    ],
-    keywordAnalysis: {
-      matchedKeywords: [
-        "PDF format",
-        "Professional presentation"
-      ],
-      missingKeywords: [
-        "Industry-specific technical skills",
-        "Relevant certifications",
-        "Action verbs (achieved, managed, developed, etc.)",
-        "Quantifiable metrics",
-        "Job-specific keywords"
-      ],
-      keywordDensity: 65
-    },
-    sectionAnalysis: {
-      personalInfo: {
-        score: 85,
-        feedback: "File format suggests professional approach. Ensure contact details are clearly visible at the top."
-      },
-      experience: {
-        score: 80,
-        feedback: "Focus on quantifiable achievements and use strong action verbs to describe your accomplishments."
-      },
-      education: {
-        score: 85,
-        feedback: "Include relevant education, certifications, and training programs."
-      },
-      skills: {
-        score: 75,
-        feedback: "List both technical and soft skills relevant to your target positions."
-      }
-    },
-    formatAnalysis: {
-      score: 90,
-      feedback: "PDF format is excellent for ATS compatibility. Ensure consistent formatting throughout."
-    }
-  };
-
-  // Adjust score based on file size (reasonable range)
-  if (fileInfo.fileSize < 50000) { // Less than 50KB might be too minimal
-    analysis.atsScore -= 5;
-    analysis.criticalIssues.push("File size appears small - ensure resume includes sufficient detail");
-  } else if (fileInfo.fileSize > 2000000) { // Greater than 2MB might be too large
-    analysis.atsScore -= 10;
-    analysis.criticalIssues.push("Large file size may cause processing issues - consider optimizing");
-  }
-
-  // Adjust based on filename
-  const fileName = fileInfo.fileName.toLowerCase();
-  if (fileName.includes('resume') || fileName.includes('cv')) {
-    analysis.strengths.push("Professional filename convention used");
-    analysis.atsScore += 3;
-  } else {
-    analysis.improvements.push("Consider using a professional filename like 'YourName_Resume.pdf'");
-    analysis.atsScore -= 2;
-  }
-
-  return analysis;
-}
-
-// Helper function to extract text from PDF using pdfreader
-function extractTextFromPDF(filePath) {
-  return new Promise((resolve, reject) => {
-    const textChunks = [];
-    let itemCount = 0;
-    let textItemCount = 0;
-    
-    console.log('Starting PDF parsing with pdfreader...');
-    
-    const pdfReader = new pdfreader.PdfReader();
-    
-    pdfReader.parseFileItems(filePath, (err, item) => {
-      if (err) {
-        console.error('PDF parsing error:', err);
-        console.error('Error details:', {
-          message: err.message,
-          code: err.code,
-          errno: err.errno
-        });
-        reject(new Error(`Failed to parse PDF: ${err.message}`));
-        return;
-      }
-      
-      itemCount++;
-      
-      if (!item) {
-        // End of file reached
-        const fullText = textChunks.join(' ').trim();
-        console.log(`PDF parsing completed:`);
-        console.log(`- Total items processed: ${itemCount}`);
-        console.log(`- Text items found: ${textItemCount}`);
-        console.log(`- Final text length: ${fullText.length}`);
-        console.log(`- Text preview: "${fullText.substring(0, 100)}..."`);
-        
-        resolve(fullText);
-        return;
-      }
-      
-      if (item.text) {
-        // Item contains text, add it to our collection
-        textItemCount++;
-        const cleanText = item.text.trim();
-        if (cleanText.length > 0) {
-          textChunks.push(cleanText);
-          console.log(`Text item ${textItemCount}: "${cleanText.substring(0, 50)}${cleanText.length > 50 ? '...' : ''}"`);
-        }
-      } else if (item.x !== undefined && item.y !== undefined) {
-        // This is a positioning item
-        console.log(`Position item: x=${item.x}, y=${item.y}`);
-      } else {
-        console.log('Other item type:', Object.keys(item));
-      }
-    });
-  });
-}
-
-/* ==================== SERVER START ==================== */
-
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, () => {
-  console.log('🚀 KIIT Saathi Backend Server Running!');
-  console.log(`📡 Server listening on port ${PORT}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🧪 Test Gemini: http://localhost:${PORT}/test-gemini`);
-  console.log(`📄 PDF Analysis endpoint: http://localhost:${PORT}/analyze-resume-ats`);
-  console.log('✅ Server initialization complete!');
-});
-
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Resume ATS Analyzer ready!`);
-  console.log(`💳 Payment system ${razorpay ? '✅ Ready' : '❌ Not available'}`);
-});
+/* ---------------------- SERVER ---------------------- */
+const PORT = 3001;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

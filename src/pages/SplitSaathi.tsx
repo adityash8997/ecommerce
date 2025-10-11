@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,17 +22,19 @@ const SplitSaathi = () => {
   const [groups, setGroups] = useState<any[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   
+  const groupFormRef = useRef<HTMLDivElement>(null);
+  
   const [groupForm, setGroupForm] = useState({
     name: "",
     description: "",
     currency: "₹",
-    members: [{ name: "", email_phone: "" }]
+    members: [{ name: "" }]
   });
 
   const addMember = () => {
     setGroupForm(prev => ({
       ...prev,
-      members: [...prev.members, { name: "", email_phone: "" }]
+      members: [...prev.members, { name: "" }]
     }));
   };
 
@@ -84,10 +86,21 @@ const SplitSaathi = () => {
       return;
     }
 
-    if (!groupForm.name.trim() || groupForm.members.filter(m => m.name.trim()).length === 0) {
+    if (!groupForm.name.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please provide group name and at least one member.",
+        description: "Please provide a group name.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate that at least one member has a name
+    const validMembers = groupForm.members.filter(m => m.name.trim());
+    if (validMembers.length === 0) {
+      toast({
+        title: "Missing Members",
+        description: "Please add at least one member with a name.",
         variant: "destructive"
       });
       return;
@@ -108,23 +121,26 @@ const SplitSaathi = () => {
 
       if (groupError) throw groupError;
 
-      // Add members
-      const validMembers = groupForm.members.filter(m => m.name.trim() && m.email_phone.trim());
+      // Add members (already validated above)
+      console.log('👥 Adding members to group:', validMembers);
       const { error: membersError } = await supabase
         .from('group_members')
         .insert(
           validMembers.map(member => ({
             group_id: group.id,
             name: member.name,
-            email_phone: member.email_phone
+            email_phone: '' // Optional field, can be empty
           }))
         );
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('❌ Error adding members:', membersError);
+        throw membersError;
+      }
 
       toast({
         title: "Group Created! 🎉",
-        description: `${groupForm.name} is ready for expense tracking.`
+        description: `${groupForm.name} is ready with ${validMembers.length} member${validMembers.length !== 1 ? 's' : ''}.`
       });
 
       // Reset form
@@ -132,7 +148,7 @@ const SplitSaathi = () => {
         name: "",
         description: "",
         currency: "₹",
-        members: [{ name: "", email_phone: "" }]
+        members: [{ name: "" }]
       });
       setIsCreatingGroup(false);
       
@@ -155,6 +171,14 @@ const SplitSaathi = () => {
       return;
     }
     setIsCreatingGroup(true);
+    
+    // Scroll to group form section after a brief delay to allow the form to render
+    setTimeout(() => {
+      groupFormRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }, 100);
   };
 
   const handleViewGroups = () => {
@@ -184,7 +208,7 @@ const SplitSaathi = () => {
           <div className="inline-flex items-center gap-2 mb-4">
             <Receipt className="w-8 h-8 text-primary" />
             <Badge variant="secondary" className="text-lg px-4 py-2">
-              SplitSaathi
+              ₹ SplitSaathi
             </Badge>
           </div>
           
@@ -280,7 +304,7 @@ const SplitSaathi = () => {
 
       {/* Create Group Form */}
       {isCreatingGroup && (
-        <section className="py-16 px-4 bg-muted/30">
+        <section ref={groupFormRef} className="py-16 px-4 bg-muted/30">
           <div className="max-w-2xl mx-auto">
             <Card className="border-2">
               <CardHeader>
@@ -326,20 +350,14 @@ const SplitSaathi = () => {
                 
                 <div className="space-y-4">
                   <Label className="text-base font-semibold">Add Members</Label>
+                  <p className="text-sm text-muted-foreground">Enter member names to track expenses</p>
                   {groupForm.members.map((member, index) => (
                     <div key={index} className="flex gap-2 items-end">
                       <div className="flex-1">
                         <Input
-                          placeholder="Member name"
+                          placeholder="Member name *"
                           value={member.name}
                           onChange={(e) => updateMember(index, 'name', e.target.value)}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Email/Phone"
-                          value={member.email_phone}
-                          onChange={(e) => updateMember(index, 'email_phone', e.target.value)}
                         />
                       </div>
                       {groupForm.members.length > 1 && (
