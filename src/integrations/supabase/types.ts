@@ -2938,6 +2938,69 @@ export type Database = {
         }
         Relationships: []
       }
+      study_material_requests: {
+        Row: {
+          admin_comment: string | null
+          admin_id: string | null
+          branch: string | null
+          created_at: string | null
+          filename: string
+          filesize: number | null
+          folder_type: string
+          id: string
+          mime_type: string | null
+          semester: string
+          status: string
+          storage_path: string
+          subject: string
+          title: string
+          updated_at: string | null
+          uploader_id: string | null
+          uploader_name: string
+          year: string | null
+        }
+        Insert: {
+          admin_comment?: string | null
+          admin_id?: string | null
+          branch?: string | null
+          created_at?: string | null
+          filename: string
+          filesize?: number | null
+          folder_type: string
+          id?: string
+          mime_type?: string | null
+          semester: string
+          status?: string
+          storage_path: string
+          subject: string
+          title: string
+          updated_at?: string | null
+          uploader_id?: string | null
+          uploader_name: string
+          year?: string | null
+        }
+        Update: {
+          admin_comment?: string | null
+          admin_id?: string | null
+          branch?: string | null
+          created_at?: string | null
+          filename?: string
+          filesize?: number | null
+          folder_type?: string
+          id?: string
+          mime_type?: string | null
+          semester?: string
+          status?: string
+          storage_path?: string
+          subject?: string
+          title?: string
+          updated_at?: string | null
+          uploader_id?: string | null
+          uploader_name?: string
+          year?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       lost_and_found_items_public: {

@@ -100,3 +100,12 @@ verify_jwt = true
 
 [functions.admin-resend-confirmation]
 verify_jwt = true
+
+[functions.submit-study-material-request]
+verify_jwt = true
+
+[functions.admin-approve-study-material]
+verify_jwt = true
+
+[functions.admin-reject-study-material]
+verify_jwt = true
