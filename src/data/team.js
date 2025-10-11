@@ -8,7 +8,6 @@ export const teamData = [
     LinkedIn:"http://www.linkedin.com/in/adityasharma3805",
     Instagram:"https://www.instagram.com/aditya_sharma3805?igsh=bmpzeGVuYXJvbDdt&utm_source=qr",
     Image:"/team/Aditya_.jpg",
-    Github:"https://github.com/aditiya-sharma",
     role:"Founder & Coordinator"
   },
   {

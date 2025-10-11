@@ -350,7 +350,7 @@ const CourseStructure = () => {
                       >
                         Semester {sem === 1 ? "I" : sem === 2 ? "II" : sem === 3 ? "III" : sem === 4 ? "IV" : sem === 5 ? "V" : sem === 6 ? "VI" : sem === 7 ? "VII" : "VIII"}
                       </h3>
-                      {(sem === 3 || sem === 5) ? (
+                      {(sem===1|| sem === 2 || sem === 3 || sem===4|| sem === 5 ||sem===6|| sem === 7 || sem === 8) ? (
                         <Button
                           onClick={() => window.open(`/academic-calendars/semester-${sem}.pdf`, '_blank')}
                           className="w-full"
