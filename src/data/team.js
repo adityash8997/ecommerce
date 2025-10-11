@@ -112,7 +112,7 @@ export const teamData = [
     name: "Kirti Kumari",
     LinkedIn: "https://www.linkedin.com/in/kirti-kumari-246582321",
     Instagram: "https://www.instagram.com/cocokirti",
-    Image: "/team/Kirti.jpg",
+    Image: "/team/Kirti .jpg",
     Github: null,
     role:"Marketing"
   },
