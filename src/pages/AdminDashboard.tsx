@@ -35,6 +35,7 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
+import { AdminStudyMaterialRequests } from '@/components/AdminStudyMaterialRequests';
 
 interface LostFoundRequest {
   id: string;
@@ -107,6 +108,7 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('pending');
   const [activeTab, setActiveTab] = useState('lost-found');
+  const [studyMaterialRequests, setStudyMaterialRequests] = useState<any[]>([]);
   const [resaleListings, setResaleListings] = useState<any[]>([]);
   const [isRealtimeActive, setIsRealtimeActive] = useState(false);
   const [stats, setStats] = useState({
@@ -625,7 +627,7 @@ export default function AdminDashboard() {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <div className="border-b border-gray-200 px-6 pt-6">
-                <TabsList className="grid w-full grid-cols-5 bg-gray-100">
+                <TabsList className="grid w-full grid-cols-6 bg-gray-100">
                   <TabsTrigger value="lost-found" className="flex items-center gap-2 text-sm font-medium">
                     🕵️ Lost & Found
                   </TabsTrigger>
@@ -634,6 +636,9 @@ export default function AdminDashboard() {
                   </TabsTrigger>
                   <TabsTrigger value="resale" className="flex items-center gap-2 text-sm font-medium">
                     🛍️ Resale
+                  </TabsTrigger>
+                  <TabsTrigger value="study-materials" className="flex items-center gap-2 text-sm font-medium">
+                    📚 Study Materials
                   </TabsTrigger>
                   <TabsTrigger value="contacts" className="flex items-center gap-2 text-sm font-medium">
                     💬 Contacts
@@ -1049,6 +1054,11 @@ export default function AdminDashboard() {
                     <p className="text-gray-500 text-lg">No contact submissions match your filters.</p>
                   </div>
                 )}
+              </TabsContent>
+
+              {/* Study Material Requests */}
+              <TabsContent value="study-materials" className="p-6">
+                <AdminStudyMaterialRequests adminUserId={user?.id || ''} />
               </TabsContent>
 
               {/* Audit Log */}

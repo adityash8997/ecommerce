@@ -1265,6 +1265,48 @@ export type Database = {
           },
         ]
       }
+      faculty_members: {
+        Row: {
+          category: string
+          created_at: string | null
+          department: string | null
+          designation: string
+          email: string
+          id: string
+          linkedin: string | null
+          name: string
+          phone: string | null
+          photo_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          department?: string | null
+          designation: string
+          email: string
+          id?: string
+          linkedin?: string | null
+          name: string
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          department?: string | null
+          designation?: string
+          email?: string
+          id?: string
+          linkedin?: string | null
+          name?: string
+          phone?: string | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       food_orders: {
         Row: {
           created_at: string
@@ -2893,6 +2935,69 @@ export type Database = {
           location?: string | null
           name?: string
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      study_material_requests: {
+        Row: {
+          admin_comment: string | null
+          admin_id: string | null
+          branch: string | null
+          created_at: string | null
+          filename: string
+          filesize: number | null
+          folder_type: string
+          id: string
+          mime_type: string | null
+          semester: string
+          status: string
+          storage_path: string
+          subject: string
+          title: string
+          updated_at: string | null
+          uploader_id: string | null
+          uploader_name: string
+          year: string | null
+        }
+        Insert: {
+          admin_comment?: string | null
+          admin_id?: string | null
+          branch?: string | null
+          created_at?: string | null
+          filename: string
+          filesize?: number | null
+          folder_type: string
+          id?: string
+          mime_type?: string | null
+          semester: string
+          status?: string
+          storage_path: string
+          subject: string
+          title: string
+          updated_at?: string | null
+          uploader_id?: string | null
+          uploader_name: string
+          year?: string | null
+        }
+        Update: {
+          admin_comment?: string | null
+          admin_id?: string | null
+          branch?: string | null
+          created_at?: string | null
+          filename?: string
+          filesize?: number | null
+          folder_type?: string
+          id?: string
+          mime_type?: string | null
+          semester?: string
+          status?: string
+          storage_path?: string
+          subject?: string
+          title?: string
+          updated_at?: string | null
+          uploader_id?: string | null
+          uploader_name?: string
+          year?: string | null
         }
         Relationships: []
       }

@@ -21,9 +21,11 @@ import { Navbar } from "../components/Navbar";
 import { FilterBar } from "@/components/study-materials/FilterBar";
 import { DataTable } from "@/components/study-materials/DataTable";
 import { TabNavigation } from "@/components/study-materials/TabNavigation";
+import { StudyMaterialUploadDialog } from "@/components/StudyMaterialUploadDialog";
 import { toast } from "sonner";
 import { semesters, years, semesterSubjects } from "@/data/studyMaterials";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 
 // Types
@@ -50,18 +52,10 @@ export default function StudyMaterial() {
   const [materials, setMaterials] = useState<StudyMaterialItem[]>([]);
 
   const [addResourceDialogOpen, setAddResourceDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadForm, setUploadForm] = useState({
-    title: "",
-    subject: "",
-    semester: "",
-    branch: "",
-    year: "",
-    file: null as File | null
-  });
 
   //playlist from youtube 
   const playlistYoutube = [
@@ -373,6 +367,16 @@ export default function StudyMaterial() {
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                {user && (
+                  <Button
+                    onClick={() => setUploadDialogOpen(true)}
+                    className="group bg-gradient-to-r from-kiit-primary to-kiit-accent hover:opacity-90 transition-opacity px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                  >
+                    <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    Contribute Material
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                )}
                 <button
                   onClick={() => window.open('https://forms.gle/5d89iETDeefruKSX9', '_blank')}
                   className="group bg-gradient-to-r from-kiit-secondary to-kiit-secondary/90 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:from-kiit-secondary/90 hover:to-kiit-secondary transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -697,6 +701,12 @@ export default function StudyMaterial() {
       </div>
 
       <Footer />
+      
+      {/* Upload Dialog */}
+      <StudyMaterialUploadDialog 
+        open={uploadDialogOpen} 
+        onOpenChange={setUploadDialogOpen} 
+      />
     </div>
   );
 }
