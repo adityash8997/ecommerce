@@ -107,9 +107,18 @@ export function AdminStudyMaterialRequests({ adminUserId }: AdminStudyMaterialRe
         body: { request_id: requestId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to approve material');
+      }
 
-      toast.success('Material approved and published! ✅');
+      if (data && !data.success) {
+        console.error('Operation failed:', data.error);
+        throw new Error(data.error || 'Failed to approve material');
+      }
+
+      console.log('Approval successful:', data);
+      toast.success('✅ Material approved and added to public site!');
       setSelectedRequest(null);
       setPreviewUrl(null);
       fetchRequests();
