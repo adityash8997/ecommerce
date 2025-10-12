@@ -14,19 +14,33 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false }
+    });
+
+    console.log('Starting approval process...');
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ success: false, error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      throw new Error('Unauthorized');
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('User authenticated:', user.email);
 
     // Check if user is admin
     const { data: profile } = await supabase
@@ -36,14 +50,24 @@ serve(async (req) => {
       .single();
 
     if (!profile?.is_admin) {
-      throw new Error('Admin access required');
+      console.error('User is not admin:', user.email);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { request_id } = await req.json();
 
     if (!request_id) {
-      throw new Error('Request ID is required');
+      console.error('Missing request_id');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Request ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('Processing request:', request_id);
 
     // Get the request details
     const { data: request, error: fetchError } = await supabase
@@ -53,11 +77,20 @@ serve(async (req) => {
       .single();
 
     if (fetchError || !request) {
-      throw new Error('Request not found');
+      console.error('Request fetch error:', fetchError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Request not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    console.log('Request found:', request.title, 'Status:', request.status);
+
     if (request.status !== 'pending') {
-      throw new Error('Request has already been processed');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Request has already been processed' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Copy file from pending to production bucket
@@ -69,6 +102,8 @@ serve(async (req) => {
     const productionFilename = `${timestamp}_${request.filename}`;
     const productionPath = `${folder}/${productionFilename}`;
 
+    console.log('Downloading from pending:', pendingPath);
+    
     // Get the file from pending bucket
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('study-material-pending')
@@ -76,8 +111,13 @@ serve(async (req) => {
 
     if (downloadError) {
       console.error('Download error:', downloadError);
-      throw new Error('Failed to download pending file');
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to download pending file: ${downloadError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('Uploading to production:', productionPath);
 
     // Upload to production study_materials bucket with folder prefix
     const { error: uploadError } = await supabase.storage
@@ -89,8 +129,13 @@ serve(async (req) => {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      throw new Error('Failed to upload to production bucket');
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to upload to production: ${uploadError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('File uploaded successfully to:', productionPath);
 
     // Get public URL from study_materials bucket
     const { data: { publicUrl } } = supabase.storage
@@ -144,8 +189,13 @@ serve(async (req) => {
       // Rollback: delete the uploaded file from study_materials bucket
       await supabase.storage.from('study_materials').remove([productionPath]);
       console.error('Insert error:', insertError);
-      throw new Error('Failed to create published material record');
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to create published material record: ${insertError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    console.log('Material record created successfully');
 
     // Update request status
     const { error: updateError } = await supabase
@@ -159,10 +209,13 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Update error:', updateError);
-      throw updateError;
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to update request status: ${updateError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Study material approved:', request_id);
+    console.log('Study material approved successfully:', request_id);
 
     return new Response(
       JSON.stringify({ 
@@ -170,15 +223,18 @@ serve(async (req) => {
         message: 'Material approved and published successfully',
         public_url: publicUrl
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error: any) {
-    console.error('Error in admin-approve-study-material:', error);
+    console.error('Unexpected error in admin-approve-study-material:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
       { 
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
