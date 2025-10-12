@@ -64,10 +64,10 @@ serve(async (req) => {
     const pendingPath = request.storage_path;
     const folder = request.folder_type;
     
-    // Generate unique filename if needed
+    // Generate unique filename with folder prefix for study_materials bucket
     const timestamp = Date.now();
     const productionFilename = `${timestamp}_${request.filename}`;
-    const productionPath = `${productionFilename}`;
+    const productionPath = `${folder}/${productionFilename}`;
 
     // Get the file from pending bucket
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -79,9 +79,9 @@ serve(async (req) => {
       throw new Error('Failed to download pending file');
     }
 
-    // Upload to production bucket based on folder type
+    // Upload to production study_materials bucket with folder prefix
     const { error: uploadError } = await supabase.storage
-      .from(folder) // notes, pyqs, ppts, or ebooks
+      .from('study_materials')
       .upload(productionPath, fileData, {
         contentType: request.mime_type || 'application/octet-stream',
         upsert: false
@@ -92,9 +92,9 @@ serve(async (req) => {
       throw new Error('Failed to upload to production bucket');
     }
 
-    // Get public URL
+    // Get public URL from study_materials bucket
     const { data: { publicUrl } } = supabase.storage
-      .from(folder)
+      .from('study_materials')
       .getPublicUrl(productionPath);
 
     // Insert into appropriate table
@@ -141,8 +141,8 @@ serve(async (req) => {
     }
 
     if (insertError) {
-      // Rollback: delete the uploaded file
-      await supabase.storage.from(folder).remove([productionPath]);
+      // Rollback: delete the uploaded file from study_materials bucket
+      await supabase.storage.from('study_materials').remove([productionPath]);
       console.error('Insert error:', insertError);
       throw new Error('Failed to create published material record');
     }
