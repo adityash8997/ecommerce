@@ -187,8 +187,6 @@ export default function StudyMaterial() {
     }
   ]
 
-
-
   // Get current user session
   useEffect(() => {
     const getUser = async () => {
@@ -461,15 +459,7 @@ export default function StudyMaterial() {
         {/* Enhanced Playlists Section */}
         {activeSection === "playlists" && (
           <div className="glass-card p-12 rounded-2xl text-center border border-border/50 bg-gradient-to-br from-card/50 to-muted/20">
-            {/* <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl mb-6 shadow-lg">
-              <Youtube className="w-10 h-10 text-white" />
-            </div>
-             <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent"> 
-              YouTube Playlists
-            </h3>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed">
-              Curated educational playlists and video lectures are coming soon to enhance your learning experience
-            </p> */}
+
             <div className="relative group">
               <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-kiit-primary transition-colors">
                 <Search className="w-5 h-5" />

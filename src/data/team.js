@@ -1,3 +1,5 @@
+import { Instagram } from "lucide-react";
+
 export const Default = "https://drive.google.com/uc?export=view&id=";
 export const Placeholder = null;
 
@@ -19,19 +21,19 @@ export const teamData = [
     role:"Marketing Lead"
   },
   {
-    name: "Piyush Swain",
-    LinkedIn: null,
-    Instagram: "https://www.instagram.com/mr_piyush2106",
-    Image: "/team/piyush.jpg",
-    Github: null,
-    role:"Operations"
-  },
-  {
     name: "Prajjwal Patel",
     LinkedIn: "https://www.linkedin.com/in/prajjwal-patel-5642b7318",
     Instagram: null,
     Image: "/team/Prajjwal.jpg",
     Github: "https://github.com/prajj267",
+    role:"Operations"
+  },
+  {
+    name: "Piyush Swain",
+    LinkedIn: null,
+    Instagram: "https://www.instagram.com/mr_piyush2106",
+    Image: "/team/piyush.jpg",
+    Github: null,
     role:"Operations"
   },
   {
@@ -114,6 +116,14 @@ export const teamData = [
     Instagram: "https://www.instagram.com/cocokirti",
     Image: "/team/Kirti .jpg",
     Github: null,
+    role:"Marketing"
+  },
+  {
+    name: "Shree",
+    LinkedIn:"https://www.linkedin.com/in/anushka-gupta-4a366b2b6?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+    Instagram:"https://www.instagram.com/parijashri?igsh=MTBjbDR4ancyYnlucA==",
+    Image:"/team/Shree.jpg",
+    Github:"https://github.com/Parijashri",
     role:"Marketing"
   },
   {

@@ -98,7 +98,6 @@ export const DataTable: React.FC<DataTableProps> = ({
               <TableHead className="font-semibold">Subject</TableHead>
               <TableHead className="font-semibold">Semester</TableHead>
               {materialType === "ppts" && <TableHead className="font-semibold">Branch</TableHead>}
-              {/* <TableHead className="font-semibold">Views</TableHead> */}
               <TableHead className="font-semibold">Uploaded By</TableHead>
               <TableHead className="font-semibold">Upload Date</TableHead>
               <TableHead className="font-semibold text-center">Actions</TableHead>
@@ -130,12 +129,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     </span>
                   </TableCell>
                 )}
-                {/* <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm">{material.views}</span>
-                  </div>
-                </TableCell> */}
+                
                 <TableCell className="text-sm text-muted-foreground">
                   {material.uploadedBy}
                 </TableCell>
