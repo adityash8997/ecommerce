@@ -186,7 +186,7 @@ serve(async (req) => {
 
     // STEP 7: Copy to production bucket
     console.log('[STEP 7] Copying to production bucket...');
-    const productionBucket = 'study_materials';
+    const productionBucket = 'study-materials';
     const folder = request.folder_type.toLowerCase(); // notes, pyqs, ppts, ebooks
     const timestamp = Date.now();
     const productionFilename = `${timestamp}_${request.filename}`;
