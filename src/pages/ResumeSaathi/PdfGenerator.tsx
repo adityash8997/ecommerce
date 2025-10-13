@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import html2pdf from "html2pdf.js";
 import { ResumeData } from "./ResumeSaathi";
 import { toast } from "sonner";
 
@@ -48,80 +47,67 @@ export const PdfGenerator = ({ data, template, onDownload, disabled }: PdfGenera
       );
 
       // Small delay to ensure all CSS is applied
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      console.log("Capturing resume with html2canvas...");
-
-      // Configure html2canvas for better quality and style preservation
-      const canvas = await html2canvas(resumeElement, {
-        scale: 3, // Higher resolution for better quality
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-        removeContainer: false,
-        imageTimeout: 0,
-        // Ensure proper rendering of all elements
-        onclone: (clonedDoc) => {
-          const clonedElement = clonedDoc.getElementById('resume-content');
-          if (clonedElement) {
-            // Ensure all styles are inline and visible
-            clonedElement.style.display = 'block';
-            clonedElement.style.position = 'relative';
-            clonedElement.style.left = '0';
-            clonedElement.style.top = '0';
-          }
-        }
-      });
-
-      console.log("Canvas generated, creating PDF...");
-
-      // Create PDF with A4 dimensions
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true
-      });
-
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calculate dimensions to fit A4 page
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      // Convert pixels to mm (assuming 96 DPI)
-      const imgWidthMm = (imgWidth * 25.4) / (96 * 3); // Divide by scale factor
-      const imgHeightMm = (imgHeight * 25.4) / (96 * 3);
-      
-      // Scale to fit page width while maintaining aspect ratio
-      const scale = Math.min(pdfWidth / imgWidthMm, pdfHeight / imgHeightMm);
-      const finalWidth = imgWidthMm * scale;
-      const finalHeight = imgHeightMm * scale;
-      
-      // Center on page
-      const xOffset = (pdfWidth - finalWidth) / 2;
-      const yOffset = 0;
-      
-      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST');
-
-      // Add metadata
-      pdf.setProperties({
-        title: `${data.personalInfo.fullName} Resume`,
-        subject: 'Professional Resume',
-        author: data.personalInfo.fullName,
-        creator: 'KIIT Saathi Resume Builder',
-      });
+      console.log("Generating PDF with html2pdf.js...");
 
       // Generate filename
       const fileName = `${data.personalInfo.fullName.replace(/\s+/g, '_')}_Resume.pdf`;
+
+      // Configure html2pdf options for perfect style preservation
+      const options = {
+        margin: [10, 10, 10, 10] as [number, number, number, number], // [top, left, bottom, right] in mm
+        filename: fileName,
+        image: { 
+          type: 'jpeg' as const, 
+          quality: 0.98 
+        },
+        html2canvas: { 
+          scale: 3, // High resolution
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          letterRendering: true,
+          onclone: (clonedDoc: Document) => {
+            const clonedElement = clonedDoc.getElementById('resume-content');
+            if (clonedElement) {
+              // Ensure all styles are applied and visible
+              clonedElement.style.display = 'block';
+              clonedElement.style.position = 'relative';
+              clonedElement.style.left = '0';
+              clonedElement.style.top = '0';
+              clonedElement.style.transform = 'none';
+              
+              // Force font rendering
+              const allElements = clonedElement.getElementsByTagName('*');
+              for (let i = 0; i < allElements.length; i++) {
+                const el = allElements[i] as HTMLElement;
+                const computedStyle = window.getComputedStyle(el);
+                el.style.fontFamily = computedStyle.fontFamily;
+                el.style.fontSize = computedStyle.fontSize;
+                el.style.fontWeight = computedStyle.fontWeight;
+                el.style.color = computedStyle.color;
+                el.style.lineHeight = computedStyle.lineHeight;
+              }
+            }
+          }
+        },
+        jsPDF: { 
+          unit: 'mm' as const, 
+          format: 'a4' as const, 
+          orientation: 'portrait' as const,
+          compress: true
+        },
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy'] 
+        }
+      };
+
+      // Generate and download PDF
+      await html2pdf().set(options).from(resumeElement).save();
       
-      console.log("Downloading PDF:", fileName);
-      
-      // Download the PDF
-      pdf.save(fileName);
+      console.log("PDF downloaded:", fileName);
       
       // Call the onDownload callback to update counters
       await onDownload();
@@ -131,7 +117,7 @@ export const PdfGenerator = ({ data, template, onDownload, disabled }: PdfGenera
       
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error(`Failed to generate PDF: ${error.message || 'Unknown error'}. Please try again.`);
+      toast.error(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setIsGenerating(false);
     }
