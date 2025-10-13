@@ -32,14 +32,46 @@ export const PdfGenerator = ({ data, template, onDownload, disabled }: PdfGenera
 
       console.log("Starting PDF generation for:", data.personalInfo.fullName);
 
-      // Configure html2canvas for better quality
+      // Wait for all fonts to load
+      await document.fonts.ready;
+      
+      // Wait for all images to load
+      const images = resumeElement.querySelectorAll('img');
+      await Promise.all(
+        Array.from(images).map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+          });
+        })
+      );
+
+      // Small delay to ensure all CSS is applied
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log("Capturing resume with html2canvas...");
+
+      // Configure html2canvas for better quality and style preservation
       const canvas = await html2canvas(resumeElement, {
-        scale: 2, // Higher resolution
+        scale: 3, // Higher resolution for better quality
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
-        width: 794, // A4 width in pixels at 96 DPI
-        height: 1123, // A4 height in pixels at 96 DPI
+        logging: false,
+        removeContainer: false,
+        imageTimeout: 0,
+        // Ensure proper rendering of all elements
+        onclone: (clonedDoc) => {
+          const clonedElement = clonedDoc.getElementById('resume-content');
+          if (clonedElement) {
+            // Ensure all styles are inline and visible
+            clonedElement.style.display = 'block';
+            clonedElement.style.position = 'relative';
+            clonedElement.style.left = '0';
+            clonedElement.style.top = '0';
+          }
+        }
       });
 
       console.log("Canvas generated, creating PDF...");
@@ -49,23 +81,33 @@ export const PdfGenerator = ({ data, template, onDownload, disabled }: PdfGenera
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
+        compress: true
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      // Calculate aspect ratio to fit content properly
+      // Calculate dimensions to fit A4 page
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / (imgWidth * 0.264583), pdfHeight / (imgHeight * 0.264583));
       
-      const finalWidth = imgWidth * 0.264583 * ratio;
-      const finalHeight = imgHeight * 0.264583 * ratio;
+      // Convert pixels to mm (assuming 96 DPI)
+      const imgWidthMm = (imgWidth * 25.4) / (96 * 3); // Divide by scale factor
+      const imgHeightMm = (imgHeight * 25.4) / (96 * 3);
       
-      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+      // Scale to fit page width while maintaining aspect ratio
+      const scale = Math.min(pdfWidth / imgWidthMm, pdfHeight / imgHeightMm);
+      const finalWidth = imgWidthMm * scale;
+      const finalHeight = imgHeightMm * scale;
+      
+      // Center on page
+      const xOffset = (pdfWidth - finalWidth) / 2;
+      const yOffset = 0;
+      
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST');
 
-      // Add watermark and metadata
+      // Add metadata
       pdf.setProperties({
         title: `${data.personalInfo.fullName} Resume`,
         subject: 'Professional Resume',
@@ -84,6 +126,7 @@ export const PdfGenerator = ({ data, template, onDownload, disabled }: PdfGenera
       // Call the onDownload callback to update counters
       await onDownload();
       
+      toast.success("Resume downloaded successfully!");
       console.log("PDF generation completed successfully");
       
     } catch (error) {
