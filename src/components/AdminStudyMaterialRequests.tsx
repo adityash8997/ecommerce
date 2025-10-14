@@ -99,12 +99,14 @@ export function AdminStudyMaterialRequests({ adminUserId }: AdminStudyMaterialRe
       toast.error('Failed to load preview');
     }
   };
-
   const handleApprove = async (requestId: string) => {
     setProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke('admin-approve-study-material', {
-        body: { request_id: requestId }
+        body: {
+          request_id: requestId,
+          adminUserId // <-- add this line
+        }
       });
 
       if (error) {
@@ -130,9 +132,39 @@ export function AdminStudyMaterialRequests({ adminUserId }: AdminStudyMaterialRe
     }
   };
 
+  // const handleApprove = async (requestId: string) => {
+  //   setProcessing(true);
+  //   try {
+  //     const { data, error } = await supabase.functions.invoke('admin-approve-study-material', {
+  //       body: { request_id: requestId }
+  //     });
+
+  //     if (error) {
+  //       console.error('Edge function error:', error);
+  //       throw new Error(error.message || 'Failed to approve material');
+  //     }
+
+  //     if (data && !data.success) {
+  //       console.error('Operation failed:', data.error);
+  //       throw new Error(data.error || 'Failed to approve material');
+  //     }
+
+  //     console.log('Approval successful:', data);
+  //     toast.success('✅ Material approved and added to public site!');
+  //     setSelectedRequest(null);
+  //     setPreviewUrl(null);
+  //     fetchRequests();
+  //   } catch (error: any) {
+  //     console.error('Approve error:', error);
+  //     toast.error(error.message || 'Failed to approve material');
+  //   } finally {
+  //     setProcessing(false);
+  //   }
+  // };
+
   const handleReject = async () => {
     if (!selectedRequest) return;
-    
+
     setProcessing(true);
     try {
       const { error } = await supabase.functions.invoke('admin-reject-study-material', {
@@ -185,7 +217,7 @@ export function AdminStudyMaterialRequests({ adminUserId }: AdminStudyMaterialRe
           <h2 className="text-2xl font-bold">Study Material Requests</h2>
           <p className="text-muted-foreground">Review and approve submitted materials</p>
         </div>
-        
+
         <div className="flex gap-2">
           {["all", "pending", "approved", "rejected"].map((status) => (
             <Button
