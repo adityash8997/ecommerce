@@ -65,7 +65,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Associate Dean",
     email: "ajay.jenafcs@kiit.ac.in",
     phone: "9437232068",
-    linkedin: "https://in.linkedin.com/in/ajay-kumar-jena-5b660b2a0",
+    linkedin: "https://www.linkedin.com/in/ajay-kumar-jena-664591162/",
     category: "contact",
   },
   {
