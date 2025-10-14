@@ -12,6 +12,11 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
+const adminEmails = [
+  'adityash8997@gmail.com',
+  '24155598@kiit.ac.in'
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -36,7 +41,22 @@ serve(async (req) => {
       );
     }
 
-    // Check if user is admin
+    // Check if user email is in hardcoded admin list (bypass email verification requirement)
+    if (adminEmails.includes(user.email || '')) {
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            isAdmin: true
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Otherwise check if user is admin via profiles table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('is_admin, email')
