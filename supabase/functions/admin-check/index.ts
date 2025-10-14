@@ -46,6 +46,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true,
+          isAdmin: true,
           user: {
             id: user.id,
             email: user.email,
@@ -76,6 +77,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
+        isAdmin: true,
         user: {
           id: user.id,
           email: user.email,

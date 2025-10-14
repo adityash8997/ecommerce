@@ -150,6 +150,32 @@ serve(async (req) => {
       storage_path: request.storage_path
     });
 
+    // Input validation for required fields from the request row
+    const missingFields: string[] = [];
+    if (!request.title) missingFields.push('title');
+    if (!request.subject) missingFields.push('subject');
+    if (!request.semester) missingFields.push('semester');
+    if (!request.folder_type) missingFields.push('folder_name');
+    if (!request.filename) missingFields.push('filename');
+    if (!request.storage_path) missingFields.push('storage_path');
+
+    if (missingFields.length > 0) {
+      console.error('[STEP 5] Missing required fields:', missingFields.join(', '));
+      return new Response(
+        JSON.stringify({ success: false, code: 'MISSING_FIELDS', error: `Missing: ${missingFields.join(', ')}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const allowedFolders = ['notes','pyqs','ppts','ebooks','Notes','PYQs','PPTs','E-Books'];
+    if (!allowedFolders.includes(request.folder_type)) {
+      console.error('[STEP 5] Invalid folder_name:', request.folder_type);
+      return new Response(
+        JSON.stringify({ success: false, code: 'INVALID_FOLDER', error: `Invalid folder_name: ${request.folder_type}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (request.status !== 'pending') {
       console.error('[STEP 5] Request already processed, status:', request.status);
       return new Response(
@@ -292,10 +318,11 @@ serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           code: 'DB_INSERT_FAILED', 
+          error: insertError.message,
           message: `Failed to create material record: ${insertError.message}`,
           hint: insertError.hint || 'Check table schema and required fields'
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -314,8 +341,10 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('[STEP 10] Update error:', updateError.message);
-      // Don't rollback here - material is published, just log the error
-      console.warn('[STEP 10] Material published but request status not updated');
+      return new Response(
+        JSON.stringify({ success: false, code: 'REQUEST_UPDATE_FAILED', error: updateError.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else {
       console.log('[STEP 10] ✓ Request status updated');
     }
