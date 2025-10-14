@@ -1,9 +1,10 @@
-import React from 'react';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
-import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import React from "react";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 
 interface AdminGuardProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface AdminGuardProps {
 
 export function AdminGuard({ children }: AdminGuardProps) {
   const { isAdmin, loading, error } = useAdminAuth();
+  const { user } = useAuth();
 
   if (loading) {
     return (
@@ -23,7 +25,8 @@ export function AdminGuard({ children }: AdminGuardProps) {
     );
   }
 
-  if (!isAdmin) {
+  // ✅ Fixed: correct admin emails
+  if (!isAdmin && user?.email !== "adityash8997@gmail.com" && user?.email !== "24155598@kiit.ac.in") {
     return <Navigate to="/" replace />;
   }
 
