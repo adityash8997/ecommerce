@@ -14,7 +14,7 @@ export const Navbar = () => {
   const [activeSection, setActiveSection] = useState("");
 
   // Check if current user is admin
-  const isAdmin = user?.email === 'adityash8997@gmail.com';
+  const isAdmin = user?.email === 'adityash8997@gmail.com' || user?.email === '24155598@kiit.ac.in';
 
   const handleSignOut = async () => {
     try {
