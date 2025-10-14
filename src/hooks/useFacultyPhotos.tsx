@@ -7,7 +7,7 @@ export function useFacultyPhotos() {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
 
-  const isAdmin = user?.email === 'adityash8997@gmail.com';
+  const isAdmin = user?.email === 'adityash8997@gmail.com' || user?.email === '24155598@kiit.ac.in';
 
   const getPhotoUrl = (facultyId: string) => {
     const fileName = `${facultyId}.jpg`;

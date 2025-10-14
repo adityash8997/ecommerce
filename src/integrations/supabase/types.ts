@@ -1106,27 +1106,6 @@ export type Database = {
         }
         Relationships: []
       }
-      demo_names: {
-        Row: {
-          category: string
-          id: string
-          is_used: boolean | null
-          name: string
-        }
-        Insert: {
-          category: string
-          id?: string
-          is_used?: boolean | null
-          name: string
-        }
-        Update: {
-          category?: string
-          id?: string
-          is_used?: boolean | null
-          name?: string
-        }
-        Relationships: []
-      }
       ebooks: {
         Row: {
           branch: string | null
@@ -1137,8 +1116,9 @@ export type Database = {
           subject: string
           title: string
           updated_at: string | null
-          upload_date: string | null
+          upload_date: string
           uploaded_by: string
+          user_id: string | null
           views: number | null
           year: string | null
         }
@@ -1151,8 +1131,9 @@ export type Database = {
           subject: string
           title: string
           updated_at?: string | null
-          upload_date?: string | null
+          upload_date?: string
           uploaded_by: string
+          user_id?: string | null
           views?: number | null
           year?: string | null
         }
@@ -1165,8 +1146,9 @@ export type Database = {
           subject?: string
           title?: string
           updated_at?: string | null
-          upload_date?: string | null
+          upload_date?: string
           uploaded_by?: string
+          user_id?: string | null
           views?: number | null
           year?: string | null
         }
@@ -1656,7 +1638,7 @@ export type Database = {
       }
       notes: {
         Row: {
-          branch: string
+          branch: string | null
           created_at: string
           id: number
           pdf_url: string
@@ -1671,7 +1653,7 @@ export type Database = {
           views: number
         }
         Insert: {
-          branch: string
+          branch?: string | null
           created_at?: string
           id?: number
           pdf_url: string
@@ -1686,7 +1668,7 @@ export type Database = {
           views?: number
         }
         Update: {
-          branch?: string
+          branch?: string | null
           created_at?: string
           id?: number
           pdf_url?: string
@@ -1779,7 +1761,7 @@ export type Database = {
       }
       ppts: {
         Row: {
-          branch: string
+          branch: string | null
           created_at: string | null
           id: number
           ppt_url: string
@@ -1794,7 +1776,7 @@ export type Database = {
           views: number | null
         }
         Insert: {
-          branch: string
+          branch?: string | null
           created_at?: string | null
           id?: number
           ppt_url: string
@@ -1809,7 +1791,7 @@ export type Database = {
           views?: number | null
         }
         Update: {
-          branch?: string
+          branch?: string | null
           created_at?: string | null
           id?: number
           ppt_url?: string
@@ -2096,7 +2078,7 @@ export type Database = {
       }
       pyqs: {
         Row: {
-          branch: string
+          branch: string | null
           created_at: string
           id: number
           pdf_url: string
@@ -2110,7 +2092,7 @@ export type Database = {
           year: string
         }
         Insert: {
-          branch: string
+          branch?: string | null
           created_at?: string
           id?: number
           pdf_url: string
@@ -2124,7 +2106,7 @@ export type Database = {
           year: string
         }
         Update: {
-          branch?: string
+          branch?: string | null
           created_at?: string
           id?: number
           pdf_url?: string
