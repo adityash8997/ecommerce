@@ -17,7 +17,7 @@ export interface FacultyMember {
 const contactPersonsData: FacultyMember[] = [
   {
     id: "cp-1",
-    name: "Dr. Biswajit Sahoo",
+    name: "Dr. Biswajit Sahoo(Director General)",
     designation: "Director General",
     email: "director.csit@kiit.ac.in",
     phone: "9437229507",
@@ -26,7 +26,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-2",
-    name: "Dr. Hrudaya Kumar Tripathy",
+    name: "Dr. Hrudaya Kumar Tripathy(Dean, Research)",
     designation: "Dean, Research",
     email: "dean_research.cse@kiit.ac.in",
     phone: "9437432185",
@@ -35,7 +35,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-3",
-    name: "Dr. Bhabani Sankar Prasad Mishra",
+    name: "Dr. Bhabani Sankar Prasad Mishra(Dean, Academics (CS))",
     designation: "Dean, Academics (CS)",
     email: "dean.cs@kiit.ac.in",
     phone: "9438037401",
@@ -44,7 +44,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-4",
-    name: "Dr. Arup Abhinna Acharya",
+    name: "Dr. Arup Abhinna Acharya(Dean, Academics (IT))",
     designation: "Dean, Academics (IT)",
     email: "dean.it@kiit.ac.in",
     phone: "9861058079",
@@ -53,7 +53,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-5",
-    name: "Dr. Amulya Ratna Swain",
+    name: "Dr. Amulya Ratna Swain(Dean, Academics (CC & CSM))",
     designation: "Dean, Academics (CC & CSM)",
     email: "dean.ccm@kiit.ac.in",
     phone: "9439627127",
@@ -62,7 +62,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-6",
-    name: "Dr. Ajay Kumar Jena",
+    name: "Dr. Ajay Kumar Jena(Associate Dean)",
     designation: "Associate Dean",
     email: "ajay.jenafcs@kiit.ac.in",
     phone: "9437232068",
@@ -71,7 +71,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-7",
-    name: "Dr. Anuja Kumar Acharya",
+    name: "Dr. Anuja Kumar Acharya(Dy. Controller of Examination)",
     designation: "Dy. Controller of Examination",
     email: "dycoe.csit@kiit.ac.in",
     phone: "9438520431",
@@ -80,7 +80,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-8",
-    name: "Dr. Manas Ranjan Lenka",
+    name: "Dr. Manas Ranjan Lenka(Asst. CoE-I)",
     designation: "Asst. CoE-I",
     email: "acoe.cese@kiit.ac.in",
     phone: "9861077824",
@@ -89,7 +89,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-9",
-    name: "Mr. Sujoy Datta",
+    name: "Mr. Sujoy Datta(Asst. CoE-2)",
     designation: "Asst. CoE-2",
     email: "acoe.csit@kiit.ac.in",
     phone: "8093713885",
@@ -98,7 +98,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-10",
-    name: "Dr. Subhasis Dash",
+    name: "Dr. Subhasis Dash(Asst. CoE-3)",
     designation: "Asst. CoE-3",
     email: "fic.examcell.cse@kiit.ac.in",
     phone: "9437800206",
@@ -107,7 +107,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-11",
-    name: "Mr. Lalit Kumar Vashishtha",
+    name: "Mr. Lalit Kumar Vashishtha(Asst. CoE-4)",
     designation: "Asst. CoE-4",
     email: "fic.examcell.cse@kiit.ac.in",
     phone: "9668224395",
@@ -116,7 +116,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-12",
-    name: "Dr. Kumar Devadutta",
+    name: "Dr. Kumar Devadutta(Associate Dean (T&P))",
     designation: "Associate Dean (T&P)",
     email: "tnp.scs@kiit.ac.in",
     phone: "9437072128",
@@ -125,7 +125,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-13",
-    name: "Mr. Kshirod Kumar Nayak",
+    name: "Mr. Kshirod Kumar Nayak(Sr. Administrative Officer)",
     designation: "Sr. Administrative Officer",
     email: "kshirod.nayak@kiit.ac.in",
     phone: "8223004014",
@@ -134,7 +134,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-14",
-    name: "Dr. Satarupa Mohanty",
+    name: "Dr. Satarupa Mohanty(Faculty-In-Charges (Alumni Relation))",
     designation: "Faculty-In-Charges (Alumni Relation)",
     email: "satarupafcs@kiit.ac.in",
     phone: "9124941515",
@@ -143,7 +143,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-15",
-    name: "Dr. Namita Panda",
+    name: "Dr. Namita Panda(Faculty-In-Charges (Alumni Relation))",
     designation: "Faculty-In-Charges (Alumni Relation)",
     email: "npandafcs@kiit.ac.in",
     phone: "9437444205",
@@ -152,7 +152,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-16",
-    name: "Ms. Shilpa Das",
+    name: "Ms. Shilpa Das(Faculty-In-Charges (Alumni Relation))",
     designation: "Faculty-In-Charges (Alumni Relation)",
     email: "shilpa.dasfcs@kiit.ac.in",
     phone: "7008810670",
@@ -161,7 +161,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-17",
-    name: "Dr. Himansu Das",
+    name: "Dr. Himansu Das(Laboratory Governance)",
     designation: "Laboratory Governance",
     email: "himanshufcs@kiit.ac.in",
     phone: "9861335143",
@@ -170,7 +170,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-18",
-    name: "Mrs. Suchismita Das",
+    name: "Mrs. Suchismita Das(Laboratory Governance)",
     designation: "Laboratory Governance",
     email: "suchismita.dasfcs@kiit.ac.in",
     phone: "8763977944",
@@ -179,7 +179,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-19",
-    name: "Ms. Aradhana Behura",
+    name: "Ms. Aradhana Behura(Library Enrichment)",
     designation: "Library Enrichment",
     email: "aradhana.behurafcs@kiit.ac.in",
     phone: "7787821733",
@@ -188,7 +188,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-20",
-    name: "Dr. Mohit Ranjan Panda",
+    name: "Dr. Mohit Ranjan Panda(Quality Assurance)",
     designation: "Quality Assurance",
     email: "qacell.cse@kiit.ac.in",
     phone: "9777999330",
@@ -197,7 +197,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-21",
-    name: "Dr. Adyasha Dash",
+    name: "Dr. Adyasha Dash(Quality Assurance)",
     designation: "Quality Assurance",
     email: "qacell.cse@kiit.ac.in",
     phone: "7077694248",
@@ -206,7 +206,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-22",
-    name: "Dr. Pratyusa Mukherjee",
+    name: "Dr. Pratyusa Mukherjee(Quality Assurance)",
     designation: "Quality Assurance",
     email: "qacell.cse@kiit.ac.in",
     phone: "9861937376",
@@ -215,7 +215,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-23",
-    name: "Ms. Santwana Sagnika",
+    name: "Ms. Santwana Sagnika(Website & Social Media Management)",
     designation: "Website & Social Media Management",
     email: "webmaster.sce@kiit.ac.in",
     phone: "8093945565",
@@ -224,7 +224,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-24",
-    name: "Dr. Robi Shaw",
+    name: "Dr. Robi Shaw(Website & Social Media Management)",
     designation: "Website & Social Media Management",
     email: "webmaster.sce@kiit.ac.in",
     phone: "9007960872",
@@ -233,7 +233,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-25",
-    name: "Dr. Monjusha Pandey",
+    name: "Dr. Monjusha Pandey(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "8763999448",
@@ -242,7 +242,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-26",
-    name: "Dr. Leena Das",
+    name: "Dr. Leena Das(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "7750827038",
@@ -251,7 +251,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-27",
-    name: "Ms. Roshni Pradhan",
+    name: "Ms. Roshni Pradhan(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "9439659354",
@@ -260,7 +260,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-28",
-    name: "Mr. Sankalp Nayak",
+    name: "Mr. Sankalp Nayak(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "9853261679",
@@ -269,7 +269,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-29",
-    name: "Mr. Ajit Kumar Pasayat",
+    name: "Mr. Ajit Kumar Pasayat(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "9040570908",
@@ -278,7 +278,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-30",
-    name: "Ms. Mandakini Priyadarshani Behera",
+    name: "Ms. Mandakini Priyadarshani Behera(Student Affairs)",
     designation: "Student Affairs",
     email: "ficstudentactivity.cse@kiit.ac.in",
     phone: "8917364496",
@@ -287,7 +287,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-31",
-    name: "Mr. R. N. Ramakanta Parida",
+    name: "Mr. R. N. Ramakanta Parida(Student Affairs (NCC & NSS))",
     designation: "Student Affairs (NCC & NSS)",
     email: "nss.sce@kiit.ac.in",
     phone: "7978036775",
@@ -296,7 +296,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-32",
-    name: "Dr. Minakhi Rout",
+    name: "Dr. Minakhi Rout(Student Affairs (NCC & NSS))",
     designation: "Student Affairs (NCC & NSS)",
     email: "nss.sce@kiit.ac.in",
     phone: "9861108580",
@@ -305,7 +305,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-33",
-    name: "Mrs. Subhashree Darshana",
+    name: "Mrs. Subhashree Darshana(Student Affairs (NCC & NSS))",
     designation: "Student Affairs (NCC & NSS)",
     email: "nss.sce@kiit.ac.in",
     phone: "7008097297",
@@ -314,7 +314,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-34",
-    name: "Dr. Rajat Kumar Behera",
+    name: "Dr. Rajat Kumar Behera(International Student Affairs (Academics))",
     designation: "International Student Affairs (Academics)",
     email: "rajatkumar.beherafcs@kiit.ac.in",
     phone: "9886072882",
@@ -323,7 +323,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-35",
-    name: "Dr. Jayanta Mondal",
+    name: "Dr. Jayanta Mondal(International Student Affairs (Academics))",
     designation: "International Student Affairs (Academics)",
     email: "jayanta.mondalfcs@kiit.ac.in",
     phone: "7908003806",
@@ -332,7 +332,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-36",
-    name: "Dr. Mainak Bandyopadhyay",
+    name: "Dr. Mainak Bandyopadhyay(International Student Affairs (Academics))",
     designation: "International Student Affairs (Academics)",
     email: "mainak.bandyopadhyayfcs@kiit.ac.in",
     phone: "8009387402",
@@ -341,7 +341,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-37",
-    name: "Dr. Ajay Kumar Jena (TT)",
+    name: "Dr. Ajay Kumar Jena (TT)(Time Table Governance)",
     designation: "Time Table Governance",
     email: "ajay.jenafcs@kiit.ac.in",
     phone: "9437232068",
@@ -350,7 +350,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-38",
-    name: "Dr. Abhaya Kumar Sahoo",
+    name: "Dr. Abhaya Kumar Sahoo(Time Table Governance)",
     designation: "Time Table Governance",
     email: "abhaya.sahoofcs@kiit.ac.in",
     phone: "9861443456",
@@ -359,7 +359,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-39",
-    name: "Dr. Dayal Kumar Behera",
+    name: "Dr. Dayal Kumar Behera(Time Table Governance)",
     designation: "Time Table Governance",
     email: "dayal.beherafcs@kiit.ac.in",
     phone: "9853334495",
@@ -368,7 +368,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-40",
-    name: "Dr. Arghya Kundu",
+    name: "Dr. Arghya Kundu(Guest Lecture Engagement)",
     designation: "Guest Lecture Engagement",
     email: "arghya.kundufcs@kiit.ac.in",
     phone: "8792739730",
@@ -377,7 +377,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-41",
-    name: "Dr. Pradeep Kumar Mallick",
+    name: "Dr. Pradeep Kumar Mallick(Guest Lecture Engagement)",
     designation: "Guest Lecture Engagement",
     email: "pradeep.mallickfcs@kiit.ac.in",
     phone: "8895885152",
@@ -386,7 +386,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-42",
-    name: "Dr. Vikas Hassija",
+    name: "Dr. Vikas Hassija(Industry & Institute Collaboration)",
     designation: "Industry & Institute Collaboration",
     email: "vikas.hassijafcs@kiit.ac.in",
     phone: "8700580723",
@@ -395,7 +395,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-43",
-    name: "Dr. Satyananda Champati Rai",
+    name: "Dr. Satyananda Champati Rai(Industry & Institute Collaboration)",
     designation: "Industry & Institute Collaboration",
     email: "satya.raifcs@kiit.ac.in",
     phone: "9078513157",
@@ -404,7 +404,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-44",
-    name: "Dr. Jagannath Singh",
+    name: "Dr. Jagannath Singh(Project Co-ordinator (UG))",
     designation: "Project Co-ordinator (UG)",
     email: "jagannath.singhfcs@kiit.ac.in",
     phone: "9861085883",
@@ -413,7 +413,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-45",
-    name: "Dr. Sushruta Mishra",
+    name: "Dr. Sushruta Mishra(Project Co-ordinator (UG))",
     designation: "Project Co-ordinator (UG)",
     email: "sushruta.mishrafcs@kiit.ac.in",
     phone: "7751995740",
@@ -422,7 +422,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-46",
-    name: "Dr. Saikat Chakraborty",
+    name: "Dr. Saikat Chakraborty(Project Co-ordinator (UG))",
     designation: "Project Co-ordinator (UG)",
     email: "saikat.chakrabortyfcs@kiit.ac.in",
     phone: "993768429",
