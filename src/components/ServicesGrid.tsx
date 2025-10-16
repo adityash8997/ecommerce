@@ -52,14 +52,14 @@ const services = [
     price: "Free",
     gradient: "from-campus-orange to-usc-orange",
   },
-  {
-    id: "timetable-saathi",
-    icon: Calendar,
-    title: "Timetable Saathi",
-    description: "View your class schedule with real-time updates",
-    price: "Free",
-    gradient: "from-indigo-500 to-purple-500",
-  },
+  // {
+  //   id: "timetable-saathi",
+  //   icon: Calendar,
+  //   title: "Timetable Saathi",
+  //   description: "View your class schedule with real-time updates",
+  //   price: "Free",
+  //   gradient: "from-indigo-500 to-purple-500",
+  // },
   {
     id: "kiit-societies-fests-sports",
     icon: Calendar,
