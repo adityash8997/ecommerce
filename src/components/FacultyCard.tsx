@@ -108,18 +108,18 @@ export const FacultyCard = ({ faculty, isExpanded, onToggle }: FacultyCardProps)
           </div>
         </div>
 
-        {/* Designation Badge */}
+        {/* School Badge */}
         <div className="flex justify-center mb-3">
           <Badge 
             className="bg-gradient-to-r from-[#006400] to-[#228B22] text-white px-3 py-1 text-xs font-medium"
           >
-            {faculty.designation}
+            {faculty.school || 'School of Computer Engineering'}
           </Badge>
         </div>
 
         {/* Name */}
         <h3 className="text-lg font-bold text-center mb-4 text-gray-900 dark:text-white line-clamp-2 min-h-[3.5rem] flex items-center justify-center">
-          {faculty.name}
+          {faculty.name}{faculty.school === 'School of Management' && faculty.designation && faculty.designation !== 'Adding Soon..' ? ` (${faculty.designation})` : ''}
         </h3>
 
         {/* Action Buttons */}
