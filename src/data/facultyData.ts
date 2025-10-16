@@ -62,7 +62,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-6",
-    name: "Dr. Ajay Kumar Jena(Associate Dean)",
+    name: "Dr. Ajay Kumar Jena(Associate Dean & Timetable Governance)",
     designation: "Associate Dean",
     email: "ajay.jenafcs@kiit.ac.in",
     phone: "9437232068",
@@ -337,15 +337,6 @@ const contactPersonsData: FacultyMember[] = [
     email: "mainak.bandyopadhyayfcs@kiit.ac.in",
     phone: "8009387402",
     linkedin: "https://in.linkedin.com/in/dr-mainak-bandyopadhyay-b3423741",
-    category: "contact",
-  },
-  {
-    id: "cp-37",
-    name: "Dr. Ajay Kumar Jena (TT)(Time Table Governance)",
-    designation: "Time Table Governance",
-    email: "ajay.jenafcs@kiit.ac.in",
-    phone: "9437232068",
-    linkedin: "https://in.linkedin.com/in/ajay-kumar-jena-5b660b2a0",
     category: "contact",
   },
   {
