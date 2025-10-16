@@ -8,6 +8,11 @@ interface Mentor {
 
 const mentors: Mentor[] = [
   {
+    name: "",
+    designation: "",
+    photo: "",
+  },
+  {
     name: "Dr. Vikas Hassija",
     designation: "Associate Professor,SCE",
     photo: "/mentors/vikas.jpg",
