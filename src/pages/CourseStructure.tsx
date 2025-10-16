@@ -23,6 +23,7 @@ const CourseStructure = () => {
   const [facultySearchQuery, setFacultySearchQuery] = useState('');
   const [selectedDesignation, setSelectedDesignation] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'contact' | 'faculty'>('all');
+  const [selectedSchool, setSelectedSchool] = useState<string>('all');
 
   // Log successful feature implementations
   useState(() => {
@@ -394,7 +395,7 @@ const CourseStructure = () => {
               <div className="sticky top-16 z-10 mb-8">
                 <Card className="bg-white border-gray-200 shadow-lg">
                   <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Search */}
                       <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#006400' }} />
@@ -416,6 +417,20 @@ const CourseStructure = () => {
                           <SelectItem value="all" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>All Categories</SelectItem>
                           <SelectItem value="contact" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>Contact Persons</SelectItem>
                           <SelectItem value="faculty" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>Faculty Members</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Schools Filter */}
+                      <Select value={selectedSchool} onValueChange={setSelectedSchool}>
+                        <SelectTrigger className="bg-[#F5F7FA] border-gray-300 focus:border-[#FF6B35] focus:ring-[#FF6B35]" style={{ fontFamily: 'Inter, Poppins, sans-serif', color: '#1A1A1A' }}>
+                          <SelectValue placeholder="All Schools" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-200">
+                          <SelectItem value="all" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>All Schools</SelectItem>
+                          <SelectItem value="School of Computer Engineering" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>School of Computer Engineering</SelectItem>
+                          <SelectItem value="School of Civil Engineering" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>School of Civil Engineering</SelectItem>
+                          <SelectItem value="School of Management" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>School of Management</SelectItem>
+                          <SelectItem value="School of Biotechnology" style={{ fontFamily: 'Inter, Poppins, sans-serif' }}>School of Biotechnology</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -447,7 +462,8 @@ const CourseStructure = () => {
                     faculty.name.toLowerCase().includes(facultySearchQuery.toLowerCase()) ||
                     faculty.designation.toLowerCase().includes(facultySearchQuery.toLowerCase());
                   const matchesDesignation = selectedDesignation === 'all' || faculty.designation === selectedDesignation;
-                  return matchesSearch && matchesDesignation;
+                  const matchesSchool = selectedSchool === 'all' || faculty.school === selectedSchool || !faculty.school;
+                  return matchesSearch && matchesDesignation && matchesSchool;
                 });
 
                 if (filtered.length === 0) return null;
@@ -488,7 +504,8 @@ const CourseStructure = () => {
                     faculty.name.toLowerCase().includes(facultySearchQuery.toLowerCase()) ||
                     faculty.designation.toLowerCase().includes(facultySearchQuery.toLowerCase());
                   const matchesDesignation = selectedDesignation === 'all' || faculty.designation === selectedDesignation;
-                  return matchesSearch && matchesDesignation;
+                  const matchesSchool = selectedSchool === 'all' || faculty.school === selectedSchool;
+                  return matchesSearch && matchesDesignation && matchesSchool;
                 });
 
                 if (filtered.length === 0) return null;
@@ -530,7 +547,8 @@ const CourseStructure = () => {
                     faculty.designation.toLowerCase().includes(facultySearchQuery.toLowerCase());
                   const matchesDesignation = selectedDesignation === 'all' || faculty.designation === selectedDesignation;
                   const matchesCategory = selectedCategory === 'all' || faculty.category === selectedCategory;
-                  return matchesSearch && matchesDesignation && matchesCategory;
+                  const matchesSchool = selectedSchool === 'all' || faculty.school === selectedSchool || (faculty.category === 'contact' && !faculty.school);
+                  return matchesSearch && matchesDesignation && matchesCategory && matchesSchool;
                 });
 
                 if (allFiltered.length === 0) {
