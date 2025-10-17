@@ -25,6 +25,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useServiceVisibility } from "@/hooks/useServiceVisibility";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
 const services = [
@@ -202,6 +204,18 @@ const services = [
 export const ServicesGrid = () => {
   const navigate = useNavigate();
   const { visibilityMap, loading } = useServiceVisibility();
+  const { user } = useAuth();
+  
+  // Admin emails
+  const ADMIN_EMAILS = ['adityash8997@gmail.com', '24155598@kiit.ac.in'];
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
+  
+  // Log admin status
+  if (isAdmin) {
+    console.log('✅ Admin mode activated — all hidden services visible.');
+  } else {
+    console.log('🚫 Non-admin mode — hidden services restricted.');
+  }
 
   const handleServiceClick = (service: typeof services[0]) => {
     const routeMap: Record<string, string> = {
@@ -237,8 +251,7 @@ export const ServicesGrid = () => {
   };
 
   return (
-    <section className="py-4 bg-gradient-to-br from-campus-blue/10 to-kiit-green/10"
-    >
+    <section className="py-4 bg-gradient-to-br from-campus-blue/10 to-kiit-green/10">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-12 px-4">
@@ -267,49 +280,53 @@ export const ServicesGrid = () => {
           ) : (
             services.map((service, index) => {
               const visibility = visibilityMap[service.id];
+              const isVisible = !visibility || visibility.visible;
+              const replacementText = visibility?.replaced_text;
+              const isHidden = !isVisible;
               const IconComponent = service.icon;
 
-              // Check if service should be hidden
-              if (visibility && !visibility.visible) {
-                // If there's replacement text, show placeholder
-                if (visibility.replaced_text) {
-                  return (
-                    <div
-                      key={index}
-                      className="service-card group opacity-85"
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      {/* Service Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`p-3 rounded-2xl bg-gradient-to-r ${service.gradient} opacity-50`}>
-                          <IconComponent className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-
-                      {/* Placeholder Content */}
-                      <div className="space-y-2">
-                        <h3 className="text-xl font-poppins font-semibold text-muted-foreground">
-                          {visibility.replaced_text}
-                        </h3>
-
-                        <p className="text-muted-foreground leading-relaxed text-sm opacity-75">
-                          Exciting new services are being developed and will be available soon.
-                        </p>
-
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="font-semibold px-3 py-1 rounded-full text-sm bg-muted text-muted-foreground">
-                            Coming Soon
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-                // If no replacement text, skip rendering entirely
+              // For non-admins: completely skip hidden services (no DOM rendering)
+              if (!isAdmin && isHidden && !replacementText) {
                 return null;
               }
 
-              // Render normal service card
+              // If service is hidden and has replacement text, show placeholder
+              if (!isAdmin && !isVisible && replacementText) {
+                return (
+                  <div
+                    key={index}
+                    className="service-card group opacity-85"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    {/* Service Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-3 rounded-2xl bg-gradient-to-r ${service.gradient} opacity-50`}>
+                        <IconComponent className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+
+                    {/* Placeholder Content */}
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-poppins font-semibold text-muted-foreground">
+                        {replacementText}
+                      </h3>
+
+                      <p className="text-muted-foreground leading-relaxed text-sm opacity-75">
+                        Exciting new services are being developed and will be available soon.
+                      </p>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="font-semibold px-3 py-1 rounded-full text-sm bg-muted text-muted-foreground">
+                          Coming Soon
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // For admins: show all services (including hidden ones with badge)
+              // For non-admins: show only visible services
               return (
                 <div
                   key={index}
@@ -324,11 +341,17 @@ export const ServicesGrid = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2 px-2  hover:bg-gray-200 hover:rounded-lg p-4">
-                    <h3
-                      className="text-lg sm:text-xl hover:text-black font-poppins font-semibold text-foreground group-hover:text-kiit-green transition-colors">
-                      {service.title}
-                    </h3>
+                  <div className="space-y-2 px-2 hover:bg-gray-200 hover:rounded-lg p-4">
+                    <div className="flex flex-col items-start gap-2 mb-1">
+                      <h3 className="text-lg sm:text-xl hover:text-black font-poppins font-semibold text-foreground group-hover:text-kiit-green transition-colors">
+                        {service.title}
+                      </h3>
+                      {isAdmin && isHidden && (
+                        <Badge variant="secondary" className="bg-muted/80 text-muted-foreground text-xs px-2 py-0.5">
+                          🏷️ Hidden Service — Admin Only
+                        </Badge>
+                      )}
+                    </div>
 
                     <p className="text-gray-600 leading-relaxed text-sm">
                       {service.description}
@@ -338,7 +361,6 @@ export const ServicesGrid = () => {
                       <span className={`font-semibold px-3 py-1 rounded-full text-sm bg-gradient-to-r ${service.gradient} text-white`}>
                         {service.price}
                       </span>
-
                     </div>
                   </div>
                 </div>
@@ -346,7 +368,6 @@ export const ServicesGrid = () => {
             })
           )}
         </div>
-
       </div>
     </section>
   );
