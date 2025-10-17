@@ -251,31 +251,31 @@ export const ServicesGrid = () => {
   };
 
   return (
-    <section className="py-4 bg-gradient-to-br from-campus-blue/10 to-kiit-green/10">
-      <div className="container mx-auto px-4">
+    <section className="py-4 sm:py-6 bg-gradient-to-br from-campus-blue/10 to-kiit-green/10">
+      <div className="container mx-auto px-3 sm:px-4">
         {/* Section Header */}
-        <div className="text-center mb-12 px-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-kiit-green-dark mb-6">
-            <Star className="w-4 h-4" />
+        <div className="text-center mb-8 sm:mb-12 px-2 sm:px-4">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-kiit-green-dark mb-4 sm:mb-6">
+            <Star className="w-3 h-3 sm:w-4 sm:h-4" />
             10+ Campus Services
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-6xl font-poppins font-bold text-gradient mb-6">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-poppins font-bold text-gradient mb-4 sm:mb-6">
             Everything You Need
             <span className="block">In One App</span>
           </h2>
 
-          <p className="text-black sm:text-lg lg:text-xl text-black max-w-3xl mx-auto leading-relaxed px-4">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-black max-w-3xl mx-auto leading-relaxed px-2 sm:px-4">
             From academic support to daily essentials, we have built the complete ecosystem
             to enrich your KIIT experience. <span className="font-semibold text-kiit-green">Because campus life is hectic enough already.</span>
           </p>
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-16 px-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-12 sm:mb-16 px-2 sm:px-4">
           {loading ? (
-            <div className="col-span-full flex justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="col-span-full flex justify-center py-6 sm:py-8">
+              <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             services.map((service, index) => {
@@ -299,24 +299,24 @@ export const ServicesGrid = () => {
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     {/* Service Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`p-3 rounded-2xl bg-gradient-to-r ${service.gradient} opacity-50`}>
-                        <IconComponent className="w-6 h-6 text-white" />
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-r ${service.gradient} opacity-50`}>
+                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </div>
 
                     {/* Placeholder Content */}
                     <div className="space-y-2">
-                      <h3 className="text-xl font-poppins font-semibold text-muted-foreground">
+                      <h3 className="text-base sm:text-lg md:text-xl font-poppins font-semibold text-muted-foreground">
                         {replacementText}
                       </h3>
 
-                      <p className="text-muted-foreground leading-relaxed text-sm opacity-75">
+                      <p className="text-muted-foreground leading-relaxed text-xs sm:text-sm opacity-75">
                         Exciting new services are being developed and will be available soon.
                       </p>
 
                       <div className="flex items-center justify-between pt-2">
-                        <span className="font-semibold px-3 py-1 rounded-full text-sm bg-muted text-muted-foreground">
+                        <span className="font-semibold px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm bg-muted text-muted-foreground">
                           Coming Soon
                         </span>
                       </div>
@@ -331,34 +331,34 @@ export const ServicesGrid = () => {
                 <div
                   key={index}
                   onClick={() => handleServiceClick(service)}
-                  className="service-card bg-white group text-kiit-green-dark"
+                  className="service-card bg-white group text-kiit-green-dark cursor-pointer"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Service Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-2xl bg-gradient-to-r ${service.gradient}`}>
-                      <IconComponent className="w-6 h-6 text-white" />
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-r ${service.gradient}`}>
+                      <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
                   </div>
 
-                  <div className="space-y-2 px-2 hover:bg-gray-200 hover:rounded-lg p-4">
-                    <div className="flex flex-col items-start gap-2 mb-1">
-                      <h3 className="text-lg sm:text-xl hover:text-black font-poppins font-semibold text-foreground group-hover:text-kiit-green transition-colors">
+                  <div className="space-y-2 px-2 sm:px-3 hover:bg-gray-200 hover:rounded-lg p-3 sm:p-4">
+                    <div className="flex flex-col items-start gap-1.5 sm:gap-2 mb-1">
+                      <h3 className="text-base sm:text-lg md:text-xl hover:text-black font-poppins font-semibold text-foreground group-hover:text-kiit-green transition-colors">
                         {service.title}
                       </h3>
                       {isAdmin && isHidden && (
-                        <Badge variant="secondary" className="bg-muted/80 text-muted-foreground text-xs px-2 py-0.5">
+                        <Badge variant="secondary" className="bg-muted/80 text-muted-foreground text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">
                           🏷️ Hidden Service — Admin Only
                         </Badge>
                       )}
                     </div>
 
-                    <p className="text-gray-600 leading-relaxed text-sm">
+                    <p className="text-gray-600 leading-relaxed text-xs sm:text-sm">
                       {service.description}
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2">
-                      <span className={`font-semibold px-3 py-1 rounded-full text-sm bg-gradient-to-r ${service.gradient} text-white`}>
+                      <span className={`font-semibold px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm bg-gradient-to-r ${service.gradient} text-white`}>
                         {service.price}
                       </span>
                     </div>

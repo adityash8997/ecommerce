@@ -213,38 +213,38 @@ export const Hero = () => {
       <div className="absolute bottom-32 left-20 w-12 h-12 bg-white/40 rounded-full animate-float"></div>
     </div>
 
-    <div className="container mx-auto px-4 z-10">
-      <div className="grid lg:grid-cols-2 gap-12 items-center">
+    <div className="container mx-auto px-4 sm:px-6 z-10">
+      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
         {/* Left Content */}
-        <div className="text-center lg:text-left space-y-8">
+        <div className="text-center lg:text-left space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 glass-card px-4 py-2 text-sm font-medium text-white">
-            <Heart className="w-4 h-4 text-campus-orange" />
+          <div className="inline-flex items-center gap-2 glass-card px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white">
+            <Heart className="w-3 h-3 sm:w-4 sm:h-4 text-campus-orange" />
             Made with love for KIIT students
           </div>
 
           {/* Main Heading */}
-          <div className="space-y-4 my-4">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-poppins font-bold text-white leading-tight">
+          <div className="space-y-3 sm:space-y-4 my-2 sm:my-4">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-poppins font-bold text-white leading-tight">
               One app that
               <span className="block text-white">solves all</span>
               your campus needs
             </h1>
 
-            <p className="text-lg sm:text-xl lg:text-2xl text-white/80 font-inter leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/80 font-inter leading-relaxed px-2 sm:px-0">
               From assignments to mentorship, hostel moves to campus activities - everything you need, in one platform!
             </p>
 
             {/* CTA Buttons */}
-            {!user ? <div className="flex  flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="lg" className="px-10 bg-foreground text-white font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:bg-foreground/80 hover:shadow-xl" onClick={() => navigate('/auth')}>
+            {!user ? <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 sm:px-0">
+              <Button size="lg" className="px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base bg-foreground text-white font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:bg-foreground/80 hover:shadow-xl" onClick={() => navigate('/auth')}>
                 Get Started Free
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-            </div> : <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button onClick={() => scrollToSection("#services")} size="lg" className="px-10 bg-foreground text-white font-bold hover:bg-foreground/80 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            </div> : <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 sm:px-0">
+              <Button onClick={() => scrollToSection("#services")} size="lg" className="px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base bg-foreground text-white font-bold hover:bg-foreground/80 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                 Go to Services
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
 
               </Button>
             </div>}
@@ -253,11 +253,11 @@ export const Hero = () => {
         </div>
 
         {/* Right Content - Mascot and Campus */}
-        <div className="relative mt-8 lg:mt-0">
+        <div className="relative mt-6 sm:mt-8 lg:mt-0">
           {/* Campus Background */}
-          <div className="relative">
+          <div className="relative px-4 sm:px-0">
             <div className="flex flex-col items-center">
-              <div className="w-full max-w-[570px] h-[240px] sm:h-[300px] lg:h-[330px] overflow-hidden relative rounded-3xl">
+              <div className="w-full max-w-[570px] h-[200px] sm:h-[240px] md:h-[300px] lg:h-[330px] overflow-hidden relative rounded-2xl sm:rounded-3xl">
                 <div className="flex transition-transform duration-500 ease-in-out" id="slider" ref={sliderRef}>
                   <img src={heroCampus} className="w-full flex-shrink-0" alt="Slide 3" />
                   <img src={KiiTSchoolofArch} className="w-full flex-shrink-0" alt="Slide 1" />
@@ -280,18 +280,18 @@ export const Hero = () => {
         </div>
       </div>
       {/* Quick Stats */}
-      <div className="flex gap-4 sm:gap-8 justify-center lg:justify-between pt-12 px-10">
-        <div className="text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white">10</div>
-          <div className="text-sm sm:text-base text-white/70 font-medium">Campus Services</div>
+      <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-8 justify-center lg:justify-between pt-8 sm:pt-12 px-4 sm:px-10">
+        <div className="text-center flex-1 min-w-[80px]">
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">10</div>
+          <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">Campus Services</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white">24/7</div>
-          <div className="text-sm sm:text-base text-white/70 font-medium">AI Assistant</div>
+        <div className="text-center flex-1 min-w-[80px]">
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">24/7</div>
+          <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">AI Assistant</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl sm:text-3xl font-bold text-white">100%</div>
-          <div className="text-sm sm:text-base text-white/70 font-medium">KIIT Focused</div>
+        <div className="text-center flex-1 min-w-[80px]">
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">100%</div>
+          <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">KIIT Focused</div>
         </div>
       </div>
     </div>
