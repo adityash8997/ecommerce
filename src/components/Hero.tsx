@@ -275,7 +275,7 @@ export const Hero = () => {
                 <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </div> : <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 sm:px-0">
-              <Button onClick={() => scrollToSection("#services")} size="lg" className="px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base bg-foreground text-white font-bold hover:bg-foreground/80 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+              <Button onClick={() => scrollToSection("#services")} size="lg" className="bg-gradient-to-br from-green-300 via-blue-500 to-blue-400 px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base  text-white font-bold hover:bg-foreground/80 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                 Go to Services
                 <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
 
