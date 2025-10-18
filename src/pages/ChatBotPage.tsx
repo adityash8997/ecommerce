@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Zap, Clock, BookOpen } from "lucide-react";
+import { ChatBot } from "@/components/ChatBot";
 
 
 const ChatBotPage = () => {
@@ -75,7 +76,7 @@ const ChatBotPage = () => {
       console.log('ChatBotPage unmounting');
     };
   }, []);
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 to-muted">
       <Navbar />

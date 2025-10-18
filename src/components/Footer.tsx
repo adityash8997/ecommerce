@@ -1,5 +1,5 @@
 import { Heart, Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
-import kiitMascot from "@/assets/kiit-mascot.png";
+import kiitMascot from "@/assets/kiit-mascot.jpg";
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
   return <footer className="bg-gradient-to-br from-kiit-green-dark to-foreground text-white">

@@ -4,7 +4,7 @@ import { Menu, X, LogIn, Home, LogOut, User, Shield } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import kiitMascot from "@/assets/kiit-mascot.png";
+import kiitMascot from "@/assets/kiit-mascot.jpg";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -117,9 +117,9 @@ export const Navbar = () => {
             <img
               src={kiitMascot}
               alt="KIIT Saathi Mascot"
-              className="w-10 h-10 animate-pulse rounded-full"
+              className="w-11 h-11 animate-pulse rounded-full"
             />
-            <div className="font-poppins font-bold text-lg sm:text-xl lg:text-2xl text-white-700 drop-shadow-lg">
+            <div className="font-poppins font-bold text-lg sm:text-xl lg:text-3xl text-white-700 drop-shadow-lg">
               KIIT Saathi
             </div>
           </div>

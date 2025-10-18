@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, X, Send, Sparkles } from "lucide-react";
-import kiitMascot from "@/assets/kiit-mascot.png";
+import kiitMascot from "@/assets/kiit-mascot.jpg";
 export const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
