@@ -142,27 +142,60 @@ export const Hero = () => {
   };
   const sliderRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const dots = document.querySelectorAll('#dot-indicators span');
-  const totalSlides = dots.length;
-  const goToSlide = (index: number) => {
+
+  // Replace direct DOM queries with reactive values
+  const slides = useMemo(() => [heroCampus, KiiTSchoolofArch, KiitCampus3, KiitAbout, KiitCampus17], []);
+  const slideCount = slides.length; // real slides (without cloned)
+  
+  // Move slider to a given index (0..slideCount) where slideCount is the cloned-first slide
+  const goToSlide = (index: number, withTransition = true) => {
     if (!sliderRef.current) return;
     const slideWidth = sliderRef.current.clientWidth;
+    if (!withTransition) sliderRef.current.style.transition = 'none';
+    else sliderRef.current.style.transition = 'transform 500ms ease-in-out';
     sliderRef.current.style.transform = `translateX(-${index * slideWidth}px)`;
+
+    // update dot highlight (map cloned index to 0)
     const dots = document.querySelectorAll('#dot-indicators span');
-    dots.forEach(dot => dot.classList.remove('bg-black'));
-    if (dots[index]) dots[index].classList.add('bg-black');
+    const dotIndex = index === slideCount ? 0 : (index % slideCount);
+    dots.forEach(d => d.classList.remove('bg-black'));
+    if (dots[dotIndex]) dots[dotIndex].classList.add('bg-black');
   };
+
+  // Auto-play with seamless loop using a cloned-first slide at the end
   useEffect(() => {
-    goToSlide(currentSlide); // show initial slide
+    // ensure initial layout correct
+    goToSlide(currentSlide, false);
+
     const interval = setInterval(() => {
       setCurrentSlide(prev => {
-        const next = (prev + 1) % 5; // number of slides
+        const next = prev + 1;
         goToSlide(next);
         return next;
       });
     }, 3000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [slideCount]);
+
+  // After transition ends, if we are on the cloned slide (index === slideCount),
+  // snap back to the real first slide without transition so the loop is seamless.
+  useEffect(() => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const onTransitionEnd = () => {
+      if (currentSlide === slideCount) {
+        // remove transition, snap to first real slide
+        goToSlide(0, false);
+        // force reflow so future transitions apply correctly
+        void el.offsetWidth;
+        // restore state to first slide
+        setCurrentSlide(0);
+      }
+    };
+    el.addEventListener('transitionend', onTransitionEnd);
+    return () => el.removeEventListener('transitionend', onTransitionEnd);
+  }, [currentSlide, slideCount]);
   return <section ref={heroRef} id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{
     background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 70%, #15803d 100%)'
   }}>
@@ -226,7 +259,7 @@ export const Hero = () => {
           {/* Main Heading */}
           <div className="space-y-3 sm:space-y-4 my-2 sm:my-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-poppins font-bold text-white leading-tight">
-              One app that
+              One platform that
               <span className="block text-white">solves all</span>
               your campus needs
             </h1>
@@ -237,7 +270,7 @@ export const Hero = () => {
 
             {/* CTA Buttons */}
             {!user ? <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-4 sm:px-0">
-              <Button size="lg" className="px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base bg-foreground text-white font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:bg-foreground/80 hover:shadow-xl" onClick={() => navigate('/auth')}>
+              <Button size="lg" className="px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base bg-gradient-to-br from-green-300 via-blue-500 to-blue-400 text-white font-bold hover:scale-105 transition-all duration-300 shadow-lg hover:bg-foreground/80 hover:shadow-xl" onClick={() => navigate('/auth')}>
                 Get Started Free
                 <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
@@ -259,11 +292,13 @@ export const Hero = () => {
             <div className="flex flex-col items-center">
               <div className="w-full max-w-[570px] h-[200px] sm:h-[240px] md:h-[300px] lg:h-[330px] overflow-hidden relative rounded-2xl sm:rounded-3xl">
                 <div className="flex transition-transform duration-500 ease-in-out" id="slider" ref={sliderRef}>
-                  <img src={heroCampus} className="w-full flex-shrink-0" alt="Slide 3" />
-                  <img src={KiiTSchoolofArch} className="w-full flex-shrink-0" alt="Slide 1" />
-                  <img src={KiitCampus3} className="w-full flex-shrink-0" alt="Slide 2" />
-                  <img src={KiitAbout} className="w-full flex-shrink-0" alt="Slide 4" />
-                  <img src={KiitCampus17} className="w-full flex-shrink-0" alt="Slide 5" />
+                  {/*
+                    Render real slides then a cloned-first-slide at the end.
+                    This allows smooth transition from last -> cloned-first, then we snap to real-first.
+                  */}
+                  {slides.map((src, idx) => <img key={idx} src={src} className="w-full flex-shrink-0" alt={`Slide ${idx + 1}`} />)}
+                  {/* cloned first slide for seamless looping */}
+                  <img key="clone-first" src={slides[0]} className="w-full flex-shrink-0" alt="Slide clone" />
                 </div>
                 <div className="flex items-center mt-5 space-x-2" id="dot-indicators">
                   <span className="w-3 h-3 bg-black/20 rounded-full"></span>
@@ -280,18 +315,18 @@ export const Hero = () => {
         </div>
       </div>
       {/* Quick Stats */}
-      <div className="flex flex-wrap gap-3 sm:gap-4 md:gap-8 justify-center lg:justify-between pt-8 sm:pt-12 px-4 sm:px-10">
+      <div className="mt-5 flex flex-wrap gap-3 sm:gap-4 md:gap-8 justify-center lg:justify-between pt-8 sm:pt-12 px-4 sm:px-10">
         <div className="text-center flex-1 min-w-[80px]">
-          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">10</div>
+          <div className="  text-xl sm:text-2xl md:text-4xl font-bold text-white">10</div>
           <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">Campus Services</div>
         </div>
-        <div className="text-center flex-1 min-w-[80px]">
-          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">24/7</div>
-          <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">AI Assistant</div>
+        <div className=" text-shadow-lg text-center flex-1 min-w-[80px]">
+          <div className=" text-shadow-lg text-xl sm:text-2xl md:text-4xl font-bold text-white">24/7</div>
+          <div className=" text-shadow-lg text-xs sm:text-sm md:text-base text-white/70 font-medium">AI Assistant</div>
         </div>
-        <div className="text-center flex-1 min-w-[80px]">
-          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-white">100%</div>
-          <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">KIIT Focused</div>
+        <div className=" text-shadow-lg text-center flex-1 min-w-[80px]">
+          <div className="text-shadow-lg text-xl sm:text-2xl md:text-4xl font-bold text-white">100%</div>
+          <div className=" text-shadow-lg text-xs sm:text-sm md:text-base text-white/70 font-medium">KIIT Focused</div>
         </div>
       </div>
     </div>
