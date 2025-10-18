@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Zap, Clock, BookOpen } from "lucide-react";
-import kiitMascot from "@/assets/kiit-mascot.png";
+
 
 const ChatBotPage = () => {
   const navigate = useNavigate();
@@ -93,7 +93,6 @@ const ChatBotPage = () => {
         <div className="max-w-4xl mx-auto text-center">
           
           <div className="inline-flex items-center gap-2 mb-4">
-            <img src={kiitMascot} alt="KIIT Buddy" className="w-12 h-12" />
             <Badge variant="secondary" className="text-lg px-4 py-2">
               KIIT Saathi (AI Assistant)
             </Badge>
@@ -155,7 +154,6 @@ const ChatBotPage = () => {
           <Card className="min-h-[600px] flex flex-col">
             <CardHeader className="bg-gradient-to-r from-kiit-green to-campus-blue text-white">
               <div className="flex items-center gap-3">
-                <img src={kiitMascot} alt="KIIT Buddy" className="w-10 h-10" />
                 <div>
                   <CardTitle className="text-white">KIIT Saathi (AI Assistant)</CardTitle>
                   <CardDescription className="text-white/80">
