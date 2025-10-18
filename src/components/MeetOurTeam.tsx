@@ -52,11 +52,7 @@ const TeamCard = ({ member }: { member: TeamMember }) => {
             <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-800 text-center">
               {member.name}
             </h3>
-            {/* {member.role && (
-              <p className="text-semibold text-green-600 text-center mt-1">
-                {member.role}
-              </p>
-            )} */}
+            
           </div>
         </div>
 

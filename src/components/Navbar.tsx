@@ -30,7 +30,7 @@ export const Navbar = () => {
     { label: "Home", href: "#home" },
     { label: "Services", href: "#services" },
     { label: "How It Works", href: "#how-it-works" },
-    { label: "Testimonials", href: "#testimonials" },
+    { label: "Our Team", href: "#team" },
     { label: "FAQ", href: "#faq" },
     { label: "Contact", href: "#contact" },
   ];
