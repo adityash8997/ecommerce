@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { ViewBalances } from "@/components/ViewBalances";
-import { SimplifyDebts } from "@/components/SimplifyDebts";
 import { ExportSummary } from "@/components/ExportSummary";
 import { GroupSettings } from "@/components/GroupSettings";
 
@@ -64,7 +63,7 @@ const GroupDashboard = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingExpense, setIsAddingExpense] = useState(false);
-  const [activeView, setActiveView] = useState<'expenses' | 'balances' | 'debts' | 'export' | 'settings'>('expenses');
+  const [activeView, setActiveView] = useState<'expenses' | 'balances' | 'export' | 'settings'>('expenses');
   
   const [expenseForm, setExpenseForm] = useState({
     title: "",
@@ -562,14 +561,6 @@ const GroupDashboard = () => {
             </Button>
             
             <Button 
-              variant={activeView === 'debts' ? 'default' : 'outline'}
-              onClick={() => setActiveView('debts')}
-            >
-              <Calculator className="w-4 h-4 mr-2" />
-              Simplify Debts
-            </Button>
-            
-            <Button 
               variant={activeView === 'export' ? 'default' : 'outline'}
               onClick={() => setActiveView('export')}
             >
@@ -606,14 +597,6 @@ const GroupDashboard = () => {
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Balances
-            </Button>
-            <Button 
-              variant={activeView === 'debts' ? 'default' : 'outline'}
-              onClick={() => setActiveView('debts')}
-              size="sm"
-            >
-              <Calculator className="w-4 h-4 mr-2" />
-              Debts
             </Button>
             <Button 
               variant={activeView === 'export' ? 'default' : 'outline'}
@@ -697,10 +680,6 @@ const GroupDashboard = () => {
               {console.log('Rendering ViewBalances component for group:', groupId)}
               <ViewBalances groupId={groupId!} currency={group.currency} />
             </>
-          )}
-
-          {activeView === 'debts' && (
-            <SimplifyDebts groupId={groupId!} currency={group.currency} />
           )}
 
           {activeView === 'export' && (

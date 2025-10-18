@@ -284,10 +284,10 @@ const InterviewDeadlinesTracker = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
           {/* Calendar, Legend, and Filters - 2/5 of screen */}
-          <div className="col-span-2 space-y-6 ">
-            <div className="bg-kiit-green-soft rounded-lg shadow-lg overflow-hidden mb-8 border border-kiit-green p-4">
+          <div className="col-span-1 md:col-span-2 space-y-4 md:space-y-6">
+            <div className="bg-kiit-green-soft rounded-lg shadow-lg overflow-hidden mb-4 md:mb-8 border border-kiit-green p-2 sm:p-4">
               <Calendar
                 localizer={localizer}
                 events={calendarEvents}
@@ -303,6 +303,7 @@ const InterviewDeadlinesTracker = () => {
                 onView={setView}
                 onNavigate={setDate}
                 onSelectEvent={handleSelectEvent}
+                className="mobile-calendar"
                 eventPropGetter={(event) => ({
                   style: {
                     backgroundColor:
@@ -416,8 +417,8 @@ const InterviewDeadlinesTracker = () => {
           </div>
 
           {/* Upcoming Events - 3/5 of screen */}
-          <div className="col-span-3 bg-kiit-green-soft p-4  rounded-lg space-y-4  ">
-            <div className="scrollbar-thumb-gray-300 my-2 scrollbar-track-gray-700 h-[500px]  overflow-y-auto">
+          <div className="col-span-1 md:col-span-3 bg-kiit-green-soft p-2 sm:p-4 rounded-lg space-y-4">
+            <div className="scrollbar-thumb-gray-300 my-2 scrollbar-track-gray-700 h-[400px] sm:h-[500px] overflow-y-auto">
               <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
               {upcomingEvents.length === 0 ? (
                 <p className="text-gray-600 text-center">No upcoming events</p>
@@ -443,7 +444,7 @@ const InterviewDeadlinesTracker = () => {
             </div>
 
             {/* Upcoming Interviews */}
-            <div className="scrollbar-thumb-gray-300 scrollbar-track-gray-700 h-[500px] overflow-y-auto mt-8">
+            <div className="scrollbar-thumb-gray-300 scrollbar-track-gray-700 h-[400px] sm:h-[500px] overflow-y-auto mt-4 sm:mt-8">
               <>
                 <h2 className="text-2xl font-bold text-gray-900">Upcoming Interviews</h2>
                 {upcomingEvents.length === 0 ? (
