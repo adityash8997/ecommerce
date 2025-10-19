@@ -104,7 +104,7 @@ export const teamData = [
     name: "Smit Bharat Patil",
     LinkedIn: "https://www.linkedin.com/in/sbktckp",
     Instagram: "https://www.instagram.com/sbktckp",
-    Image: "/team/Smit.jpg",
+    Image: "/team/smit.jpg",
     Github: "https://github.com/sbktckp",
     role: "Marketing",
   },
