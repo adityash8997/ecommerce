@@ -98,6 +98,7 @@ const InterviewDeadlinesTracker = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [addInterviewOpen, setAddInterviewOpen] = useState(false);
   const [formData, setFormData] = useState({
     society_name: "",
     event_name: "",
@@ -107,6 +108,19 @@ const InterviewDeadlinesTracker = () => {
     venue: "",
     organiser: "",
     category: "",
+    description: "",
+    requirements: "",
+    validation: false,
+  });
+  const [interviewFormData, setInterviewFormData] = useState({
+    company_name: "",
+    category: "",
+    interview_name: "",
+    interview_date: "",
+    start_time: "",
+    end_time: "",
+    location: "",
+    role: "",
     description: "",
     requirements: "",
     validation: false,
@@ -257,6 +271,88 @@ const InterviewDeadlinesTracker = () => {
     }
   };
 
+  const handleInterviewSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!interviewFormData.interview_name || !interviewFormData.interview_date) {
+    toast.error("Interview name and date are required!");
+    return;
+  }
+
+  if (!user?.email) {
+    toast.error("Please sign in to add interviews");
+    return;
+  }
+
+  const reqs: string[] = interviewFormData.requirements
+    ? interviewFormData.requirements.split(",").map((r) => r.trim()).filter(Boolean)
+    : [];
+
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.is_admin) {
+      const { data, error } = await supabase.from("interview_events").insert([
+        { 
+          ...interviewFormData,
+          requirements: reqs,
+          validation: true
+        }
+      ]).select();
+
+      if (error) {
+        console.error("Insert error:", error);
+        toast.error("Error adding interview: " + error.message);
+      } else {
+        console.log("Interview inserted:", data);
+        toast.success("Interview added successfully!");
+        setAddInterviewOpen(false);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
+    } else {
+      const { error } = await supabase
+        .from('interview_event_requests')
+        .insert({
+          ...interviewFormData,
+          requirements: reqs,
+          requester_email: user.email,
+          user_id: user.id,
+          status: 'pending'
+        });
+
+      if (error) {
+        console.error("Request submit error:", error);
+        toast.error("Error submitting interview request: " + error.message);
+      } else {
+        toast.success("Interview submitted for review! You'll be notified once it's approved.");
+        setAddInterviewOpen(false);
+      }
+    }
+
+    setInterviewFormData({
+      company_name: "",
+      category: "",
+      interview_name: "",
+      interview_date: "",
+      start_time: "",
+      end_time: "",
+      location: "",
+      role: "",
+      description: "",
+      requirements: "",
+      validation: false,
+    });
+
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    toast.error("Failed to submit interview");
+  }
+};
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -278,9 +374,14 @@ const InterviewDeadlinesTracker = () => {
             <p className="text-gray-600">Never miss what's happening on campus.</p>
           </div>
           {user && (
-            <Button onClick={() => setAddEventOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <div className=" ">
+            <Button onClick={() => setAddEventOpen(true)} className="mx-4 bg-blue-600 hover:bg-blue-700">
               + Create Event
             </Button>
+            <Button onClick={() => setAddInterviewOpen(true)} className=" mx-4 bg-green-600 hover:bg-blue-700">
+              + Create Interview
+            </Button>
+            </div>
           )}
         </div>
 
@@ -607,6 +708,111 @@ const InterviewDeadlinesTracker = () => {
             </DialogContent>
           </Dialog>
         )}
+        {/* Add Interview Dialog */}
+{/* Add Interview Dialog */}
+{addInterviewOpen && (
+  <Dialog open={addInterviewOpen} onOpenChange={setAddInterviewOpen}>
+    <DialogContent className="bg-gradient-to-br from-campus-blue to-purple-900 text-white max-w-2xl">
+      <DialogHeader className="text-center">
+        <DialogTitle className="text-white">Add New Interview</DialogTitle>
+        <p className="text-white/70 text-sm mt-1">Schedule a new interview</p>
+      </DialogHeader>
+
+      <form
+        onSubmit={handleInterviewSubmit}
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            placeholder="Company Name *"
+            value={interviewFormData.company_name}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, company_name: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+            required
+          />
+          <select
+            value={interviewFormData.category}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, category: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10 rounded px-3"
+          >
+            <option value="">Select Type</option>
+            <option value="Technical">Technical</option>
+            <option value="HR">HR</option>
+            <option value="Managerial">Managerial</option>
+            <option value="Final">Final</option>
+          </select>
+        </div>
+
+        <Input
+          placeholder="Interview Name *"
+          value={interviewFormData.interview_name}
+          onChange={(e) => setInterviewFormData({ ...interviewFormData, interview_name: e.target.value })}
+          className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+          required
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <Input
+            type="date"
+            value={interviewFormData.interview_date}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, interview_date: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+            required
+          />
+          <Input
+            type="time"
+            value={interviewFormData.start_time}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+            placeholder="Start Time"
+          />
+          <Input
+            type="time"
+            value={interviewFormData.end_time}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+            placeholder="End Time"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input
+            placeholder="Location *"
+            value={interviewFormData.location}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+            required
+          />
+          <Input
+            placeholder="Role"
+            value={interviewFormData.role}
+            onChange={(e) => setInterviewFormData({ ...interviewFormData, role: e.target.value })}
+            className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+          />
+        </div>
+
+        <Input
+          placeholder="Description"
+          value={interviewFormData.description}
+          onChange={(e) => setInterviewFormData({ ...interviewFormData, description: e.target.value })}
+          className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+        />
+
+        <Input
+          placeholder="Requirements (comma-separated)"
+          value={interviewFormData.requirements}
+          onChange={(e) => setInterviewFormData({ ...interviewFormData, requirements: e.target.value })}
+          className="bg-white text-black placeholder-white/50 border-white/20 h-10"
+        />
+
+        <Button type="submit" className="w-full bg-kiit-green hover:bg-kiit-green-dark text-white h-12">
+          <CalendarIcon className="w-5 h-5 mr-2" />
+          Save Interview
+        </Button>
+      </form>
+    </DialogContent>
+  </Dialog>
+)}
       </div>
       <Footer />
       {showConfetti && <Confetti width={width} height={height} />}
