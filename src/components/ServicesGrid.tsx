@@ -272,7 +272,7 @@ export const ServicesGrid = () => {
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-12 sm:mb-16 px-2 sm:px-4">
+        <div className=" grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-12 sm:mb-16 px-2 sm:px-4">
           {loading ? (
             <div className="col-span-full flex justify-center py-6 sm:py-8">
               <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-muted-foreground" />
@@ -331,7 +331,7 @@ export const ServicesGrid = () => {
                 <div
                   key={index}
                   onClick={() => handleServiceClick(service)}
-                  className="service-card bg-white group text-kiit-green-dark cursor-pointer"
+                  className="hover:shadow-md hover:shadow-green-600 service-card bg-white group text-kiit-green-dark cursor-pointer"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Service Header */}

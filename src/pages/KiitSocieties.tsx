@@ -704,13 +704,13 @@ const KiitSocieties = () => {
           </div>
 
 
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className=" grid md:grid-cols-3 gap-6 mb-12">
             {societyServices.map((service, index) => {
               const IconComponent = service.icon;
               return (
                 <Card
                   key={index}
-                  className="group hover:shadow-box hover:shadow-kiit-green shadow-lg transition-all duration-300 border-2 border-transparent hover:border-kiit-green cursor-pointer"
+                  className=" border-black-600 group hover:shadow-box hover:shadow-kiit-green shadow-lg transition-all duration-300 border-2  hover:border-kiit-green cursor-pointer"
                   onClick={() => handleServiceClick(service.route)}
                 >
                   <CardHeader className="text-center pb-4">
