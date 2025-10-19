@@ -547,6 +547,241 @@ app.get('/has-paid-lost-found-contact', async (req, res) => {
   }
 });
 
+// Submit application for a lost item
+app.post('/submit-lost-item-application', async (req, res) => {
+  try {
+    console.log('📝 Lost Item Application Submission:', req.body);
+    
+    const {
+      lostItemId,
+      lostItemTitle,
+      lostItemOwnerEmail,
+      applicantUserId,
+      applicantName,
+      applicantEmail,
+      applicantPhone,
+      foundPhotoUrl,
+      foundDescription,
+      foundLocation,
+      foundDate
+    } = req.body;
+
+    // Validate required fields
+    if (!lostItemId || !lostItemOwnerEmail || !applicantName || !applicantEmail || !applicantPhone || !foundPhotoUrl || !foundDescription || !foundLocation || !foundDate) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['lostItemId', 'lostItemOwnerEmail', 'applicantName', 'applicantEmail', 'applicantPhone', 'foundPhotoUrl', 'foundDescription', 'foundLocation', 'foundDate']
+      });
+    }
+
+    console.log('⏳ Inserting application into database...');
+    console.log('Applicant User ID:', applicantUserId);
+    // Insert application into database
+    const { data: applicationData, error: insertError } = await supabase
+      .from('lost_found_applications')
+      .insert({
+        lost_item_id: lostItemId,
+        applicant_user_id: applicantUserId || null,
+        applicant_name: applicantName,
+        applicant_email: applicantEmail,
+        applicant_phone: applicantPhone,
+        found_photo_url: foundPhotoUrl,
+        found_description: foundDescription,
+        found_location: foundLocation,
+        found_date: foundDate,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('❌ Database error:', insertError);
+      
+      // Check if it's a duplicate application error
+      if (insertError.code === '23505' || insertError.message.includes('unique_application_per_user_per_item')) {
+        return res.status(409).json({ 
+          error: 'You have already applied for this lost item. Please wait for the owner to review your application.',
+          type: 'duplicate' 
+        });
+      }
+      
+      return res.status(500).json({ error: 'Failed to save application', details: insertError.message });
+    }
+
+    console.log('✅ Application saved to database:', applicationData.id);
+
+    // Email notification removed - users can view applications directly in the portal
+    console.log('📧 Email notification skipped - owner can view applications in portal');
+
+    res.json({
+      success: true,
+      message: 'Application submitted successfully',
+      applicationId: applicationData.id
+    });
+
+  } catch (error) {
+    console.error('❌ Error submitting application:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit application', 
+      details: error.message 
+    });
+  }
+});
+
+// Create order for unlocking application contact details
+app.post('/create-application-unlock-order', async (req, res) => {
+  try {
+    console.log('🔓 Application Unlock Order Request:', req.body);
+    
+    const { amount, applicationId, lostItemTitle, ownerUserId, receipt } = req.body;
+
+    // Validate required fields
+    if (!amount || !applicationId || !ownerUserId) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        required: ['amount', 'applicationId', 'ownerUserId'] 
+      });
+    }
+
+    console.log('⏳ Checking if already paid for this application...');
+    // Check if already unlocked
+    const { data: existingApplication, error: checkError } = await supabase
+      .from('lost_found_applications')
+      .select('status')
+      .eq('id', applicationId)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking application:', checkError);
+      return res.status(500).json({ error: 'Failed to validate application', details: checkError });
+    }
+
+    if (existingApplication.status === 'paid') {
+      console.log('❌ Application already unlocked');
+      return res.status(400).json({ 
+        error: 'Already unlocked', 
+        message: 'You have already unlocked this application' 
+      });
+    }
+
+    console.log('⏳ Creating Razorpay order...');
+    
+    if (!razorpay) {
+      console.error('❌ Razorpay not initialized');
+      return res.status(500).json({ 
+        error: 'Payment service not available',
+        message: 'Payment service is temporarily unavailable. Please contact support.' 
+      });
+    }
+    
+    // Create Razorpay order
+    const options = {
+      amount: amount, // amount in paise (5 rupees = 500 paise)
+      currency: 'INR',
+      receipt: receipt || `app_unlock_${applicationId}_${Date.now()}`,
+      notes: {
+        application_id: applicationId,
+        service: 'application_contact_unlock',
+        owner_user_id: ownerUserId,
+        lost_item_title: lostItemTitle
+      }
+    };
+
+    const order = await razorpay.orders.create(options);
+    console.log('✅ Application unlock order created:', order.id);
+    res.json(order);
+
+  } catch (error) {
+    console.error('❌ Error creating application unlock order:', error);
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
+  }
+});
+
+// Verify payment for application unlock
+app.post('/verify-application-unlock-payment', async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      applicationId,
+      ownerUserId
+    } = req.body;
+
+    // Verify signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Invalid signature' });
+    }
+
+    // Fetch payment details from Razorpay
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    
+    if (payment.status !== 'captured') {
+      return res.status(400).json({ success: false, message: 'Payment not captured' });
+    }
+
+    // Update application status to 'paid'
+    const { error: updateError } = await supabase
+      .from('lost_found_applications')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        payment_id: razorpay_payment_id
+      })
+      .eq('id', applicationId);
+
+    if (updateError) {
+      console.error('Error updating application:', updateError);
+      return res.status(500).json({ success: false, message: 'Failed to unlock application' });
+    }
+
+    // Store payment in orders table
+    const { error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: ownerUserId,
+        service_name: 'ApplicationContactUnlock',
+        subservice_name: `Application ${applicationId}`,
+        amount: 5,
+        payment_method: 'razorpay',
+        payment_status: 'completed',
+        transaction_id: razorpay_payment_id,
+        booking_details: {
+          application_id: applicationId,
+          razorpay_order_id: razorpay_order_id
+        }
+      });
+
+    if (orderError) {
+      console.error('Error storing order:', orderError);
+      // Don't fail the request as payment is successful
+    }
+
+    console.log('✅ Application contact unlocked successfully');
+    res.json({
+      success: true,
+      message: 'Contact details unlocked successfully',
+      paymentId: razorpay_payment_id
+    });
+
+  } catch (error) {
+    console.error('Error verifying application unlock payment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Payment verification failed', 
+      details: error.message 
+    });
+  }
+});
+
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

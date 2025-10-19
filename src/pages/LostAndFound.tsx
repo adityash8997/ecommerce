@@ -20,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client"
 import { GuestBrowsingBanner } from "@/components/GuestBrowsingBanner"
 import { useAuth } from "@/hooks/useAuth"
 import LostFoundPaymentComponent from "@/components/LostFoundPaymentComponent"
+import { ApplicationSubmissionForm } from "@/components/ApplicationSubmissionForm"
+import { ViewApplicationsDialog } from "@/components/ViewApplicationsDialog"
 
 interface LostFoundItem {
   id: string
@@ -83,6 +85,16 @@ export default function LostAndFound() {
     open: false,
   })
   const [paidItems, setPaidItems] = useState<{ [id: string]: boolean }>({})
+  const [showApplicationForm, setShowApplicationForm] = useState<{ item: LostFoundItem | null; open: boolean }>({
+    item: null,
+    open: false,
+  })
+  const [applicationCounts, setApplicationCounts] = useState<{ [itemId: string]: number }>({})
+  const [showViewApplications, setShowViewApplications] = useState<{ item: LostFoundItem | null; open: boolean }>({
+    item: null,
+    open: false,
+  })
+  const [userAppliedItems, setUserAppliedItems] = useState<{ [itemId: string]: boolean }>({})
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -132,7 +144,7 @@ export default function LostAndFound() {
         for (const item of items) {
           try {
             const res = await fetch(
-              `${import.meta.env.VITE_API_URL}/has-paid-lost-found-contact?user_id=${user.id}&item_id=${item.id}`,
+              `${import.meta.env.VITE_LOST_FOUND_API_URL}/has-paid-lost-found-contact?user_id=${user.id}&item_id=${item.id}`,
             )
             const result = await res.json()
             if (result.paid) {
@@ -147,6 +159,94 @@ export default function LostAndFound() {
     }
     checkPaidItems()
   }, [user?.id, items])
+
+  // Fetch application counts for lost items
+  useEffect(() => {
+    const fetchApplicationCounts = async () => {
+      if (items.length > 0) {
+        const counts: { [itemId: string]: number } = {}
+        for (const item of items.filter(i => i.item_type === 'lost')) {
+          try {
+            const { data, error } = await supabase
+              .from('lost_found_applications')
+              .select('id', { count: 'exact' })
+              .eq('lost_item_id', item.id);
+            
+            if (!error && data) {
+              counts[item.id] = data.length;
+            }
+          } catch (err) {
+            console.error(`Error fetching applications for item ${item.id}:`, err);
+          }
+        }
+        setApplicationCounts(counts);
+      }
+    };
+    fetchApplicationCounts();
+  }, [items]);
+
+  // Check which lost items the current user has already applied to
+  useEffect(() => {
+    const checkUserApplications = async () => {
+      if (!user?.id) {
+        setUserAppliedItems({});
+        return;
+      }
+
+      if (items.length > 0) {
+        const appliedItems: { [itemId: string]: boolean } = {};
+        
+        try {
+          console.log('🔍 Checking user applications for user:', user.id);
+          // Fetch all applications by this user
+          const { data, error } = await supabase
+            .from('lost_found_applications')
+            .select('lost_item_id')
+            .eq('applicant_user_id', user.id);
+          
+          if (error) {
+            console.error('Error fetching user applications:', error);
+          } else if (data) {
+            console.log('✅ Found', data.length, 'applications by user');
+            data.forEach(application => {
+              appliedItems[application.lost_item_id] = true;
+              console.log('  - Applied to item:', application.lost_item_id);
+            });
+          }
+        } catch (err) {
+          console.error('Error checking user applications:', err);
+        }
+        
+        setUserAppliedItems(appliedItems);
+        console.log('📊 User applied items state:', appliedItems);
+      }
+    };
+
+    checkUserApplications();
+  }, [user?.id, items]);
+
+  const handleApplyClick = (item: LostFoundItem) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to apply for this lost item.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent owner from applying to their own item
+    if (user.id === item.user_id) {
+      toast({
+        title: "Cannot apply to own item",
+        description: "You cannot apply for your own lost item.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setShowApplicationForm({ item, open: true });
+  };
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -304,7 +404,7 @@ export default function LostAndFound() {
         })
 
         try {
-          await fetch(`${import.meta.env.VITE_API_URL}/send-contact-details`, {
+          await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/send-contact-details`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -510,6 +610,7 @@ export default function LostAndFound() {
               </TabsTrigger>
             </TabsList>
             
+            {/* All Items Tab - Shows both LOST and FOUND with different buttons */}
             <TabsContent value="all">
               {error ? (
                 <DatabaseErrorFallback error={error} onRetry={refreshItems} />
@@ -577,50 +678,82 @@ export default function LostAndFound() {
                           </div>
                         </div>
 
-                        {paidItems[item.id] ? (
-                          <div className="mt-4 p-4 border-2 border-green-200 rounded-xl bg-green-50 dark:bg-green-950/50 dark:border-green-800/50 shadow-inner">
-                            <div className="flex items-center mb-3">
-                              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                              <span className="font-bold text-green-800 dark:text-green-200">Contact Details:</span>
+                        {/* Different flow for LOST vs FOUND items in All tab */}
+                        {item.item_type === "lost" ? (
+                          /* LOST ITEMS - Application Flow */
+                          user?.id === item.user_id ? (
+                            /* Owner View - Show View Applications button */
+                            <div className="space-y-2">
+                              <Button
+                                variant="outline"
+                                className="w-full h-12 text-base font-semibold border-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+                                onClick={() => setShowViewApplications({ item, open: true })}
+                              >
+                                📋 View Applications ({applicationCounts[item.id] || 0})
+                              </Button>
+                              {!item.marked_complete_at && (
+                                <Button 
+                                  variant="outline" 
+                                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                                  onClick={() => handleMarkComplete(item.id)}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Mark as Complete
+                                </Button>
+                              )}
                             </div>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Name:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_name}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Email:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_email}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Phone:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_phone}</span>
-                              </div>
-                            </div>
-                          </div>
+                          ) : (
+                            /* Non-owner View - Show Apply button */
+                            <Button
+                              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                              onClick={() => handleApplyClick(item)}
+                              disabled={userAppliedItems[item.id]}
+                            >
+                              {userAppliedItems[item.id] ? (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Already Applied
+                                </>
+                              ) : (
+                                '📝 Apply if You Found This'
+                              )}
+                            </Button>
+                          )
                         ) : (
-                          <Button
-                            className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-                            onClick={() => handleContactClick(item)}
-                            disabled={user?.email === item.contact_email}
-                          >
-                            <Phone className="w-5 h-5 mr-3" />
-                            {user?.email === item.contact_email
-                              ? "Your Item"
-                              : `Contact ${item.contact_name} (₹15)`}
-                          </Button>
-                        )}
-
-                        {/* Mark as Complete Button - Only show for item owner */}
-                        {user?.id === item.user_id && !item.marked_complete_at && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full mt-2 border-green-500 text-green-600 hover:bg-green-50"
-                            onClick={() => handleMarkComplete(item.id)}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Mark as Complete
-                          </Button>
+                          /* FOUND ITEMS - Old Payment Flow */
+                          paidItems[item.id] ? (
+                            <div className="mt-4 p-4 border-2 border-green-200 rounded-xl bg-green-50 dark:bg-green-950/50 dark:border-green-800/50 shadow-inner">
+                              <div className="flex items-center mb-3">
+                                <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                                <span className="font-bold text-green-800 dark:text-green-200">Contact Details:</span>
+                              </div>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center">
+                                  <span className="font-semibold w-16">Name:</span>
+                                  <span className="text-green-800 dark:text-green-200">{item.contact_name}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="font-semibold w-16">Email:</span>
+                                  <span className="text-green-800 dark:text-green-200">{item.contact_email}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="font-semibold w-16">Phone:</span>
+                                  <span className="text-green-800 dark:text-green-200">{item.contact_phone}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
+                              onClick={() => handleContactClick(item)}
+                              disabled={user?.email === item.contact_email}
+                            >
+                              <Phone className="w-5 h-5 mr-3" />
+                              {user?.email === item.contact_email
+                                ? "Your Item"
+                                : `Contact ${item.contact_name} (₹5)`}
+                            </Button>
+                          )
                         )}
                         
                         {/* Completed Status */}
@@ -704,49 +837,43 @@ export default function LostAndFound() {
                           </div>
                         </div>
 
-                        {paidItems[item.id] ? (
-                          <div className="mt-4 p-4 border-2 border-green-200 rounded-xl bg-green-50 dark:bg-green-950/50 dark:border-green-800/50 shadow-inner">
-                            <div className="flex items-center mb-3">
-                              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                              <span className="font-bold text-green-800 dark:text-green-200">Contact Details:</span>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Name:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_name}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Email:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_email}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <span className="font-semibold w-16">Phone:</span>
-                                <span className="text-green-800 dark:text-green-200">{item.contact_phone}</span>
-                              </div>
-                            </div>
+                        {/* For LOST items - Different flow than FOUND items */}
+                        {user?.id === item.user_id ? (
+                          /* Owner View - Show View Applications button */
+                          <div className="space-y-2">
+                            <Button
+                              variant="outline"
+                              className="w-full h-12 text-base font-semibold border-2 border-blue-500 text-blue-600 hover:bg-blue-50"
+                              onClick={() => setShowViewApplications({ item, open: true })}
+                            >
+                              📋 View Applications ({applicationCounts[item.id] || 0})
+                            </Button>
+                            {!item.marked_complete_at && (
+                              <Button 
+                                variant="outline" 
+                                className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                                onClick={() => handleMarkComplete(item.id)}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Mark as Complete
+                              </Button>
+                            )}
                           </div>
                         ) : (
+                          /* Non-owner View - Show Apply button */
                           <Button
-                            className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-                            onClick={() => handleContactClick(item)}
-                            disabled={user?.email === item.contact_email}
+                            className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            onClick={() => handleApplyClick(item)}
+                            disabled={userAppliedItems[item.id]}
                           >
-                            <Phone className="w-5 h-5 mr-3" />
-                            {user?.email === item.contact_email
-                              ? "Your Item"
-                              : `Contact ${item.contact_name} (₹15)`}
-                          </Button>
-                        )}
-
-                        {/* Mark as Complete Button - Only show for item owner */}
-                        {user?.id === item.user_id && !item.marked_complete_at && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full mt-2 border-green-500 text-green-600 hover:bg-green-50"
-                            onClick={() => handleMarkComplete(item.id)}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Mark as Complete
+                            {userAppliedItems[item.id] ? (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Already Applied
+                              </>
+                            ) : (
+                              '📝 Apply if You Found This'
+                            )}
                           </Button>
                         )}
                         
@@ -1136,6 +1263,54 @@ export default function LostAndFound() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Application Submission Form Dialog */}
+      {showApplicationForm.open && showApplicationForm.item && user && (
+        <ApplicationSubmissionForm
+          currentUserId={user.id}
+          lostItemId={showApplicationForm.item.id}
+          lostItemTitle={showApplicationForm.item.title}
+          lostItemOwnerEmail={showApplicationForm.item.contact_email || ''}
+          currentUserEmail={user.email || ''}
+          onClose={() => setShowApplicationForm({ item: null, open: false })}
+          onSuccess={() => {
+            // Mark item as applied and refresh application counts
+            const itemId = showApplicationForm.item!.id;
+            
+            // Update userAppliedItems to disable the button
+            setUserAppliedItems(prev => ({
+              ...prev,
+              [itemId]: true
+            }));
+            
+            // Refresh application counts
+            const fetchCount = async () => {
+              const { data } = await supabase
+                .from('lost_found_applications')
+                .select('id', { count: 'exact' })
+                .eq('lost_item_id', itemId);
+              if (data) {
+                setApplicationCounts(prev => ({
+                  ...prev,
+                  [itemId]: data.length
+                }));
+              }
+            };
+            fetchCount();
+          }}
+        />
+      )}
+
+      {/* View Applications Dialog */}
+      {showViewApplications.open && showViewApplications.item && user && (
+        <ViewApplicationsDialog
+          lostItemId={showViewApplications.item.id}
+          lostItemTitle={showViewApplications.item.title}
+          ownerUserId={user.id}
+          open={showViewApplications.open}
+          onClose={() => setShowViewApplications({ item: null, open: false })}
+        />
+      )}
     </div>
   )
 }
