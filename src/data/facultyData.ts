@@ -174,7 +174,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Laboratory Governance",
     email: "suchismita.dasfcs@kiit.ac.in",
     phone: "8763977944",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/susmita-das-a33369140/",
     category: "contact",
   },
   {
@@ -300,7 +300,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Student Affairs (NCC & NSS)",
     email: "nss.sce@kiit.ac.in",
     phone: "9861108580",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/dr-minakhi-rout-2800351b6/",
     category: "contact",
   },
   {
@@ -363,7 +363,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Guest Lecture Engagement",
     email: "arghya.kundufcs@kiit.ac.in",
     phone: "8792739730",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/arghya-kundu-371a015/",
     category: "contact",
   },
   {
@@ -372,7 +372,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Guest Lecture Engagement",
     email: "pradeep.mallickfcs@kiit.ac.in",
     phone: "8895885152",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/dr-pradeep-kumar-mallick-30652127/",
     category: "contact",
   },
   {
@@ -408,7 +408,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Project Co-ordinator (UG)",
     email: "sushruta.mishrafcs@kiit.ac.in",
     phone: "7751995740",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/sushruta-mishra-946a757a/",
     category: "contact",
   },
   {
@@ -417,7 +417,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Project Co-ordinator (UG)",
     email: "saikat.chakrabortyfcs@kiit.ac.in",
     phone: "993768429",
-    linkedin: "No LinkedIn",
+    linkedin: "https://www.linkedin.com/in/adisaikat/",
     category: "contact",
   },
 ];
