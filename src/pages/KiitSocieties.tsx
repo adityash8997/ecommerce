@@ -18,7 +18,8 @@ import {
   Calendar1,
   TrophyIcon,
   Route,
-  PartyPopperIcon as Social
+  PartyPopperIcon as Social,
+  PartyPopperIcon
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -646,7 +647,7 @@ const KiitSocieties = () => {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4">
+      {/* <section className="pt-24 pb-16 px-4">
         <div className="container mx-auto text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold text-kiit-green mb-6 animate-fade-in">
@@ -668,7 +669,28 @@ const KiitSocieties = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
+      <div className="mb-5 mt-10 py-8 mx-4 text-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-kiit-primary/10 via-kiit-secondary/10 to-kiit-primary/10 rounded-3xl blur-3xl -z-10"></div>
+            <div className="glass-card p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-kiit-primary to-kiit-secondary rounded-2xl mb-6 shadow-lg">
+              <PartyPopperIcon className="w-10 h-10 "/>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-kiit-primary via-kiit-secondary to-kiit-primary bg-clip-text text-transparent mb-4">
+                 KIIT Societies, Fests and Sports
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Your gateway to campus societies, events, and opportunities
+              </p>
+              <div className="flex flex-col md:flex-row gap-4 justify-center items-center mb-8 text-sm md:text-base text-gray-600">
+              <span>Never miss an interview, fest, or sports event again</span>
+              <span className="hidden md:inline">•</span>
+              <span>One calendar. All societies. All events.</span>
+            </div>
+            </div>
+          </div>
+        </div>
 
       {/* Quick Access Services */}
       <section className="py-16 px-4 bg-white/80 backdrop-blur-sm">
@@ -688,7 +710,7 @@ const KiitSocieties = () => {
               return (
                 <Card
                   key={index}
-                  className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-kiit-green cursor-pointer"
+                  className="group hover:shadow-box hover:shadow-kiit-green shadow-lg transition-all duration-300 border-2 border-transparent hover:border-kiit-green cursor-pointer"
                   onClick={() => handleServiceClick(service.route)}
                 >
                   <CardHeader className="text-center pb-4">

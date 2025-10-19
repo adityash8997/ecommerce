@@ -70,7 +70,7 @@ const App = () => {
     document.addEventListener('contextmenu', disableRightClick);
 
     const disableShortcuts = (e) => {
-      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'v' || e.key === 'V' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
+      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
         e.preventDefault();
         alert("This action is disabled to protect content.");
       }

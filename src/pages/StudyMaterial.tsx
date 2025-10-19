@@ -285,7 +285,7 @@ export default function StudyMaterial() {
       }
 
       // Download file
-      window.open(material.downloadUrl, '_blank');
+      
     } catch (error) {
       console.error("Download error:", error);
     }

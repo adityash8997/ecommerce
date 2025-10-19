@@ -357,11 +357,6 @@ export const ServicesGrid = () => {
                       {service.description}
                     </p>
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2">
-                      <span className={`font-semibold px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm bg-gradient-to-r ${service.gradient} text-white`}>
-                        {service.price}
-                      </span>
-                    </div>
                   </div>
                 </div>
               );
