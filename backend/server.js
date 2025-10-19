@@ -13,7 +13,8 @@ const allowedOrigins = [
   "http://10.5.83.177:8080",
   "http://localhost:5173",
   "https://kiitsaathi.vercel.app",
-  "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app"
+  "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
+   "https://ksaathi.vercel.app"
 ];
 
 // CORS configuration
