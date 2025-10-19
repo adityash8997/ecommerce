@@ -65,34 +65,28 @@ import ResaleMyListings from "./pages/ResaleMyListings";
 const queryClient = new QueryClient();
 
 const App = () => {
-   useEffect(() => {
-    const disableRightClick = (e) => e.preventDefault();
-    document.addEventListener('contextmenu', disableRightClick);
-
-    const disableShortcuts = (e) => {
-      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
+  useEffect(() => {
+    // ✅ Optional: Only block Ctrl+U, Ctrl+S, and F12 if really needed
+    const disableShortcuts = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (
+        (e.ctrlKey && (key === 'u' || key === 's')) || // Ctrl+U or Ctrl+S
+        key === 'f12' // F12
+      ) {
         e.preventDefault();
-        alert("This action is disabled to protect content.");
-      }
-    }
-    document.addEventListener('keydown', disableShortcuts);
-
-    const checkDevTools = () => {
-      const start = performance.now();
-      debugger; // intentional pause for timing difference
-      const end = performance.now();
-      if (end - start > 100) {
-        alert("Developer Tools detected! Please close it to continue.");
-        window.location.reload();
+        console.warn("This shortcut is disabled.");
       }
     };
-    const interval = setInterval(checkDevTools, 2000);
+
+    document.addEventListener("keydown", disableShortcuts);
+
+    // ✅ DevTools detection fully removed to avoid debugger locks & reload loops
+
     return () => {
-      document.removeEventListener("contextmenu", disableRightClick);
       document.removeEventListener("keydown", disableShortcuts);
-      clearInterval(interval);
     };
   }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
