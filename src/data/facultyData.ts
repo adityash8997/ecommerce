@@ -21,7 +21,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Director General",
     email: "director.csit@kiit.ac.in",
     phone: "9437229507",
-    linkedin: "https://in.linkedin.com/in/biswajitsahoo",
+    linkedin: "No LinkedIn",
     category: "contact",
   },
   {
@@ -57,7 +57,7 @@ const contactPersonsData: FacultyMember[] = [
     designation: "Dean, Academics (CC & CSM)",
     email: "dean.ccm@kiit.ac.in",
     phone: "9439627127",
-    linkedin: "https://in.linkedin.com/in/amiya-ranjan-panda-4445a127",
+    linkedin: "No LinkedIn",
     category: "contact",
   },
   {
