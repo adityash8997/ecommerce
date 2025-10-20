@@ -115,6 +115,22 @@ const services = [
     gradient: "from-fedkiit-green to-usc-green",
   },
   {
+    id: "donation-saathi",
+    icon: Heart,
+    title: "Donation Saathi",
+    description: "Extend a helping hand — donate books, food, and essentials to those in need through the KIIT community.",
+    price: "Coming Soon",
+    gradient: "from-kiit-green to-campus-orange",
+  },
+  {
+    id: "student-mental-wellness",
+    icon: Brain,
+    title: "Student Mental Wellness",
+    description: "Because your mind matters — find support and guidance for emotional and mental well-being.",
+    price: "Coming Soon",
+    gradient: "from-campus-blue to-ecell-cyan",
+  },
+  {
     id: "printout-on-demand",
     icon: Printer,
     title: "Printouts on Demand",
@@ -201,22 +217,6 @@ const services = [
     description: "From wholesome mini meals to everyday essentials - delivered from trusted campus and nearby stores.",
     price: "₹20 delivery",
     gradient: "from-usc-orange to-fedkiit-green",
-  },
-  {
-    id: "donation-saathi",
-    icon: Heart,
-    title: "Donation Saathi",
-    description: "Extend a helping hand — donate books, food, and essentials to those in need through the KIIT community.",
-    price: "Coming Soon",
-    gradient: "from-kiit-green to-campus-orange",
-  },
-  {
-    id: "student-mental-wellness",
-    icon: Brain,
-    title: "Student Mental Wellness",
-    description: "Because your mind matters — find support and guidance for emotional and mental well-being.",
-    price: "Coming Soon",
-    gradient: "from-campus-blue to-ecell-cyan",
   }
 ];
 
