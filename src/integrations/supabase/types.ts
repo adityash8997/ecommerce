@@ -1347,6 +1347,7 @@ export type Database = {
           group_id: string
           id: string
           name: string
+          roll_number: string | null
         }
         Insert: {
           created_at?: string
@@ -1354,6 +1355,7 @@ export type Database = {
           group_id: string
           id?: string
           name: string
+          roll_number?: string | null
         }
         Update: {
           created_at?: string
@@ -1361,10 +1363,40 @@ export type Database = {
           group_id?: string
           id?: string
           name?: string
+          roll_number?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_notifications: {
+        Row: {
+          group_id: string
+          id: string
+          notified_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          notified_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          notified_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_notifications_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
@@ -1501,6 +1533,51 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_events: {
+        Row: {
+          category: string
+          company_name: string
+          discription: string | null
+          end_time: string | null
+          id: number
+          interview_date: string
+          interview_name: string
+          location: string
+          requirement: string
+          role: string
+          start_time: string
+          validation: boolean | null
+        }
+        Insert: {
+          category: string
+          company_name: string
+          discription?: string | null
+          end_time?: string | null
+          id?: number
+          interview_date: string
+          interview_name: string
+          location: string
+          requirement: string
+          role: string
+          start_time: string
+          validation?: boolean | null
+        }
+        Update: {
+          category?: string
+          company_name?: string
+          discription?: string | null
+          end_time?: string | null
+          id?: number
+          interview_date?: string
+          interview_name?: string
+          location?: string
+          requirement?: string
+          role?: string
+          start_time?: string
+          validation?: boolean | null
+        }
+        Relationships: []
+      }
       lost_and_found_items: {
         Row: {
           category: string
@@ -1566,6 +1643,86 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      lost_found_applications: {
+        Row: {
+          applicant_email: string
+          applicant_name: string
+          applicant_phone: string
+          applicant_user_id: string | null
+          created_at: string | null
+          found_date: string
+          found_description: string
+          found_location: string
+          found_photo_url: string
+          id: string
+          lost_item_id: string
+          paid_at: string | null
+          payment_id: string | null
+          status: string | null
+        }
+        Insert: {
+          applicant_email: string
+          applicant_name: string
+          applicant_phone: string
+          applicant_user_id?: string | null
+          created_at?: string | null
+          found_date: string
+          found_description: string
+          found_location: string
+          found_photo_url: string
+          id?: string
+          lost_item_id: string
+          paid_at?: string | null
+          payment_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          applicant_email?: string
+          applicant_name?: string
+          applicant_phone?: string
+          applicant_user_id?: string | null
+          created_at?: string | null
+          found_date?: string
+          found_description?: string
+          found_location?: string
+          found_photo_url?: string
+          id?: string
+          lost_item_id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_lost_item"
+            columns: ["lost_item_id"]
+            isOneToOne: false
+            referencedRelation: "lost_and_found_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lost_item"
+            columns: ["lost_item_id"]
+            isOneToOne: false
+            referencedRelation: "lost_and_found_items_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lost_found_applications_lost_item_id_fkey"
+            columns: ["lost_item_id"]
+            isOneToOne: false
+            referencedRelation: "lost_and_found_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lost_found_applications_lost_item_id_fkey"
+            columns: ["lost_item_id"]
+            isOneToOne: false
+            referencedRelation: "lost_and_found_items_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lost_found_requests: {
         Row: {
@@ -2673,6 +2830,39 @@ export type Database = {
         }
         Relationships: []
       }
+      resume_usage: {
+        Row: {
+          action: string
+          count: number
+          created_at: string | null
+          id: number
+          month: number
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          action: string
+          count?: number
+          created_at?: string | null
+          id?: number
+          month: number
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          action?: string
+          count?: number
+          created_at?: string | null
+          id?: number
+          month?: number
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       resumes: {
         Row: {
           ats_score: number | null
@@ -3132,6 +3322,15 @@ export type Database = {
       handle_db_error: {
         Args: { error_message: string }
         Returns: Json
+      }
+      increment_resume_usage: {
+        Args: {
+          p_action: string
+          p_month: number
+          p_user_id: string
+          p_year: number
+        }
+        Returns: undefined
       }
       is_admin_user: {
         Args: { user_uuid?: string }

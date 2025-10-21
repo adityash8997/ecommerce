@@ -7,7 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { PolicyWrapper } from "@/components/PolicyWrapper";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteLogger from "./components/RouteLogger";
-import { Toaster as HotToaster } from 'react-hot-toast';
+import { Toaster as HotToaster } from "react-hot-toast";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import CartonTransfer from "./pages/CartonTransfer";
@@ -47,7 +47,6 @@ import { AdminGuard } from "@/components/AdminGuard";
 import ResumeSaathi from "./pages/ResumeSaathi/ResumeSaathi";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import { useEffect, useState } from "react";
 import BakeryDashboard from "./pages/BakeryDashboard";
 import Resale from "./pages/Resale";
 import ResaleBrowse from "./pages/ResaleBrowse";
@@ -59,21 +58,20 @@ import ResaleTransactions from "./pages/ResaleTransactions";
 import ResaleFavourites from "./pages/ResaleFavourites";
 import ResaleMyListings from "./pages/ResaleMyListings";
 import Loader from "./components/Loader";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+import { useEffect, useState } from "react";
 
 const queryClient = new QueryClient();
 
-// NEW: Separate component that uses useLocation - must be inside BrowserRouter
+// ✅ Routes component (contains useLocation safely inside BrowserRouter)
 const AppRoutes = () => {
   const [loading, setLoading] = useState(false);
-  const location = useLocation(); // Now this is inside BrowserRouter context
+  const location = useLocation();
 
   useEffect(() => {
-    console.log('Loading state changed:', loading);
     setLoading(true);
-    const timer = setTimeout(() => {
-      setLoading(false);
-      console.log('Loading finished');
-    }, 1000);
+    const timer = setTimeout(() => setLoading(false), 1000);
     return () => clearTimeout(timer);
   }, [location]);
 
@@ -82,6 +80,7 @@ const AppRoutes = () => {
       <ScrollToTop />
       <RouteLogger />
       <Loader loading={loading} />
+
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/carton-transfer" element={<CartonTransfer />} />
@@ -116,17 +115,20 @@ const AppRoutes = () => {
         <Route path="/campus-map/:campusId" element={<CampusDetailPage />} />
         <Route path="/campus-map/campus-25" element={<Campus25 />} />
         <Route path="/sgpa-calculator" element={<SGPACalculator />} />
-        <Route path="/admin-dashboard" element={
-          <AdminGuard>
-            <AdminDashboard />
-          </AdminGuard>
-        } />
+        <Route
+          path="/admin-dashboard"
+          element={
+            <AdminGuard>
+              <AdminDashboard />
+            </AdminGuard>
+          }
+        />
         <Route path="/resume-saathi" element={<ResumeSaathi />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
 
-        {/* Resale Saathi Routes */}
+        {/* Resale Routes */}
         <Route path="/resale" element={<Resale />} />
         <Route path="/resale/browse" element={<ResaleBrowse />} />
         <Route path="/resale/new" element={<ResaleNewListing />} />
@@ -144,57 +146,31 @@ const AppRoutes = () => {
   );
 };
 
+// ✅ The main App (with a single BrowserRouter)
 const App = () => {
-
-  // useEffect(() => {
-  //   document.body.style.margin = '0';
-  //   document.body.style.padding = '0';
-  //   document.documentElement.style.margin = '0';
-  //   document.documentElement.style.padding = '0';
-  //   const disableRightClick = (e) => e.preventDefault();
-  //   document.addEventListener('contextmenu', disableRightClick);
-
-  //   const disableShortcuts = (e) => {
-  //     if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
-  //       e.preventDefault();
-  //       alert("This action is disabled to protect content.");
-  //     }
-  //   }
-  //   document.addEventListener('keydown', disableShortcuts);
-
-  //   const checkDevTools = () => {
-  //     const start = performance.now();
-  //     debugger;
-  //     const end = performance.now();
-  //     if (end - start > 100) {
-  //       alert("Developer Tools detected! Please close it to continue.");
-  //       window.location.reload();
-  //     }
-  //   };
-  //   const interval = setInterval(checkDevTools, 2000);
-    
-  //   return () => {
-  //     document.removeEventListener("contextmenu", disableRightClick);
-  //     document.removeEventListener("keydown", disableShortcuts);
-  //     clearInterval(interval);
-  //   };
-  // }, []);
+  useEffect(() => {
+    const disableRightClick = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", disableRightClick);
+    return () => document.removeEventListener("contextmenu", disableRightClick);
+  }, []);
 
   return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <PolicyWrapper>
-            <TooltipProvider>
-              <HotToaster position="top-center" />
-              <Toaster />
-              <Sonner />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <PolicyWrapper>
+          <TooltipProvider>
+            <HotToaster position="top-center" />
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
               <AppRoutes />
-            </TooltipProvider>
-          </PolicyWrapper>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+            </BrowserRouter>
+            <Analytics />
+            <SpeedInsights />
+          </TooltipProvider>
+        </PolicyWrapper>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 

@@ -20,7 +20,9 @@ import {
   ArrowRight,
   Calculator,
   FileText,
-  GraduationCap
+  GraduationCap,
+  Heart,
+  Brain
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -28,6 +30,7 @@ import { useServiceVisibility } from "@/hooks/useServiceVisibility";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const services = [
   {
@@ -110,6 +113,22 @@ const services = [
     description: "Simplify how you and your friends split bills during trips, café visits, or fests.",
     price: "Free",
     gradient: "from-fedkiit-green to-usc-green",
+  },
+  {
+    id: "donation-saathi",
+    icon: Heart,
+    title: "Donation Saathi",
+    description: "Extend a helping hand — donate books, food, and essentials to those in need through the KIIT community.",
+    price: "Coming Soon",
+    gradient: "from-kiit-green to-campus-orange",
+  },
+  {
+    id: "student-mental-wellness",
+    icon: Brain,
+    title: "Student Mental Wellness",
+    description: "Because your mind matters — find support and guidance for emotional and mental well-being.",
+    price: "Coming Soon",
+    gradient: "from-campus-blue to-ecell-cyan",
   },
   {
     id: "printout-on-demand",
@@ -245,8 +264,13 @@ export const ServicesGrid = () => {
     if (route) {
       navigate(route);
     } else {
-      // Show coming soon for services without pages
-      alert("Coming Soon! This service is under development and will be available soon.");
+      // Show coming soon toast for services without pages
+      toast({
+        title: "Coming Soon!",
+        description: "This service will be available in the next update.",
+        duration: 3500,
+        className: "bg-gradient-to-r from-kiit-green to-kiit-green-dark text-white border-none font-semibold",
+      });
     }
   };
 
