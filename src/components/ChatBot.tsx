@@ -37,7 +37,6 @@ export const ChatBot = () => {
             <div className="bg-gradient-to-r from-kiit-green to-campus-blue p-4 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src={kiitMascot} alt="KIIT Buddy" className="w-8 h-8" />
                   <div>
                     <h3 className="font-semibold">KIIT Saathi</h3>
                     <p className="text-white/80 text-sm">Your campus assistant</p>
