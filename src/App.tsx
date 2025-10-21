@@ -49,6 +49,8 @@ import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import { useEffect } from "react";
 import { lazy } from "react";
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
 
 import BakeryDashboard from "./pages/BakeryDashboard";
@@ -158,6 +160,8 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            <Analytics />
+            <SpeedInsights />
           </TooltipProvider>
         </PolicyWrapper>
       </AuthProvider>
