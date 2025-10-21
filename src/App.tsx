@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { PolicyWrapper } from "@/components/PolicyWrapper";
 import ScrollToTop from "./components/ScrollToTop";
@@ -47,10 +47,7 @@ import { AdminGuard } from "@/components/AdminGuard";
 import ResumeSaathi from "./pages/ResumeSaathi/ResumeSaathi";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import { useEffect } from "react";
-import { lazy } from "react";
-console.log('App.tsx: PrintoutOnDemand imported:', PrintoutOnDemand);
-
+import { useEffect, useState } from "react";
 import BakeryDashboard from "./pages/BakeryDashboard";
 import Resale from "./pages/Resale";
 import ResaleBrowse from "./pages/ResaleBrowse";
@@ -61,113 +58,143 @@ import ResaleCheckout from "./pages/ResaleCheckout";
 import ResaleTransactions from "./pages/ResaleTransactions";
 import ResaleFavourites from "./pages/ResaleFavourites";
 import ResaleMyListings from "./pages/ResaleMyListings";
+import Loader from "./components/Loader";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-   useEffect(() => {
-    const disableRightClick = (e) => e.preventDefault();
-    document.addEventListener('contextmenu', disableRightClick);
+// NEW: Separate component that uses useLocation - must be inside BrowserRouter
+const AppRoutes = () => {
+  const [loading, setLoading] = useState(false);
+  const location = useLocation(); // Now this is inside BrowserRouter context
 
-    const disableShortcuts = (e) => {
-      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
-        e.preventDefault();
-        alert("This action is disabled to protect content.");
-      }
-    }
-    document.addEventListener('keydown', disableShortcuts);
-
-    const checkDevTools = () => {
-      const start = performance.now();
-      debugger; // intentional pause for timing difference
-      const end = performance.now();
-      if (end - start > 100) {
-        alert("Developer Tools detected! Please close it to continue.");
-        window.location.reload();
-      }
-    };
-    const interval = setInterval(checkDevTools, 2000);
-    return () => {
-      document.removeEventListener("contextmenu", disableRightClick);
-      document.removeEventListener("keydown", disableShortcuts);
-      clearInterval(interval);
-    };
-  }, []);
+  useEffect(() => {
+    console.log('Loading state changed:', loading);
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setLoading(false);
+      console.log('Loading finished');
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [location]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <PolicyWrapper>
-          <TooltipProvider>
-            <HotToaster position="top-center" />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <ScrollToTop />
-              <RouteLogger />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/carton-transfer" element={<CartonTransfer />} />
-                <Route path="/senior-connect" element={<SeniorConnect />} />
-                <Route path="/handwritten-assignments" element={<HandwrittenAssignments />} />
-                <Route path="/lost-and-found" element={<LostAndFound />} />
-                <Route path="/timetable-saathi" element={<TimetableSaathi />} />
-                <Route path="/split-saathi" element={<SplitSaathi />} />
-                <Route path="/split-saathi/group/:groupId" element={<GroupDashboard />} />
-                <Route path="/study-material" element={<StudyMaterial />} />
-                <Route path="/book-buyback" element={<BookBuyback />} />
-                <Route path="/book-buyback-sell" element={<BookBuybackSell />} />
-                <Route path="/buy-preloved-books" element={<BuyPrelovedBooks />} />
-                <Route path="/celebrations" element={<Celebrations />} />
-                <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
-                <Route path="/meetups" element={<Meetups />} />
-                <Route path="/campus-tour-booking" element={<CampusTourBooking />} />
-                <Route path="/kiit-societies" element={<KiitSocieties />} />
-                <Route path="/skill-enhancing-sessions" element={<SkillEnhancingSessions />} />
-                <Route path="/interview-deadlines-tracker" element={<InterviewDeadlinesTracker />} />
-                <Route path="/course-structure" element={<CourseStructure />} />
-                <Route path="/fest-announcements" element={<FestAnnouncements />} />
-                <Route path="/sports-events-hub" element={<SportsEventsHub />} />
-                <Route path="/food-order-customer" element={<FoodOrderCustomer />} />
-                <Route path="/food-order-helper" element={<FoodOrderHelper />} />
-                <Route path="/order-history" element={<OrderHistory />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/chatbot" element={<ChatBotPage />} />
-                <Route path="/campus-map" element={<CampusMap />} />
-                <Route path="/campus-map/:campusId" element={<CampusDetailPage />} />
-                <Route path="/campus-map/campus-25" element={<Campus25 />} />
-                <Route path="/sgpa-calculator" element={<SGPACalculator />} />
-                <Route path="/admin-dashboard" element={
-                  <AdminGuard>
-                    <AdminDashboard />
-                  </AdminGuard>
-                } />
-                <Route path="/resume-saathi" element={<ResumeSaathi />} />
-                <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-                <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
+    <>
+      <ScrollToTop />
+      <RouteLogger />
+      <Loader loading={loading} />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/carton-transfer" element={<CartonTransfer />} />
+        <Route path="/senior-connect" element={<SeniorConnect />} />
+        <Route path="/handwritten-assignments" element={<HandwrittenAssignments />} />
+        <Route path="/lost-and-found" element={<LostAndFound />} />
+        <Route path="/timetable-saathi" element={<TimetableSaathi />} />
+        <Route path="/split-saathi" element={<SplitSaathi />} />
+        <Route path="/split-saathi/group/:groupId" element={<GroupDashboard />} />
+        <Route path="/study-material" element={<StudyMaterial />} />
+        <Route path="/book-buyback" element={<BookBuyback />} />
+        <Route path="/book-buyback-sell" element={<BookBuybackSell />} />
+        <Route path="/buy-preloved-books" element={<BuyPrelovedBooks />} />
+        <Route path="/celebrations" element={<Celebrations />} />
+        <Route path="/printout-on-demand" element={<PrintoutOnDemand />} />
+        <Route path="/meetups" element={<Meetups />} />
+        <Route path="/campus-tour-booking" element={<CampusTourBooking />} />
+        <Route path="/kiit-societies" element={<KiitSocieties />} />
+        <Route path="/skill-enhancing-sessions" element={<SkillEnhancingSessions />} />
+        <Route path="/interview-deadlines-tracker" element={<InterviewDeadlinesTracker />} />
+        <Route path="/course-structure" element={<CourseStructure />} />
+        <Route path="/fest-announcements" element={<FestAnnouncements />} />
+        <Route path="/sports-events-hub" element={<SportsEventsHub />} />
+        <Route path="/food-order-customer" element={<FoodOrderCustomer />} />
+        <Route path="/food-order-helper" element={<FoodOrderHelper />} />
+        <Route path="/order-history" element={<OrderHistory />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/chatbot" element={<ChatBotPage />} />
+        <Route path="/campus-map" element={<CampusMap />} />
+        <Route path="/campus-map/:campusId" element={<CampusDetailPage />} />
+        <Route path="/campus-map/campus-25" element={<Campus25 />} />
+        <Route path="/sgpa-calculator" element={<SGPACalculator />} />
+        <Route path="/admin-dashboard" element={
+          <AdminGuard>
+            <AdminDashboard />
+          </AdminGuard>
+        } />
+        <Route path="/resume-saathi" element={<ResumeSaathi />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
 
-                {/* Resale Saathi Routes */}
-                <Route path="/resale" element={<Resale />} />
-                <Route path="/resale/browse" element={<ResaleBrowse />} />
-                <Route path="/resale/new" element={<ResaleNewListing />} />
-                <Route path="/resale/:id" element={<ResaleListingDetail />} />
-                <Route path="/resale/categories/:category" element={<ResaleBrowse />} />
-                <Route path="/resale/chat/:conversationId" element={<ResaleChat />} />
-                <Route path="/resale/checkout/:id" element={<ResaleCheckout />} />
-                <Route path="/resale/transactions" element={<ResaleTransactions />} />
-                <Route path="/resale/favourites" element={<ResaleFavourites />} />
-                <Route path="/resale/my-listings" element={<ResaleMyListings />} />
+        {/* Resale Saathi Routes */}
+        <Route path="/resale" element={<Resale />} />
+        <Route path="/resale/browse" element={<ResaleBrowse />} />
+        <Route path="/resale/new" element={<ResaleNewListing />} />
+        <Route path="/resale/:id" element={<ResaleListingDetail />} />
+        <Route path="/resale/categories/:category" element={<ResaleBrowse />} />
+        <Route path="/resale/chat/:conversationId" element={<ResaleChat />} />
+        <Route path="/resale/checkout/:id" element={<ResaleCheckout />} />
+        <Route path="/resale/transactions" element={<ResaleTransactions />} />
+        <Route path="/resale/favourites" element={<ResaleFavourites />} />
+        <Route path="/resale/my-listings" element={<ResaleMyListings />} />
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </PolicyWrapper>
-      </AuthProvider>
-    </QueryClientProvider>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
+
+const App = () => {
+
+  // useEffect(() => {
+  //   document.body.style.margin = '0';
+  //   document.body.style.padding = '0';
+  //   document.documentElement.style.margin = '0';
+  //   document.documentElement.style.padding = '0';
+  //   const disableRightClick = (e) => e.preventDefault();
+  //   document.addEventListener('contextmenu', disableRightClick);
+
+  //   const disableShortcuts = (e) => {
+  //     if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'c' || e.key === 'C' || e.key === 'x' || e.key === 'X' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P' || e.key === 'F12')) {
+  //       e.preventDefault();
+  //       alert("This action is disabled to protect content.");
+  //     }
+  //   }
+  //   document.addEventListener('keydown', disableShortcuts);
+
+  //   const checkDevTools = () => {
+  //     const start = performance.now();
+  //     debugger;
+  //     const end = performance.now();
+  //     if (end - start > 100) {
+  //       alert("Developer Tools detected! Please close it to continue.");
+  //       window.location.reload();
+  //     }
+  //   };
+  //   const interval = setInterval(checkDevTools, 2000);
+    
+  //   return () => {
+  //     document.removeEventListener("contextmenu", disableRightClick);
+  //     document.removeEventListener("keydown", disableShortcuts);
+  //     clearInterval(interval);
+  //   };
+  // }, []);
+
+  return (
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <PolicyWrapper>
+            <TooltipProvider>
+              <HotToaster position="top-center" />
+              <Toaster />
+              <Sonner />
+              <AppRoutes />
+            </TooltipProvider>
+          </PolicyWrapper>
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 };
 

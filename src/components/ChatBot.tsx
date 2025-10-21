@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, X, Send, Sparkles } from "lucide-react";
-import kiitMascot from "@/assets/kiit-mascot.jpg";
+import kiitMascot from "@/assets/kiitMascot.jpg";
+
 export const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -14,7 +15,6 @@ export const ChatBot = () => {
       <div className="fixed bottom-6 right-6 z-50">
         <Button onClick={() => setIsOpen(true)} className="w-16 h-16 rounded-full bg-gradient-to-r from-kiit-green to-campus-blue shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
           <div className="relative">
-            <img src={kiitMascot} alt="KIIT Buddy" className="w-8 h-8 mascot-bounce" />
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-campus-orange rounded-full animate-pulse"></div>
           </div>
         </Button>
