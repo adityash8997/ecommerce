@@ -19,7 +19,7 @@ const ChatBotPage = () => {
   ]);
 
   useEffect(() => {
-    // Load Botpress script dynamically
+    // Load Botpress webchat script dynamically
     const loadBotpressScript = () => {
       // Check if script already exists
       if (document.getElementById('botpress-webchat')) {
@@ -27,48 +27,51 @@ const ChatBotPage = () => {
         return;
       }
 
-      const script = document.createElement('script');
-      script.id = 'botpress-webchat';
-      script.src = 'https://cdn.botpress.cloud/webchat/v1/inject.js';
-      script.async = true;
+      // Load the inject script
+      const injectScript = document.createElement('script');
+      injectScript.id = 'botpress-webchat';
+      injectScript.src = 'https://cdn.botpress.cloud/webchat/v3.3/inject.js';
+      injectScript.async = true;
 
-      script.onload = () => {
-        console.log('Botpress script loaded successfully');
+      injectScript.onload = () => {
+        console.log('Botpress inject script loaded successfully');
         
-        // Initialize Botpress after script loads
-        if ((window as any).botpressWebChat) {
-          (window as any).botpressWebChat.init({
-            botId: "YOUR_BOT_ID", // Replace with your actual bot ID
-            hostUrl: "https://cdn.botpress.cloud/webchat/v3.3/shareable.html?configUrl=https://files.bpcontent.cloud/2025/08/09/19/20250809195719-Z9R0LR94.json",
-            messagingUrl: "https://messaging.botpress.cloud",
-            clientId: "YOUR_CLIENT_ID", // Replace with your actual client ID
-            lazySocket: true,
-            hideWidget: true, // Hide default widget since we have custom UI
-            closeOnEscape: true,
-            showPoweredBy: false,
-            enableReset: true
-          });
-          
-          console.log('Botpress initialized');
-        }
+        // Load the configuration script
+        const configScript = document.createElement('script');
+        configScript.src = 'https://files.bpcontent.cloud/2025/08/09/19/20250809195719-5V5LMRXW.js';
+        configScript.defer = true;
+        
+        configScript.onload = () => {
+          console.log('Botpress configuration loaded successfully');
+        };
+
+        configScript.onerror = () => {
+          console.error('Failed to load Botpress configuration script');
+        };
+
+        document.body.appendChild(configScript);
       };
 
-      script.onerror = () => {
-        console.error('Failed to load Botpress script');
+      injectScript.onerror = () => {
+        console.error('Failed to load Botpress inject script');
       };
 
-      document.body.appendChild(script);
+      document.body.appendChild(injectScript);
     };
 
     loadBotpressScript();
 
     return () => {
       console.log('ChatBotPage unmounting');
-      // Optionally remove script on unmount
-      const script = document.getElementById('botpress-webchat');
-      if (script) {
-        script.remove();
+      // Remove scripts on unmount
+      const injectScript = document.getElementById('botpress-webchat');
+      if (injectScript) {
+        injectScript.remove();
       }
+      
+      // Remove config script if exists
+      const configScripts = document.querySelectorAll('script[src*="bpcontent.cloud"]');
+      configScripts.forEach(script => script.remove());
     };
   }, []);
 
