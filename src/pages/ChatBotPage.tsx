@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Zap, Clock, BookOpen, Send, Sparkles } from "lucide-react";
 import { ChatBot } from "@/components/ChatBot";
-import kiitMascot from "@/assets/KiitMascot.jpg"
+import kiitMascot from "@/assets/kiitMascot.jpg"
 
 const ChatBotPage = () => {
   const navigate = useNavigate();
