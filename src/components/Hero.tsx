@@ -167,7 +167,28 @@ export const Hero = () => {
     // ensure initial layout correct
     goToSlide(currentSlide, false);
 
-    const interval = setInterval(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    // Handle visibility change to pause/resume slider
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is hidden, clear interval
+        if (interval) clearInterval(interval);
+      } else {
+        // Tab is visible, restart interval
+        if (interval) clearInterval(interval);
+        interval = setInterval(() => {
+          setCurrentSlide(prev => {
+            const next = prev + 1;
+            goToSlide(next);
+            return next;
+          });
+        }, 3000);
+      }
+    };
+
+    // Start initial interval
+    interval = setInterval(() => {
       setCurrentSlide(prev => {
         const next = prev + 1;
         goToSlide(next);
@@ -175,7 +196,13 @@ export const Hero = () => {
       });
     }, 3000);
 
-    return () => clearInterval(interval);
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [slideCount]);
 
   // After transition ends, if we are on the cloned slide (index === slideCount),
@@ -183,6 +210,7 @@ export const Hero = () => {
   useEffect(() => {
     const el = sliderRef.current;
     if (!el) return;
+    
     const onTransitionEnd = () => {
       if (currentSlide === slideCount) {
         // remove transition, snap to first real slide
@@ -193,8 +221,23 @@ export const Hero = () => {
         setCurrentSlide(0);
       }
     };
+    
     el.addEventListener('transitionend', onTransitionEnd);
     return () => el.removeEventListener('transitionend', onTransitionEnd);
+  }, [currentSlide, slideCount]);
+
+  // Ensure slider remains visible when tab regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (sliderRef.current) {
+        // Force re-render of slider position when tab becomes visible
+        const current = currentSlide === slideCount ? 0 : currentSlide;
+        goToSlide(current, false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [currentSlide, slideCount]);
   return <section ref={heroRef} id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{
     background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 70%, #15803d 100%)'
@@ -290,15 +333,35 @@ export const Hero = () => {
           {/* Campus Background */}
           <div className="relative px-4 sm:px-0">
             <div className="flex flex-col items-center">
-              <div className="w-full max-w-[570px] h-[200px] sm:h-[240px] md:h-[300px] lg:h-[330px] overflow-hidden relative rounded-2xl sm:rounded-3xl">
-                <div className="flex transition-transform duration-500 ease-in-out" id="slider" ref={sliderRef}>
+            <div className="w-full max-w-[570px] h-[200px] sm:h-[240px] md:h-[300px] lg:h-[330px] overflow-hidden relative rounded-2xl sm:rounded-3xl bg-white/5">
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out" 
+                  id="slider" 
+                  ref={sliderRef}
+                  style={{ willChange: 'transform' }}
+                >
                   {/*
                     Render real slides then a cloned-first-slide at the end.
                     This allows smooth transition from last -> cloned-first, then we snap to real-first.
                   */}
-                  {slides.map((src, idx) => <img key={idx} src={src} className="w-full flex-shrink-0" alt={`Slide ${idx + 1}`} />)}
+                  {slides.map((src, idx) => (
+                    <img 
+                      key={idx} 
+                      src={src} 
+                      className="w-full flex-shrink-0 object-cover" 
+                      alt={`KIIT Campus ${idx + 1}`}
+                      loading={idx === 0 ? "eager" : "lazy"}
+                      style={{ display: 'block' }}
+                    />
+                  ))}
                   {/* cloned first slide for seamless looping */}
-                  <img key="clone-first" src={slides[0]} className="w-full flex-shrink-0" alt="Slide clone" />
+                  <img 
+                    key="clone-first" 
+                    src={slides[0]} 
+                    className="w-full flex-shrink-0 object-cover" 
+                    alt="KIIT Campus"
+                    style={{ display: 'block' }}
+                  />
                 </div>
                 <div className="flex items-center mt-5 space-x-2" id="dot-indicators">
                   <span className="w-3 h-3 bg-black/20 rounded-full"></span>
