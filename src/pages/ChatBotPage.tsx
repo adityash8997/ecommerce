@@ -6,7 +6,6 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Zap, Clock, BookOpen, Send, Sparkles } from "lucide-react";
-import { ChatBot } from "@/components/ChatBot";
 import kiitMascot from "@/assets/kiitMascot.jpg"
 
 const ChatBotPage = () => {
@@ -40,7 +39,7 @@ const ChatBotPage = () => {
         if ((window as any).botpressWebChat) {
           (window as any).botpressWebChat.init({
             botId: "YOUR_BOT_ID", // Replace with your actual bot ID
-            hostUrl: "https://cdn.botpress.cloud/webchat/v1",
+            hostUrl: "https://cdn.botpress.cloud/webchat/v3.3/shareable.html?configUrl=https://files.bpcontent.cloud/2025/08/09/19/20250809195719-Z9R0LR94.json",
             messagingUrl: "https://messaging.botpress.cloud",
             clientId: "YOUR_CLIENT_ID", // Replace with your actual client ID
             lazySocket: true,
