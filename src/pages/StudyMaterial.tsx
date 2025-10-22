@@ -270,26 +270,53 @@ export default function StudyMaterial() {
     });
   };
 
-  // Handle file download
-  const handleDownload = async (material: StudyMaterialItem) => {
-    try {
-      // Update view count
-      if (activeSection === "notes") {
-        await supabase.from("notes").update({ views: material.views + 1 }).eq("id", material.id);
-      } else if (activeSection === "pyqs") {
-        await supabase.from("pyqs").update({ views: material.views + 1 }).eq("id", material.id);
-      } else if (activeSection === "ppts") {
-        await supabase.from("ppts").update({ views: material.views + 1 }).eq("id", material.id);
-      } else if (activeSection === "ebooks") {
-        await supabase.from("ebooks").update({ views: material.views + 1 }).eq("id", material.id);
-      }
+  // Update handleDownload function signature and logic
+const handleDownload = async (material: StudyMaterialItem) => {
+  try {
+    const table =
+      activeSection === "notes"
+        ? "notes"
+        : activeSection === "pyqs"
+        ? "pyqs"
+        : activeSection === "ebooks"
+        ? "ebooks"
+        : "ppts";
 
-      // Download file
-      
-    } catch (error) {
-      console.error("Download error:", error);
+    if (!material) {
+      toast.error("Material not found");
+      return;
     }
-  };
+
+    // Force file download
+    if (material.downloadUrl) {
+      const response = await fetch(material.downloadUrl);
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      const fileName =
+        material.title?.includes(".")
+          ? material.title
+          : `${material.title || "file"}.${material.downloadUrl
+              .split(".")
+              .pop()
+              ?.split("?")[0]}`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup memory
+      window.URL.revokeObjectURL(fileURL);
+    } else {
+      toast.error("No file available to download");
+    }
+  } catch (error) {
+    console.error("Error downloading file:", error);
+    toast.error("Failed to download file");
+  }
+};
 
 
   if (!user && !loading) {
@@ -304,44 +331,49 @@ export default function StudyMaterial() {
   }
 
   const handleView = async (id: number) => {
-    try {
-      // Update view count first
-      const table = activeSection === "notes"
+  try {
+    const table =
+      activeSection === "notes"
         ? "notes"
         : activeSection === "pyqs"
-          ? "pyqs"
-          : activeSection === "ebooks"
-            ? "ebooks"
-            : "ppts";
+        ? "pyqs"
+        : activeSection === "ebooks"
+        ? "ebooks"
+        : "ppts";
 
-      const { error } = await supabase
-        .from(table)
-        .update({ views: materials.find(m => m.id === id)?.views! + 1 })
-        .eq("id", id);
-
-      if (error) {
-        throw error;
-      }
-
-      // Update local state
-      setMaterials(materials.map(material =>
-        material.id === id
-          ? { ...material, views: material.views + 1 }
-          : material
-      ));
-
-      // Find material and open PDF
-      const material = materials.find(m => m.id === id);
-      if (material && material.downloadUrl) {
-        // Method 1: Open in new tab with PDF viewer
-        window.open(material.downloadUrl, '_blank', 'noopener,noreferrer');
-      }
-
-    } catch (error) {
-      console.error("Error updating view count:", error);
-      toast.error("Failed to update view count");
+    // Find the selected material
+    const material = materials.find((m) => m.id === id);
+    if (!material) {
+      toast.error("Material not found");
+      return;
     }
-  };;
+
+    // Update views count in Supabase
+    const { error } = await supabase
+      .from(table)
+      .update({ views: material.views + 1 })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    // Update local state instantly
+    setMaterials((prev) =>
+      prev.map((m) =>
+        m.id === id ? { ...m, views: m.views + 1 } : m
+      )
+    );
+
+    // Open file in new tab if available
+    if (material.downloadUrl) {
+      window.open(material.downloadUrl, "_blank", "noopener,noreferrer");
+    } else {
+      toast.error("No file available to view");
+    }
+  } catch (error) {
+    console.error("Error updating view count:", error);
+    toast.error("Failed to open file");
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">

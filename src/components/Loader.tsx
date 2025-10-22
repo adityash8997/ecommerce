@@ -12,7 +12,7 @@ const StyledWrapper = styled.div<{ loading: boolean }>`
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    background: rgba(0, 0, 0, 1);
+    background: rgba(233, 230, 230, 0.9);
   `}
   .book,
   .book__pg-shadow,
