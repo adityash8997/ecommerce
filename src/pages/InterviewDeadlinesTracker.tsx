@@ -544,32 +544,7 @@ const InterviewDeadlinesTracker = () => {
               )}
             </div>
 
-            {/* Upcoming Interviews */}
-            <div className="scrollbar-thumb-gray-300 scrollbar-track-gray-700 h-[400px] sm:h-[500px] overflow-y-auto mt-4 sm:mt-8">
-              <>
-                <h2 className="text-2xl font-bold text-gray-900">Upcoming Interviews</h2>
-                {upcomingEvents.length === 0 ? (
-                  <p className="text-gray-600 text-center">No upcoming Interviews</p>
-                ) : (
-                  upcomingEvents.filter((event) => event.category === 'Interviews').map((event) => (
-                    <Card key={event.id} onClick={() => handleAddToCalendar(event)} className="p-4 bg-white shadow-md hover:shadow-lg transition-shadow">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{event.event_name}</h3>
-                          <p className="text-sm text-gray-600">{event.society_name}</p>
-                          <p className="text-sm text-gray-600">{moment(event.event_date).format("MMM D, YYYY")}</p>
-                          <p className="text-sm text-gray-600">{event.start_time} - {event.end_time || "TBD"}</p>
-                          {event.venue && <p className="text-sm text-gray-600"><MapPin className="inline w-4 h-4 mr-1" />{event.venue}</p>}
-                          {event.organiser && <p className="text-sm text-gray-600"><Users className="inline w-4 h-4 mr-1" />{event.organiser}</p>}
-                        </div>
-                        <Badge className={`bg-${event.category === "Technical" ? "blue" : event.category === "Cultural" ? "purple" : event.category === "Sports" ? "yellow" : "green"}-500 text-white`}>
-                          {event.category}
-                        </Badge>
-                      </div>
-                    </Card>
-                  )))}
-              </>
-            </div>
+            
           </div>
         </div>
 
