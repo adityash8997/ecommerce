@@ -302,9 +302,9 @@ export const Hero = () => {
           {/* Main Heading */}
           <div className="space-y-3 sm:space-y-4 my-2 sm:my-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-poppins font-bold text-white leading-tight">
-              One platform that
-              <span className="block text-white">solves all</span>
-              your campus needs
+              One platform that 
+              <span className="block text-white">solves all your</span>
+              campus needs
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/80 font-inter leading-relaxed px-2 sm:px-0">
@@ -380,7 +380,7 @@ export const Hero = () => {
       {/* Quick Stats */}
       <div className="mt-5 flex flex-wrap gap-3 sm:gap-4 md:gap-8 justify-center lg:justify-between pt-8 sm:pt-12 px-4 sm:px-10">
         <div className="text-center flex-1 min-w-[80px]">
-          <div className="  text-xl sm:text-2xl md:text-4xl font-bold text-white">10</div>
+          <div className="  text-xl sm:text-2xl md:text-4xl font-bold text-white">10+</div>
           <div className="text-xs sm:text-sm md:text-base text-white/70 font-medium">Campus Services</div>
         </div>
         <div className=" text-shadow-lg text-center flex-1 min-w-[80px]">
