@@ -302,8 +302,8 @@ export const Hero = () => {
           {/* Main Heading */}
           <div className="space-y-3 sm:space-y-4 my-2 sm:my-4">
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-poppins font-bold text-white leading-tight">
-              One platform that your
-              <span className="block text-white">solves all</span>
+              One platform that 
+              <span className="block text-white">solves all your</span>
               campus needs
             </h1>
 
