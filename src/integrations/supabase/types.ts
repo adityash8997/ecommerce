@@ -1537,13 +1537,13 @@ export type Database = {
         Row: {
           category: string
           company_name: string
-          discription: string | null
+          description: string | null
           end_time: string | null
           id: number
           interview_date: string
           interview_name: string
           location: string
-          requirement: string
+          requirements: string
           role: string
           start_time: string
           validation: boolean | null
@@ -1551,13 +1551,13 @@ export type Database = {
         Insert: {
           category: string
           company_name: string
-          discription?: string | null
+          description?: string | null
           end_time?: string | null
           id?: number
           interview_date: string
           interview_name: string
           location: string
-          requirement: string
+          requirements: string
           role: string
           start_time: string
           validation?: boolean | null
@@ -1565,13 +1565,13 @@ export type Database = {
         Update: {
           category?: string
           company_name?: string
-          discription?: string | null
+          description?: string | null
           end_time?: string | null
           id?: number
           interview_date?: string
           interview_name?: string
           location?: string
-          requirement?: string
+          requirements?: string
           role?: string
           start_time?: string
           validation?: boolean | null
@@ -3291,18 +3291,9 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
-      export_group_summary: {
-        Args: { _group_id: string }
-        Returns: Json
-      }
-      generate_promo_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      export_group_summary: { Args: { _group_id: string }; Returns: Json }
+      generate_promo_code: { Args: never; Returns: string }
+      get_current_user_role: { Args: never; Returns: string }
       get_lost_item_contact_details: {
         Args: { item_id: string }
         Returns: {
@@ -3319,10 +3310,7 @@ export type Database = {
           contact_phone: string
         }[]
       }
-      handle_db_error: {
-        Args: { error_message: string }
-        Returns: Json
-      }
+      handle_db_error: { Args: { error_message: string }; Returns: Json }
       increment_resume_usage: {
         Args: {
           p_action: string
@@ -3332,10 +3320,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      is_admin_user: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
+      is_admin_user: { Args: { user_uuid?: string }; Returns: boolean }
       is_group_creator: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -3352,10 +3337,7 @@ export type Database = {
         Args: { error_details: string; query_type: string }
         Returns: undefined
       }
-      mark_lost_found_complete: {
-        Args: { item_id: string }
-        Returns: boolean
-      }
+      mark_lost_found_complete: { Args: { item_id: string }; Returns: boolean }
       safe_table_query: {
         Args: { query_filters?: Json; table_name: string }
         Returns: Json

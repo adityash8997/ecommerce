@@ -222,18 +222,23 @@ const services = [
 
 export const ServicesGrid = () => {
   const navigate = useNavigate();
-  const { visibilityMap, loading } = useServiceVisibility();
-  const { user } = useAuth();
+  const { visibilityMap, loading, hasFetchedData } = useServiceVisibility();
+  const { user, loading: authLoading } = useAuth();
   
-  // Admin emails
+  // Admin emails - these are the ONLY emails that can see hidden services
   const ADMIN_EMAILS = ['adityash8997@gmail.com', '24155598@kiit.ac.in'];
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || '');
   
-  // Log admin status
-  if (isAdmin) {
-    console.log('✅ Admin mode activated — all hidden services visible.');
-  } else {
-    console.log('🚫 Non-admin mode — hidden services restricted.');
+  // Wait for both auth and visibility data to load
+  const isDataReady = !authLoading && hasFetchedData;
+  
+  // Log admin status (only when data is ready)
+  if (isDataReady) {
+    if (isAdmin) {
+      console.log('✅ Admin mode activated — all hidden services visible.');
+    } else {
+      console.log('🚫 Non-admin mode — hidden services completely hidden.');
+    }
   }
 
   const handleServiceClick = (service: typeof services[0]) => {
@@ -297,24 +302,44 @@ export const ServicesGrid = () => {
 
         {/* Services Grid */}
         <div className=" grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-12 sm:mb-16 px-2 sm:px-4">
-          {loading ? (
+          {!isDataReady ? (
             <div className="col-span-full flex justify-center py-6 sm:py-8">
               <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             services.map((service, index) => {
               const visibility = visibilityMap[service.id];
-              const isVisible = !visibility || visibility.visible;
-              const replacementText = visibility?.replaced_text;
-              const isHidden = !isVisible;
               const IconComponent = service.icon;
+              
+              // CRITICAL: For non-admins, services are hidden by default unless explicitly visible
+              // For admins, all services are shown regardless of visibility
+              let isVisible: boolean;
+              let replacementText: string | null = null;
+              
+              if (isAdmin) {
+                // Admins see everything, regardless of visibility settings
+                isVisible = true;
+              } else {
+                // Non-admins (including unauthenticated users):
+                // - If service has no visibility record, hide it (secure by default)
+                // - If service has visibility record with visible=false, hide it
+                // - Only show if visibility record exists AND visible=true
+                if (!visibility) {
+                  isVisible = false; // Hide services not in visibility table
+                } else {
+                  isVisible = visibility.visible;
+                  replacementText = visibility.replaced_text;
+                }
+              }
+              
+              const isHidden = !isVisible;
 
-              // For non-admins: completely skip hidden services (no DOM rendering)
+              // For non-admins: completely skip hidden services (no DOM rendering at all)
               if (!isAdmin && isHidden && !replacementText) {
                 return null;
               }
 
-              // If service is hidden and has replacement text, show placeholder
+              // If service is hidden and has replacement text, show placeholder (non-admin only)
               if (!isAdmin && !isVisible && replacementText) {
                 return (
                   <div
