@@ -11,7 +11,7 @@ const StyledWrapper = styled.div<{ loading: boolean }>`
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999;
+    z-index: 9999999;
     background: rgba(217, 225, 222, 0.9);
     backdrop-filter: blur(5px);
   `}
