@@ -123,7 +123,7 @@ const KiitSocieties = () => {
       logoPlaceholder: "k1000",
     },
     {
-      name: "IEEE CTSoC KIIT",
+      name: "IEEE KIIT",
       section: "ctsoc",
       brief:
         "The IEEE Consumer Technology Society KIIT chapter promotes innovation in consumer electronics, IoT, AR/VR, and smart devices through research and student projects.",
