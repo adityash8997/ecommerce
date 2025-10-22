@@ -954,7 +954,7 @@ useEffect(() => {
                           <div className="text-xs text-gray-600 mt-1">
                             {upcomingEvent
                               ? upcomingEvent.event_name
-                              : society.upcomingEvent.title}
+                              : "Events Coming Soon ..."}
                           </div>
                         </div>
                         <div className="text-right">
