@@ -144,6 +144,7 @@ const App = () => {
                 <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                 <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
+                
 
                 {/* Resale Saathi Routes */}
                 <Route path="/resale" element={<Resale />} />
