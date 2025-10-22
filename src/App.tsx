@@ -48,6 +48,7 @@ import ResumeSaathi from "./pages/ResumeSaathi/ResumeSaathi";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import BakeryDashboard from "./pages/BakeryDashboard";
+import Feedback from "./pages/Feedback";
 import Resale from "./pages/Resale";
 import ResaleBrowse from "./pages/ResaleBrowse";
 import ResaleNewListing from "./pages/ResaleNewListing";
@@ -127,6 +128,7 @@ const AppRoutes = () => {
         <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
+        <Route path="/feedback" element={<Feedback />} />
 
         {/* Resale Routes */}
         <Route path="/resale" element={<Resale />} />

@@ -1289,6 +1289,36 @@ export type Database = {
         }
         Relationships: []
       }
+      feedbacks: {
+        Row: {
+          category: string
+          created_at: string
+          feedback_text: string
+          id: string
+          rating: number | null
+          resolved: boolean
+          resolved_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          feedback_text: string
+          id?: string
+          rating?: number | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          feedback_text?: string
+          id?: string
+          rating?: number | null
+          resolved?: boolean
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
       food_orders: {
         Row: {
           created_at: string

@@ -94,6 +94,16 @@ interface ContactSubmission {
   updated_at: string;
 }
 
+interface Feedback {
+  id: string;
+  category: string;
+  feedback_text: string;
+  rating: number | null;
+  created_at: string;
+  resolved: boolean;
+  resolved_at: string | null;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { isAdmin, loading, error, user } = useAdminAuth();
@@ -102,6 +112,7 @@ export default function AdminDashboard() {
   const [eventRequests, setEventRequests] = useState<EventRequest[]>([]);
   const [adminActions, setAdminActions] = useState<AdminAction[]>([]);
   const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -117,7 +128,9 @@ export default function AdminDashboard() {
     totalPendingResale: 0,
     totalPendingContacts: 0,
     totalActionsToday: 0,
-    totalUsers: 0
+    totalUsers: 0,
+    totalFeedbacks: 0,
+    totalUnresolvedFeedbacks: 0
   });
 
   useEffect(() => {
@@ -251,6 +264,12 @@ export default function AdminDashboard() {
         .from('contacts')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Fetch feedbacks
+      const { data: feedbackData } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .order('created_at', { ascending: false });
         
       // Fetch admin actions
       const { data: actions } = await supabase
@@ -268,6 +287,7 @@ export default function AdminDashboard() {
       setEventRequests(eventReqs || []);
       setResaleListings(resaleReqs || []);
       setContactSubmissions(contacts || []);
+      setFeedbacks(feedbackData || []);
       setAdminActions(actions || []);
       
       const today = new Date().toISOString().split('T')[0];
@@ -281,7 +301,9 @@ export default function AdminDashboard() {
         totalPendingResale: resaleReqs?.filter(r => r.status === 'pending').length || 0,
         totalPendingContacts: contacts?.filter(c => c.status === 'new').length || 0,
         totalActionsToday: actionsToday,
-        totalUsers: totalUsers || 0
+        totalUsers: totalUsers || 0,
+        totalFeedbacks: feedbackData?.length || 0,
+        totalUnresolvedFeedbacks: feedbackData?.filter(f => !f.resolved).length || 0
       });
       
     } catch (error) {
@@ -481,6 +503,52 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFeedbackResolve = async (feedbackId: string, resolved: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ 
+          resolved,
+          resolved_at: resolved ? new Date().toISOString() : null
+        })
+        .eq('id', feedbackId);
+
+      if (error) throw error;
+      
+      toast.success(resolved ? 'Feedback marked as resolved' : 'Feedback marked as unresolved');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating feedback:', error);
+      toast.error('Failed to update feedback');
+    }
+  };
+
+  const handleFeedbackDelete = async (feedbackId: string) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .delete()
+        .eq('id', feedbackId);
+
+      if (error) throw error;
+      
+      toast.success('Feedback deleted successfully');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      toast.error('Failed to delete feedback');
+    }
+  };
+
+  const filteredFeedbacks = feedbacks.filter(item => {
+    const matchesSearch = item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.feedback_text.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || 
+                         (statusFilter === 'pending' && !item.resolved) ||
+                         (statusFilter === 'resolved' && item.resolved);
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <Navbar />
@@ -627,7 +695,7 @@ export default function AdminDashboard() {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <div className="border-b border-gray-200 px-6 pt-6">
-                <TabsList className="grid w-full grid-cols-6 bg-gray-100">
+                <TabsList className="grid w-full grid-cols-7 bg-gray-100">
                   <TabsTrigger value="lost-found" className="flex items-center gap-2 text-sm font-medium">
                     🕵️ Lost & Found
                   </TabsTrigger>
@@ -643,6 +711,9 @@ export default function AdminDashboard() {
                   <TabsTrigger value="contacts" className="flex items-center gap-2 text-sm font-medium">
                     💬 Contacts
                   </TabsTrigger>
+                  <TabsTrigger value="feedbacks" className="flex items-center gap-2 text-sm font-medium">
+                    💡 Feedbacks
+                  </TabsTrigger>
                   <TabsTrigger value="audit" className="flex items-center gap-2 text-sm font-medium">
                     📊 Audit
                   </TabsTrigger>
@@ -650,7 +721,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filters */}
-              {(activeTab === 'lost-found' || activeTab === 'events' || activeTab === 'resale' || activeTab === 'contacts') && (
+              {(activeTab === 'lost-found' || activeTab === 'events' || activeTab === 'resale' || activeTab === 'contacts' || activeTab === 'feedbacks') && (
                 <div className="p-6 border-b border-gray-100">
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
@@ -671,6 +742,12 @@ export default function AdminDashboard() {
                         <>
                           <option value="pending">🆕 New</option>
                           <option value="read">👁️ Read</option>
+                          <option value="resolved">✅ Resolved</option>
+                          <option value="all">📋 All Status</option>
+                        </>
+                      ) : activeTab === 'feedbacks' ? (
+                        <>
+                          <option value="pending">⏳ Unresolved</option>
                           <option value="resolved">✅ Resolved</option>
                           <option value="all">📋 All Status</option>
                         </>
@@ -1052,6 +1129,95 @@ export default function AdminDashboard() {
                       <MessageSquare className="w-8 h-8 text-gray-400" />
                     </div>
                     <p className="text-gray-500 text-lg">No contact submissions match your filters.</p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Feedbacks Tab */}
+              <TabsContent value="feedbacks" className="p-6 space-y-4">
+                {filteredFeedbacks.map((feedback) => (
+                  <Card key={feedback.id} className={`border transition-all duration-300 hover:shadow-lg ${
+                    feedback.resolved ? 'border-gray-200 bg-gray-50/50' : 'border-blue-200 hover:border-blue-300'
+                  }`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <Badge 
+                              variant="secondary"
+                              className="px-3 py-1 text-xs font-semibold capitalize"
+                            >
+                              {feedback.category.replace('_', ' ')}
+                            </Badge>
+                            {feedback.rating && (
+                              <Badge variant="outline" className="px-3 py-1 text-xs">
+                                {'⭐'.repeat(feedback.rating)} ({feedback.rating}/5)
+                              </Badge>
+                            )}
+                            <Badge variant={feedback.resolved ? 'default' : 'secondary'} className="px-3 py-1 text-xs font-semibold">
+                              {feedback.resolved ? '✅ Resolved' : '⏳ Unresolved'}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-700 mb-3 leading-relaxed whitespace-pre-wrap">
+                            {feedback.feedback_text}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{new Date(feedback.created_at).toLocaleString()}</span>
+                            </div>
+                            {feedback.resolved_at && (
+                              <div className="flex items-center gap-1">
+                                <CheckCheck className="w-3 h-3" />
+                                <span>Resolved: {new Date(feedback.resolved_at).toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          {!feedback.resolved ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleFeedbackResolve(feedback.id, true)}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Mark Resolved
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleFeedbackResolve(feedback.id, false)}
+                              className="hover:bg-blue-50 hover:border-blue-300"
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Mark Unresolved
+                            </Button>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this feedback?')) {
+                                handleFeedbackDelete(feedback.id);
+                              }
+                            }}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {filteredFeedbacks.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg">No feedbacks match your filters.</p>
                   </div>
                 )}
               </TabsContent>
