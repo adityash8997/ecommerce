@@ -10,6 +10,7 @@ export interface ServiceVisibility {
 export function useServiceVisibility() {
   const [visibilityMap, setVisibilityMap] = useState<Record<string, ServiceVisibility>>({});
   const [loading, setLoading] = useState(true);
+  const [hasFetchedData, setHasFetchedData] = useState(false);
 
   useEffect(() => {
     async function fetchVisibility() {
@@ -20,6 +21,9 @@ export function useServiceVisibility() {
 
         if (error) {
           console.error('Error fetching service visibility:', error);
+          // On error, mark as fetched but keep empty map (all services hidden by default)
+          setHasFetchedData(true);
+          setLoading(false);
           return;
         }
 
@@ -30,8 +34,10 @@ export function useServiceVisibility() {
         });
 
         setVisibilityMap(map);
+        setHasFetchedData(true);
       } catch (error) {
         console.error('Error in useServiceVisibility:', error);
+        setHasFetchedData(true);
       } finally {
         setLoading(false);
       }
@@ -40,5 +46,5 @@ export function useServiceVisibility() {
     fetchVisibility();
   }, []);
 
-  return { visibilityMap, loading };
+  return { visibilityMap, loading, hasFetchedData };
 }

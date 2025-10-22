@@ -6,6 +6,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import kiitMascot from "@/assets/kiit-mascot.jpg";
 
+interface NavItem {
+  label: string;
+  href: string;
+  isRoute?: boolean;
+}
+
 export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,17 +32,23 @@ export const Navbar = () => {
     }
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { label: "Home", href: "#home" },
     { label: "Services", href: "#services" },
-    { label: "How It Works", href: "#how-it-works" },
     { label: "Our Team", href: "#team" },
     { label: "FAQ", href: "#faq" },
+    { label: "Feedback", href: "/feedback", isRoute: true },
     { label: "Contact", href: "#contact" },
   ];
 
-  // Smooth scroll to section
-  const scrollToSection = (href: string) => {
+  // Smooth scroll to section or navigate to route
+  const scrollToSection = (href: string, isRoute?: boolean) => {
+    if (isRoute) {
+      navigate(href);
+      setIsOpen(false);
+      return;
+    }
+    
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(() => {
@@ -141,7 +153,7 @@ export const Navbar = () => {
             {navItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => scrollToSection(item.href)}
+                onClick={() => scrollToSection(item.href, item.isRoute)}
                 className={`px-3 py-2 rounded-lg transition-all duration-300 font-medium relative ${
                   isActive(item.href)
                     ? "text-black bg-white/40"
@@ -226,7 +238,7 @@ export const Navbar = () => {
             {navItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => scrollToSection(item.href)}
+                onClick={() => scrollToSection(item.href, item.isRoute)}
                 className={`w-full text-left px-4 py-3 rounded-lg transition-colors font-medium ${
                   isActive(item.href)
                     ? "text-black bg-white/40"
