@@ -118,7 +118,7 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-kiit-green text-white border-b border-white/20 shadow-lg mx-2 mt-2 rounded-full">
+    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-kiit-green text-white border-b border-white/20 shadow-lg mx-2 mt-2 lg:rounded-full">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -138,18 +138,7 @@ export const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {/* <button
-              onClick={() => { setActiveSection("home"); scrollToSection("#home");}}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 font-semibold text-base ${
-                isActive("#home")
-                  ? "text-black bg-white/40 shadow-md"
-                  : "text-white hover:text-kiit-black hover:bg-kiit-black"
-              }`}
-            >
-              <Home className="w-5 h-5" />
-              Home
-            </button> */}
-
+            
             {navItems.map((item) => (
               <button
                 key={item.label}
@@ -219,7 +208,7 @@ export const Navbar = () => {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden border-t border-white/20 py-4 space-y-2 backdrop-blur-sm">
-            <button
+            {/* <button
               onClick={() => {
                 navigate("/");
                 setIsOpen(false);
@@ -231,9 +220,8 @@ export const Navbar = () => {
                   : "text-white hover:text-kiit-green hover:bg-kiit-green/5"
               }`}
             >
-              <Home className="w-4 h-4" />
-              Home
-            </button>
+              
+            </button> */}
 
             {navItems.map((item) => (
               <button
