@@ -37,26 +37,26 @@ export function useFacultyPhotos() {
     setUploading(true);
 
     try {
-      const fileName = `${facultyId}.jpg`;
-      
-      // Delete existing photo if any
-      await supabase.storage
-        .from('faculty-photos')
-        .remove([fileName]);
+      const formData = new FormData();
+      formData.append('facultyId', facultyId);
+      formData.append('photo', file);
 
-      // Upload new photo
-      const { error: uploadError } = await supabase.storage
-        .from('faculty-photos')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      const response = await fetch('/api/faculty/upload-photo', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
 
-      if (uploadError) throw uploadError;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to upload photo');
+      }
 
-      const photoUrl = getPhotoUrl(facultyId);
+      const result = await response.json();
+      if (!result.photoUrl) throw new Error('No photo URL returned');
+
       toast.success('Profile photo updated successfully');
-      return photoUrl;
+      return result.photoUrl;
     } catch (error: any) {
       console.error('Upload error:', error);
       toast.error('Failed to upload photo');
