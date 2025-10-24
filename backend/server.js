@@ -783,6 +783,413 @@ app.post('/verify-application-unlock-payment', async (req, res) => {
   }
 });
 
+// Store active SSE connections
+const sseClients = new Set();
+
+// SSE endpoint for real-time admin notifications
+app.get('/api/admin/realtime-notifications', (req, res) => {
+  // Set headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // For nginx
+
+  // Add client to active connections
+  sseClients.add(res);
+  console.log(`Admin client connected. Total clients: ${sseClients.size}`);
+
+  // Send initial connection success message
+  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Real-time connected' })}\n\n`);
+
+  // Remove client on disconnect
+  req.on('close', () => {
+    sseClients.delete(res);
+    console.log(`Admin client disconnected. Total clients: ${sseClients.size}`);
+  });
+});
+
+// Broadcast function to send to all connected clients
+const broadcastToAdmins = (notification) => {
+  const message = `data: ${JSON.stringify(notification)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(message);
+    } catch (error) {
+      console.error('Error sending SSE:', error);
+      sseClients.delete(client);
+    }
+  });
+};
+
+// Set up Supabase real-time subscriptions
+const setupAdminRealtimeSubscriptions = () => {
+  // Lost & Found channel
+  const lostFoundChannel = supabase
+    .channel('admin_lost_found_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'lost_found_requests'
+    }, (payload) => {
+      console.log('🔔 Lost & Found real-time event:', payload);
+      
+      const notification = {
+        type: 'lost_found',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      };
+      
+      broadcastToAdmins(notification);
+    })
+    .subscribe((status) => {
+      console.log('Lost & Found admin channel status:', status);
+    });
+
+  // Event Requests channel
+  const eventRequestsChannel = supabase
+    .channel('admin_event_requests_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'interview_event_requests'
+    }, (payload) => {
+      console.log('🔔 Event Request real-time event:', payload);
+      
+      const notification = {
+        type: 'event',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      };
+      
+      broadcastToAdmins(notification);
+    })
+    .subscribe();
+
+  // Resale Listings channel
+  const resaleListingsChannel = supabase
+    .channel('admin_resale_listings_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'resale_listings'
+    }, (payload) => {
+      console.log('🔔 Resale Listing real-time event:', payload);
+      
+      const notification = {
+        type: 'resale',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      };
+      
+      broadcastToAdmins(notification);
+    })
+    .subscribe();
+
+  // Contacts channel
+  const contactsChannel = supabase
+    .channel('admin_contacts_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'contacts'
+    }, (payload) => {
+      console.log('🔔 Contact Submission real-time event:', payload);
+      
+      const notification = {
+        type: 'contact',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      };
+      
+      broadcastToAdmins(notification);
+    })
+    .subscribe();
+
+  return { lostFoundChannel, eventRequestsChannel, resaleListingsChannel, contactsChannel };
+};
+
+// Initialize real-time subscriptions when server starts
+setupAdminRealtimeSubscriptions();
+
+// ============================================
+// ADMIN DATA FETCHING ENDPOINT
+// ============================================
+app.get('/api/admin/dashboard-data', async (req, res) => {
+  try {
+    // Fetch lost & found requests
+    const { data: lfRequests } = await supabase
+      .from('lost_found_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    // Fetch event requests  
+    const { data: eventReqs } = await supabase
+      .from('interview_event_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // Fetch resale listings
+    const { data: resaleReqs } = await supabase
+      .from('resale_listings')
+      .select(`
+        *,
+        seller:profiles!seller_id(full_name, email),
+        images:resale_listing_images(storage_path)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Fetch contact submissions
+    const { data: contacts } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // Fetch feedbacks
+    const { data: feedbackData } = await supabase
+      .from('feedbacks')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    // Fetch admin actions
+    const { data: actions } = await supabase
+      .from('admin_actions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // Fetch stats
+    const { count: totalUsers } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    
+    const today = new Date().toISOString().split('T')[0];
+    const actionsToday = actions?.filter(action => 
+      action.created_at.startsWith(today)
+    ).length || 0;
+    
+    const stats = {
+      totalPendingLostFound: lfRequests?.filter(r => r.status === 'pending').length || 0,
+      totalPendingEvents: eventReqs?.filter(r => r.status === 'pending').length || 0,
+      totalPendingResale: resaleReqs?.filter(r => r.status === 'pending').length || 0,
+      totalPendingContacts: contacts?.filter(c => c.status === 'new').length || 0,
+      totalActionsToday: actionsToday,
+      totalUsers: totalUsers || 0,
+      totalFeedbacks: feedbackData?.length || 0,
+      totalUnresolvedFeedbacks: feedbackData?.filter(f => !f.resolved).length || 0
+    };
+
+    res.json({
+      lostFoundRequests: lfRequests || [],
+      eventRequests: eventReqs || [],
+      resaleListings: resaleReqs || [],
+      contactSubmissions: contacts || [],
+      feedbacks: feedbackData || [],
+      adminActions: actions || [],
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching admin data:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch admin data',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// ADMIN APPROVAL ENDPOINTS
+// ============================================
+app.post('/api/admin/approve-item', async (req, res) => {
+  try {
+    const { itemId, type, adminUserId } = req.body;
+    
+    const functionName = type === 'lost-found' ? 'admin-approve-lost-item' : 'admin-approve-event';
+    
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { 
+        requestId: itemId, 
+        adminUserId 
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Approval error:', error);
+    res.status(500).json({ 
+      error: 'Failed to approve item',
+      message: error.message 
+    });
+  }
+});
+
+app.post('/api/admin/approve-resale', async (req, res) => {
+  try {
+    const { listingId, adminUserId } = req.body;
+    
+    const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+      body: { 
+        listingId,
+        action: 'approve',
+        adminUserId
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Resale approval error:', error);
+    res.status(500).json({ 
+      error: 'Failed to approve listing',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// ADMIN REJECTION ENDPOINTS
+// ============================================
+app.post('/api/admin/reject-item', async (req, res) => {
+  try {
+    const { itemId, type, reason, adminUserId } = req.body;
+    
+    if (!reason?.trim()) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+    
+    const functionName = type === 'lost-found' ? 'admin-reject-lost-item' : 'admin-reject-event';
+    
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { 
+        requestId: itemId, 
+        reason,
+        adminUserId 
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Rejection error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reject item',
+      message: error.message 
+    });
+  }
+});
+
+app.post('/api/admin/reject-resale', async (req, res) => {
+  try {
+    const { listingId, reason, adminUserId } = req.body;
+    
+    if (!reason?.trim()) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+    
+    const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+      body: { 
+        listingId,
+        action: 'reject',
+        adminUserId,
+        reason
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Resale rejection error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reject listing',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// CONTACT STATUS UPDATE ENDPOINT
+// ============================================
+app.patch('/api/admin/update-contact-status', async (req, res) => {
+  try {
+    const { contactId, status } = req.body;
+    
+    const { error } = await supabase
+      .from('contacts')
+      .update({ status })
+      .eq('id', contactId);
+
+    if (error) throw error;
+    
+    res.json({ success: true, message: `Contact marked as ${status}` });
+  } catch (error) {
+    console.error('Error updating contact status:', error);
+    res.status(500).json({ 
+      error: 'Failed to update contact status',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// FEEDBACK MANAGEMENT ENDPOINTS
+// ============================================
+app.patch('/api/admin/resolve-feedback', async (req, res) => {
+  try {
+    const { feedbackId, resolved } = req.body;
+    
+    const { error } = await supabase
+      .from('feedbacks')
+      .update({ 
+        resolved,
+        resolved_at: resolved ? new Date().toISOString() : null
+      })
+      .eq('id', feedbackId);
+
+    if (error) throw error;
+    
+    res.json({ 
+      success: true, 
+      message: resolved ? 'Feedback marked as resolved' : 'Feedback marked as unresolved' 
+    });
+  } catch (error) {
+    console.error('Error updating feedback:', error);
+    res.status(500).json({ 
+      error: 'Failed to update feedback',
+      message: error.message 
+    });
+  }
+});
+
+app.delete('/api/admin/delete-feedback/:feedbackId', async (req, res) => {
+  try {
+    const { feedbackId } = req.params;
+    
+    const { error } = await supabase
+      .from('feedbacks')
+      .delete()
+      .eq('id', feedbackId);
+
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Feedback deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting feedback:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete feedback',
+      message: error.message 
+    });
+  }
+});
+
+
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
