@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Users, Plus, Calculator, PieChart, Receipt, Heart, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { useGroupAutoLink } from "@/hooks/useGroupAutoLink";
 
 const SplitSaathi = () => {
   const navigate = useNavigate();
@@ -22,19 +23,22 @@ const SplitSaathi = () => {
   const [groups, setGroups] = useState<any[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   
+  // Auto-link groups based on roll number when user logs in
+  useGroupAutoLink();
+  
   const groupFormRef = useRef<HTMLDivElement>(null);
   
   const [groupForm, setGroupForm] = useState({
     name: "",
     description: "",
     currency: "₹",
-    members: [{ name: "" }]
+    members: [{ name: "", rollNumber: "" }]
   });
 
   const addMember = () => {
     setGroupForm(prev => ({
       ...prev,
-      members: [...prev.members, { name: "" }]
+      members: [...prev.members, { name: "", rollNumber: "" }]
     }));
   };
 
@@ -65,14 +69,43 @@ const SplitSaathi = () => {
     
     try {
       setLoadingGroups(true);
-      const { data: userGroups, error } = await supabase
+      
+      // Extract roll number from user email
+      const rollNumberMatch = user.email?.match(/^(\d+)@/);
+      const rollNumber = rollNumberMatch?.[1];
+      
+      // Load groups created by user
+      const { data: createdGroups, error: createdError } = await supabase
         .from('groups')
         .select('*')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      setGroups(userGroups || []);
+      if (createdError) throw createdError;
+      
+      let linkedGroups: any[] = [];
+      
+      // If user has a roll number, also load groups they're linked to
+      if (rollNumber) {
+        const { data: memberRecords, error: memberError } = await supabase
+          .from('group_members')
+          .select('group_id, groups!inner(*)')
+          .eq('roll_number', rollNumber);
+        
+        if (!memberError && memberRecords) {
+          linkedGroups = memberRecords
+            .map(record => (record as any).groups)
+            .filter(group => group.created_by !== user.id); // Exclude duplicates
+        }
+      }
+      
+      // Combine and deduplicate
+      const allGroups = [...(createdGroups || []), ...linkedGroups];
+      const uniqueGroups = Array.from(
+        new Map(allGroups.map(g => [g.id, g])).values()
+      );
+      
+      setGroups(uniqueGroups);
     } catch (error: any) {
       console.error('Error loading groups:', error.message);
     } finally {
@@ -129,7 +162,8 @@ const SplitSaathi = () => {
           validMembers.map(member => ({
             group_id: group.id,
             name: member.name,
-            email_phone: '' // Optional field, can be empty
+            email_phone: '', // Optional field, can be empty
+            roll_number: member.rollNumber?.trim() || null // Store roll number if provided
           }))
         );
 
@@ -148,7 +182,7 @@ const SplitSaathi = () => {
         name: "",
         description: "",
         currency: "₹",
-        members: [{ name: "" }]
+        members: [{ name: "", rollNumber: "" }]
       });
       setIsCreatingGroup(false);
       
@@ -351,13 +385,22 @@ const SplitSaathi = () => {
                 <div className="space-y-4">
                   <Label className="text-base font-semibold">Add Members</Label>
                   <p className="text-sm text-muted-foreground">Enter member names to track expenses</p>
+                  <p className="text-xs text-muted-foreground italic">💡 Adding roll number helps members auto-view this group</p>
                   {groupForm.members.map((member, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1">
+                    <div key={index} className="flex gap-2 items-end flex-wrap sm:flex-nowrap">
+                      <div className="flex-1 min-w-[180px]">
                         <Input
                           placeholder="Member name *"
                           value={member.name}
                           onChange={(e) => updateMember(index, 'name', e.target.value)}
+                        />
+                      </div>
+                      <div className="w-full sm:w-[160px]">
+                        <Input
+                          placeholder="Roll No. (optional)"
+                          value={member.rollNumber}
+                          onChange={(e) => updateMember(index, 'rollNumber', e.target.value)}
+                          className="text-sm"
                         />
                       </div>
                       {groupForm.members.length > 1 && (

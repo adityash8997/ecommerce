@@ -783,6 +783,533 @@ app.post('/verify-application-unlock-payment', async (req, res) => {
   }
 });
 
+
+{/* ---------------------- assignment hook ENDPOINTS ---------------------- */}
+
+/**
+ * GET /api/assignments
+ * Fetch assignments for the logged-in user.
+ */
+app.get('/api/assignments', async (req, res) => {
+  try {
+    const userId = req.query.user_id; // Replace with decoded token later
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized - Missing User ID' });
+    }
+
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .select(`*, assignment_files(*)`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ assignments: data || [] });
+  } catch (err) {
+    console.error('Error fetching assignments:', err);
+    res.status(500).json({ error: 'Failed to fetch assignments' });
+  }
+});
+
+/**
+ * GET /api/helpers
+ */
+app.get('/api/helpers', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('assignment_helpers')
+      .select('*')
+      .eq('is_active', true)
+      .order('rating', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ helpers: data || [] });
+  } catch (err) {
+    console.error('Error fetching helpers:', err);
+    res.status(500).json({ error: 'Failed to fetch helpers' });
+  }
+});
+
+
+/**
+ * POST /api/assignments
+ * Body: formData + files count (no files yet)
+ */
+app.post('/api/assignments', async (req, res) => {
+  try {
+    const { user_id, name, whatsapp, year, branch, pages, deadline, hostel, room,
+      notes, urgent, matchHandwriting, deliveryMethod } = req.body;
+
+    if (!user_id) {
+      return res.status(401).json({ error: 'Unauthorized - Missing User ID' });
+    }
+
+    // Server-side pricing logic (SECURED)
+    const basePrice = pages * (urgent ? 15 : 10);
+    const matchingFee = matchHandwriting ? 20 : 0;
+    const deliveryFee = deliveryMethod === 'hostel_delivery' ? 10 : 0;
+    const totalPrice = basePrice + matchingFee + deliveryFee;
+
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .insert({
+        user_id,
+        student_name: name,
+        whatsapp_number: whatsapp,
+        year,
+        branch,
+        pages,
+        deadline,
+        hostel_name: hostel,
+        room_number: room,
+        special_instructions: notes,
+        is_urgent: urgent,
+        match_handwriting: matchHandwriting,
+        delivery_method: deliveryMethod || 'hostel_delivery',
+        total_price: totalPrice,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, assignment: data });
+  } catch (err) {
+    console.error('Error creating assignment:', err);
+    res.status(500).json({ error: 'Failed to create assignment' });
+  }
+});
+
+
+/**
+ * GET /api/files/signed-url?path=some/path
+ */
+app.get('/api/files/signed-url', async (req, res) => {
+  try {
+    const { path } = req.query;
+    if (!path) return res.status(400).json({ error: 'File path required' });
+
+    const { data, error } = await supabase.storage
+      .from('assignment-files')
+      .createSignedUrl(path, 3600); // 1 hour
+
+    if (error) throw error;
+
+    res.json({ url: data.signedUrl });
+  } catch (err) {
+    console.error('Error creating signed URL:', err);
+    res.status(500).json({ error: 'Failed to generate URL' });
+  }
+});
+
+
+{/* ---------------------- events hook ENDPOINTS  ---------------------- */}
+
+/**
+ * GET /api/events
+ * Returns validated and chronological events
+ */
+app.get('/api/events', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('validation', true)
+      .order('event_date', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ events: data || [] });
+  } catch (err) {
+    console.error('Error fetching events:', err);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+
+{/* ---------------------- group auto link ENDPOINTS  ---------------------- */}
+
+// ✅ FINAL FIXED BACKEND ENDPOINT (no foreign key joins required)
+// POST /api/groups/auto-link
+app.post('/api/groups/auto-link', async (req, res) => {
+  try {
+    const { user_id, email } = req.body; // TEMP: will replace with token later
+
+    if (!user_id || !email) {
+      return res.status(400).json({ error: 'Missing user_id or email' });
+    }
+
+    // 1️⃣ Extract roll number from email
+    const rollMatch = email.match(/^(\d+)@/);
+    if (!rollMatch) {
+      return res.json({ newGroups: [] });
+    }
+    const rollNumber = rollMatch[1];
+
+    // 2️⃣ Fetch matching groups based on roll_number in group_members
+    const { data: matchingMembers, error: membersError } = await supabase
+      .from('group_members')
+      .select(`
+        id,
+        roll_number,
+        group_id,
+        groups!inner(
+          id,
+          name,
+          created_by
+        )
+      `)
+      .eq('roll_number', rollNumber);
+
+    if (membersError) throw membersError;
+    if (!matchingMembers || matchingMembers.length === 0) {
+      return res.json({ newGroups: [] });
+    }
+
+    const newGroups = [];
+
+    // 3️⃣ Loop through matched groups
+    for (const member of matchingMembers) {
+      const group = member.groups;
+      if (!group) continue;
+
+      // Skip if user created this group
+      if (group.created_by === user_id) continue;
+
+      // 4️⃣ Check if notification exists
+      const { data: existingNotification } = await supabase
+        .from('group_notifications')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('group_id', group.id)
+        .single();
+
+      if (existingNotification) continue;
+
+      // 5️⃣ Insert notification
+      await supabase
+        .from('group_notifications')
+        .insert({ user_id, group_id: group.id });
+
+      // 6️⃣ Fetch creator profile manually (no FK needed)
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', group.created_by)
+        .single();
+
+      const creatorName = creatorProfile?.full_name || 'Unknown';
+      const creatorEmail = creatorProfile?.email || '';
+      const creatorRollNumber = creatorEmail.match(/^(\d+)@/)?.[1] || '';
+
+      newGroups.push({
+        name: group.name,
+        creatorName,
+        creatorRollNumber,
+        rollNumber
+      });
+    }
+
+    return res.json({ newGroups });
+  } catch (err) {
+    console.error('Error auto-linking groups:', err);
+    return res.status(500).json({ error: 'Failed to auto-link groups' });
+  }
+});
+
+
+{/* ---------------------- use order history hook ENDPOINTS  ---------------------- */}
+
+// 1️⃣ GET /api/orders - Fetch user's orders
+app.get('/api/orders', async (req, res) => {
+  try {
+let { user_id } = req.query;
+user_id = user_id?.toString().trim().replace(/"/g, "");
+
+    // ✅ Log raw incoming value
+    console.log('Raw user_id received:', JSON.stringify(user_id));
+
+    // ✅ If user_id received, sanitize by trimming any whitespace/newline
+    if (user_id) {
+      user_id = user_id.toString().trim(); // removes \n, space
+    }
+
+    // ✅ Log sanitized value
+    console.log('Sanitized user_id:', JSON.stringify(user_id));
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'Missing user_id' });
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ orders: data || [] });
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    return res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+
+// 2️⃣ POST /api/orders - Create new order
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { user_id, service_name, subservice_name, amount, payment_status, transaction_id, payment_method, booking_details } = req.body;
+
+    if (!user_id || !service_name || !amount || !payment_status) {
+      return res.status(400).json({ error: 'Missing required fields: user_id, service_name, amount, or payment_status' });
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id,
+        service_name,
+        subservice_name: subservice_name || null,
+        amount,
+        payment_status,
+        transaction_id: transaction_id || null,
+        payment_method: payment_method || null,
+        booking_details: booking_details || null
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ order: data });
+  } catch (err) {
+    console.error('Error creating order:', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// 3️⃣ PATCH /api/orders/:id/status - Update order payment status
+app.patch('/api/orders/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id, status } = req.body; // TEMP
+
+    if (!user_id || !status) {
+      return res.status(400).json({ error: 'Missing user_id or status' });
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_status: status })
+      .eq('id', id)
+      .eq('user_id', user_id); // Prevent updating others' orders
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating order status:', err);
+    return res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+{/* ---------------------- use policy manager hook ENDPOINTS END ---------------------- */}
+
+// ✅ Get user policy acceptance
+app.get('/api/policy', async (req, res) => {
+  try {
+    let { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
+
+    user_id = user_id.toString().trim().replace(/"/g, "");
+
+    const { data, error } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // ignore "no rows" error
+
+    return res.json({ policyData: data || null });
+  } catch (err) {
+    console.error('Error fetching policy acceptance:', err);
+    return res.status(500).json({ error: 'Failed to fetch policy data' });
+  }
+});
+
+// ✅ Accept privacy policy
+app.post('/api/policy/privacy', async (req, res) => {
+  try {
+    const { user_id, privacy_policy_version } = req.body;
+    if (!user_id || !privacy_policy_version) {
+      return res.status(400).json({ error: 'Missing user_id or privacy_policy_version' });
+    }
+
+    const updateData = {
+      user_id,
+      privacy_policy_accepted: true,
+      privacy_policy_version,
+      last_updated: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, {
+        onConflict: 'user_id'
+      });
+
+    if (error) {
+      console.error('Supabase UPSERT Error:', error);
+      throw error;
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting privacy policy:', err);
+    return res.status(500).json({ error: 'Failed to accept privacy policy' });
+  }
+});
+
+
+// ✅ Accept Terms & Conditions
+app.post('/api/policy/terms', async (req, res) => {
+  try {
+    const { user_id, terms_conditions_version } = req.body;
+    if (!user_id || !terms_conditions_version) {
+      return res.status(400).json({ error: 'Missing user_id or terms_conditions_version' });
+    }
+
+    const updateData = {
+      user_id,
+      terms_conditions_accepted: true,
+      terms_conditions_version,
+      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString() // optional, since you've now added it
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting terms:', err);
+    return res.status(500).json({ error: 'Failed to accept terms' });
+  }
+});
+
+
+{/* ---------------------- use secure los tand found hook ENDPOINTS ---------------------- */}
+
+// ✅ GET Lost & Found items (active only)
+app.get('/api/lostfound', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ items: data || [] });
+  } catch (err) {
+    console.error('Error fetching lost & found items:', err);
+    return res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+
+// ✅ POST - Add a new Lost/Found item
+app.post('/api/lostfound', async (req, res) => {
+  try {
+    const { user_id, ...itemData } = req.body; // ✅ TEMP: user_id passed manually
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'Missing user_id' });
+    }
+
+    const newItem = {
+      ...itemData,
+      user_id,
+      status: 'active'
+    };
+
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .insert(newItem)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error adding lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to add item' });
+  }
+});
+
+
+// ✅ PATCH - Update an existing Lost/Found item
+app.patch('/api/lostfound/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id, ...updates } = req.body;
+
+    // ✅ TEMP: Ensure same user is making the update
+    if (!user_id) {
+      return res.status(400).json({ error: 'Missing user_id' });
+    }
+
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user_id) // ✅ Ensures users can only update their own items (temporary logic)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error updating lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+{/* ---------------------- use service visibility hook ENDPOINTS ---------------------- */}
+
+
+// ✅ GET service visibility data
+app.get('/api/service-visibility', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('service_visibility')
+      .select('*');
+
+    if (error) throw error;
+
+    return res.json({ services: data || [] });
+  } catch (err) {
+    console.error('Error fetching service visibility:', err);
+    return res.status(500).json({ error: 'Failed to fetch service visibility' });
+  }
+});
+
+
+
+
+
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

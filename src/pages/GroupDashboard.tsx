@@ -29,6 +29,7 @@ import { Navbar } from "@/components/Navbar";
 import { ViewBalances } from "@/components/ViewBalances";
 import { ExportSummary } from "@/components/ExportSummary";
 import { GroupSettings } from "@/components/GroupSettings";
+import { useGroupAutoLink } from "@/hooks/useGroupAutoLink";
 
 interface Group {
   id: string;
@@ -41,6 +42,7 @@ interface Member {
   id: string;
   name: string;
   email_phone: string;
+  roll_number?: string;
 }
 
 interface Expense {
@@ -57,6 +59,9 @@ const GroupDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Auto-link groups based on roll number
+  useGroupAutoLink();
   
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
