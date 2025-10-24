@@ -8,6 +8,80 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Upload study material and submit request
+router.post("/api/study-material/upload", async (req, res) => {
+  try {
+    // Use express-fileupload or multer for file parsing if not already set up
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ error: "No file uploaded", success: false });
+    }
+    const file = req.files.file;
+    const {
+      title, subject, semester, branch, year, folder_type, uploader_name
+    } = req.body;
+    if (!title || !subject || !semester || !folder_type || !uploader_name) {
+      return res.status(400).json({ error: "Missing required fields", success: false });
+    }
+    // Validate file type and size
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ error: "Invalid file type", success: false });
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      return res.status(400).json({ error: "File size exceeds 50MB limit", success: false });
+    }
+    // Generate filename
+    const userId = req.user?.id || "anonymous";
+    const timestamp = Date.now();
+    const filename = `${userId}/${timestamp}_${file.name}`;
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('study-material-pending')
+      .upload(filename, file.data, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return res.status(500).json({ error: 'Failed to upload file', success: false });
+    }
+    // Insert request into DB
+    const { error: insertError } = await supabase
+      .from('study_material_requests')
+      .insert({
+        title,
+        subject,
+        semester,
+        branch,
+        year,
+        folder_type,
+        filename: file.name,
+        storage_path: filename,
+        filesize: file.size,
+        mime_type: file.mimetype,
+        uploader_name,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    if (insertError) {
+      // Cleanup uploaded file
+      await supabase.storage.from('study-material-pending').remove([filename]);
+      return res.status(500).json({ error: 'Failed to submit request', success: false });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Study material upload error:', error);
+    res.status(500).json({ error: 'Failed to submit material', success: false });
+  }
+});
+
 // Fetch study material requests
 router.get("/api/admin/study-material-requests", async (req, res) => {
   try {
