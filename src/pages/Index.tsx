@@ -21,7 +21,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import  InspirationSection  from "@/components/Inspiration"
 
 const contactFormSchema = z.object({

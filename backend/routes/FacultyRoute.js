@@ -8,6 +8,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Get faculty photo URL
+router.get('/faculty/photo-url', async (req, res) => {
+  try {
+    const { facultyId } = req.query;
+    if (!facultyId) {
+      return res.status(400).json({ error: 'Missing facultyId parameter' });
+    }
+    const fileName = `${facultyId}.jpg`;
+    const { data } = supabase.storage.from('faculty-photos').getPublicUrl(fileName);
+    res.json({ photoUrl: data.publicUrl });
+  } catch (error) {
+    console.error('Error fetching faculty photo URL:', error);
+    res.status(500).json({ error: 'Failed to fetch photo URL' });
+  }
+});
+
 // Upload faculty photo
 router.post("/api/faculty/upload-photo", async (req, res) => {
   try {

@@ -26,7 +26,6 @@ import { Footer } from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { supabase } from "@/integrations/supabase/client";
 import moment from "moment";
 
 const KiitSocieties = () => {

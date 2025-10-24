@@ -9,6 +9,32 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// System status endpoint
+router.get('/api/system-status', async (req, res) => {
+  try {
+    // Check database
+    let database = false;
+    let storage = false;
+    let policies = false;
+    try {
+      const { error } = await supabase.from('print_jobs').select('count').limit(1);
+      database = !error;
+    } catch (e) { database = false; }
+    try {
+      const { error } = await supabase.storage.from('print-job-files').list('', { limit: 1 });
+      storage = !error;
+    } catch (e) { storage = false; }
+    // Simple policy check (public data)
+    try {
+      const { error } = await supabase.from('print_jobs').select('*').limit(1);
+      policies = !error;
+    } catch (e) { policies = false; }
+    res.json({ database, storage, policies });
+  } catch (error) {
+    res.status(500).json({ database: false, storage: false, policies: false });
+  }
+});
+
 // ============================================
 // ADMIN DASHBOARD DATA
 // ============================================
