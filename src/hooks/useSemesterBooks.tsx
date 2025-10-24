@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAuthenticatedFetch } from "./useAuthenticatedFetch";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "./use-toast";
 
 interface SemesterBook {

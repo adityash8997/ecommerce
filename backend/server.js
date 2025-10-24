@@ -7,6 +7,8 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import adminRoutes from "./routes/AdminRoute.js";
 import SemBooksRoutes from "./routes/SemBooksRoutes.js"
+import FacultyRoute from "./routes/FacultyRoute.js"
+import StudyMaterialRoute from "./routes/StudyMaterialRoute.js"
 
 
 const app = express();
@@ -24,6 +26,8 @@ const allowedOrigins = [
 app.use(cookieParser());
 app.use("/api/admin", adminRoutes);
 app.use("/", SemBooksRoutes); 
+app.use("/",FacultyRoute);
+app.use("/",StudyMaterialRoute)
 
 
 // CORS configuration
