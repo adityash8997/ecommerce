@@ -1432,6 +1432,32 @@ app.delete('/api/admin/delete-feedback/:feedbackId', async (req, res) => {
   }
 });
 
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const { category, feedback_text, rating } = req.body;
+
+    // Basic validation
+    if (!category || !feedback_text) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const { error } = await supabase
+      .from("feedbacks")
+      .insert([{ category, feedback_text, rating: rating || null }]);
+
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return res.status(500).json({ success: false, message: "Database insert failed" });
+    }
+
+    return res.status(200).json({ success: true, message: "Feedback submitted successfully" });
+  } catch (err) {
+    console.error("Feedback submission failed:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
 
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
