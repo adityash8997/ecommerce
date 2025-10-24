@@ -50,34 +50,36 @@ const Index = () => {
     },
   });
 
-  const handleContactSubmit = async (data: ContactFormData) => {
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase.functions.invoke('send-contact-email', {
-        body: data,
-      });
+ const handleContactSubmit = async (data: ContactFormData) => {
+  setIsSubmitting(true);
+  try {
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-      if (error) {
-        throw error;
-      }
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message);
 
-      toast({
-        title: "Message Sent! ",
-        description: "Thank you for reaching out. We'll get back to you within 24 hours.",
-      });
+    toast({
+      title: "Message Sent!",
+      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
+    });
 
-      form.reset();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    form.reset();
+  } catch (error) {
+    console.error("Error sending message:", error);
+    toast({
+      title: "Error",
+      description: "Failed to send message. Please try again later.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen relative">

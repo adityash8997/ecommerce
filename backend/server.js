@@ -1532,6 +1532,38 @@ app.get("/api/group/:groupId", async (req, res) => {
   }
 });
 
+//HandleContactSubmit
+app.post("/api/contact", async (req, res) => {
+  try {
+    const data = req.body;
+
+    // Validate input
+    if (!data.name || !data.email || !data.message) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    // Call your Supabase Edge Function securely
+    const { error } = await supabase.functions.invoke("send-contact-email", {
+      body: data,
+    });
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: "Message sent successfully!",
+    });
+  } catch (err) {
+    console.error("Error invoking send-contact-email:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send message.",
+    });
+  }
+});
 
 
 /* ---------------------- SERVER ---------------------- */
