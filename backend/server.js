@@ -1,34 +1,31 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config(); // ✅ Load environment variables FIRST
+
 import express from 'express';
 import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import adminRoutes from "./routes/AdminRoute.js";
-import SemBooksRoutes from "./routes/SemBooksRoutes.js"
-import FacultyRoute from "./routes/FacultyRoute.js"
-import StudyMaterialRoute from "./routes/StudyMaterialRoute.js"
+import createAdminRoutes, { createFeedbackRoute } from "./routes/AdminRoute.js";
+import createSemBooksRoutes from "./routes/SemBooksRoutes.js";
+import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
 
 
 const app = express();
-import cookieParser from 'cookie-parser';
 
-const allowedOrigins = [
+const allowedOrigins = [  
   "http://localhost:8080",
   "http://10.5.83.177:8080",
   "http://localhost:5173",
   "https://kiitsaathi.vercel.app",
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
-   "https://ksaathi.vercel.app"
+  "https://ksaathi.vercel.app"
 ];
 
+// ✅ MIDDLEWARE MUST COME FIRST (before any routes)
 app.use(cookieParser());
-app.use("/api/admin", adminRoutes);
-app.use("/", SemBooksRoutes); 
-app.use("/",FacultyRoute);
-app.use("/",StudyMaterialRoute)
-
+app.use(express.json());
 
 // CORS configuration
 app.use(cors({
@@ -45,7 +42,29 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+// ✅ Add request logger
+app.use((req, res, next) => {
+  console.log(`📨 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']; // Expecting "Bearer <token>"
+  const token = authHeader?.split(' ')[1]; // Get token part
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    req.user_id = decoded.sub; // Supabase stores user ID in "sub"
+    next();
+  } catch (err) {
+    console.error('Invalid token:', err);
+    return res.status(403).json({ error: 'Invalid or expired token.' });
+  }
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -55,8 +74,42 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Health check endpoint
+console.log('🔧 Environment Debug Info:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? `✅ Set (${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 20)}...)` : '❌ Missing');
+console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? '✅ Set' : '❌ Missing');
+console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? '✅ Set' : '❌ Missing');
+
+// ✅ Initialize Supabase AFTER environment variables are loaded
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Razorpay instance
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  try {
+    razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    console.log('✅ Razorpay initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Razorpay:', error.message);
+  }
+} else {
+  console.warn('⚠️  Razorpay not initialized - missing environment variables');
+}
+
+// ✅ SIMPLE TEST ROUTES FIRST (for debugging)
+app.get('/test', (req, res) => {
+  console.log('✅ Test endpoint hit!');
+  res.json({ message: 'Server is running!', timestamp: new Date().toISOString() });
+});
+
 app.get('/health', async (req, res) => {
+  console.log('✅ Health check endpoint hit!');
   try {
     // Test Supabase connection
     const { data, error } = await supabase
@@ -79,35 +132,30 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Test endpoint
-app.get('/test', (req, res) => {
-  res.json({ message: 'Server is running!' });
-});
+// ✅ NOW register route files (AFTER middleware and supabase initialization)
+app.use("/api/admin", createAdminRoutes(supabase));
+app.use("/api/feedback", createFeedbackRoute(supabase));
+app.use("/", createSemBooksRoutes(supabase));
 
 // ============================================
 // AUTHENTICATION ENDPOINTS
 // ============================================
 
-// Check current session
-
 app.get("/api/auth/callback", async (req, res) => {
   try {
-    const { access_token } = req.query; // or handle from headers or cookies
+    const { access_token } = req.query;
 
     if (!access_token) {
       return res.status(400).json({ error: "Missing access token" });
     }
 
-    // Verify and get user info
     const { data: user, error } = await supabase.auth.getUser(access_token);
     if (error || !user) {
       console.error(error);
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Check if user email confirmed
     if (user.user?.email_confirmed_at) {
-      // Optional: create your own session/cookie or issue JWT
       return res.json({ success: true, message: "Email confirmed" });
     } else {
       return res.status(403).json({ success: false, message: "Email not confirmed yet" });
@@ -117,7 +165,6 @@ app.get("/api/auth/callback", async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 app.get('/api/auth/session', async (req, res) => {
   try {
@@ -133,7 +180,6 @@ app.get('/api/auth/session', async (req, res) => {
       return res.json({ session: null, profile: null });
     }
 
-    // Get profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_email_verified')
@@ -150,18 +196,18 @@ app.get('/api/auth/session', async (req, res) => {
   }
 });
 
-// Sign up with email/password
 app.post('/api/auth/signup', async (req, res) => {
   try {
+    console.log('📝 Signup request received:', req.body.email);
     const { email, password, fullName } = req.body;
 
-    // Validate KIIT email
     if (!email.endsWith('@kiit.ac.in')) {
       return res.status(400).json({ 
         error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
       });
     }
 
+    console.log('⏳ Calling Supabase signUp...');
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -175,6 +221,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
     if (error) throw error;
 
+    console.log('✅ Signup successful');
     res.json({ 
       success: true, 
       user: data.user, 
@@ -184,19 +231,17 @@ app.post('/api/auth/signup', async (req, res) => {
         : 'Account created successfully'
     });
   } catch (error) {
-    console.error('Sign up error:', error);
+    console.error('❌ Sign up error:', error);
     res.status(400).json({ 
       error: error.message || 'An error occurred during sign up' 
     });
   }
 });
 
-// Sign in with email/password
 app.post('/api/auth/signin', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate KIIT email
     if (!email.endsWith('@kiit.ac.in')) {
       return res.status(400).json({ 
         error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
@@ -223,7 +268,6 @@ app.post('/api/auth/signin', async (req, res) => {
   }
 });
 
-// Sign out
 app.post('/api/auth/signout', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -239,7 +283,6 @@ app.post('/api/auth/signout', async (req, res) => {
   }
 });
 
-// Resend confirmation email
 app.post('/api/auth/resend-confirmation', async (req, res) => {
   try {
     const { email } = req.body;
@@ -267,7 +310,6 @@ app.post('/api/auth/resend-confirmation', async (req, res) => {
   }
 });
 
-// Forgot password
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -276,7 +318,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Validate KIIT email
     if (!email.endsWith('@kiit.ac.in')) {
       return res.status(400).json({ 
         error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed' 
@@ -301,7 +342,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-// Verify email callback
 app.post('/api/auth/verify-email-callback', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -324,375 +364,202 @@ app.post('/api/auth/verify-email-callback', async (req, res) => {
   }
 });
 
-// Test Lost & Found order creation (simplified)
-app.post('/test-lost-found-order', async (req, res) => {
+// ============================================
+// PAYMENT ENDPOINTS
+// ============================================
+
+// ============================================
+// PAYMENT ENDPOINTS (SECURED + CLEANED)
+// ============================================
+
+// ✅ Check if the authenticated user has paid to view a Lost & Found contact
+app.get('/has-paid-contact', authenticateToken, async (req, res) => {
   try {
-    console.log('🧪 Test Lost & Found Order Request:', req.body);
-    const { amount } = req.body;
-    
-    // Check if Razorpay is available
-    if (!razorpay) {
-      return res.status(500).json({ 
-        error: 'Razorpay not configured',
-        details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
-      });
+    const user_id = req.user_id; // authenticated user
+    const { item_id, item_title } = req.query;
+
+    if (!item_id || !item_title) {
+      return res.status(400).json({ error: 'Missing item_id or item_title' });
     }
-    
-    // Simple Razorpay order creation test
-    const order = await razorpay.orders.create({
-      amount: amount || 1500, // Default 15 rupees in paise
-      currency: 'INR',
-      receipt: 'test_' + Date.now(),
-      notes: {
-        test: 'true'
-      }
-    });
-    
-    console.log('✅ Test order created:', order.id);
-    res.json({ success: true, order });
-  } catch (error) {
-    console.error('❌ Test order error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
-
-
-
-// Razorpay instance - only create if environment variables are available
-let razorpay = null;
-
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  try {
-    razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-    console.log('✅ Razorpay initialized successfully');
-  } catch (error) {
-    console.error('❌ Failed to initialize Razorpay:', error.message);
-  }
-} else {
-  console.warn('⚠️  Razorpay not initialized - missing environment variables');
-}
-
-console.log('🔧 Environment Debug Info:');
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing');
-console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? `✅ Set (${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 20)}...)` : '❌ Missing');
-console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? '✅ Set' : '❌ Missing');
-console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? '✅ Set' : '❌ Missing');
-
-// Supabase instance
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-
-
-// ✅ Check if user has paid for contact unlock for a specific item
-app.get('/has-paid-contact', async (req, res) => {
-  const { user_id, item_id, item_title } = req.query;
-  if (!user_id || !item_id || !item_title) {
-    return res.status(400).json({ error: 'Missing user_id, item_id, or item_title' });
-  }
-  try {
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id')
       .eq('user_id', user_id)
       .eq('service_name', 'LostAndFound')
       .eq('subservice_name', item_title)
-      .eq('payment_status', 'success');
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.json({ paid: data && data.length > 0 });
-  } catch (err) {
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
-  }
-});
-
-// ✅ Create Razorpay order
-app.post('/create-order', async (req, res) => {
-  const { amount, currency = 'INR', receipt } = req.body;
-  
-  if (!razorpay) {
-    return res.status(500).json({ 
-      error: 'Payment service not available - Razorpay not configured',
-      details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
-    });
-  }
-  
-  try {
-    const order = await razorpay.orders.create({
-      amount: amount * 100, // in paise
-      currency,
-      receipt,
-    });
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ✅ Verify payment and save to Supabase
-app.post('/verify-payment', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, user_id, amount, service_name, subservice_name, payment_method } = req.body;
-
-  try {
-    // Insert order
-    const { data, error } = await supabase
-      .from('orders')
-      .insert([
-        {
-          user_id,
-          transaction_id: razorpay_order_id,
-          amount,
-          payment_status: 'success',
-          service_name,
-          subservice_name,
-          payment_method,
-        },
-      ]);
-
-    if (error) {
-      console.error('Supabase insert error:', error);
-      return res.status(500).json({ error: error.message, details: error });
-    }
-
-    // If LostAndFound, send contact details to user's email
-    if (service_name === 'LostAndFound') {
-      // 1. Get user email from Supabase users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('id', user_id)
-        .single();
-      if (userError || !userData?.email) {
-        console.error('User email fetch error:', userError);
-      } else {
-        // 2. Get contact details for the item
-        const { data: itemData, error: itemError } = await supabase
-          .from('lost_and_found_items')
-          .select('contact_name, contact_email, contact_phone, title')
-          .eq('title', subservice_name)
-          .single();
-        if (itemError || !itemData) {
-          console.error('LostFound item fetch error:', itemError);
-        } else {
-          // 3. Send email using Resend API
-          try {
-            const Resend = require('resend');
-            const resend = new Resend(process.env.RESEND_API_KEY);
-            await resend.emails.send({
-              from: 'KIIT Saathi <onboarding@resend.dev>',
-              to: [userData.email],
-              subject: `Contact Details for ${itemData.title}`,
-              html: `<h2>Contact Details for ${itemData.title}</h2>
-                <p><strong>Name:</strong> ${itemData.contact_name}</p>
-                <p><strong>Email:</strong> ${itemData.contact_email}</p>
-                <p><strong>Phone:</strong> ${itemData.contact_phone}</p>
-                <p>Thank you for using KIIT Saathi Lost & Found!</p>`
-            });
-            console.log('Contact details sent to', userData.email);
-          } catch (emailErr) {
-            console.error('Error sending contact email:', emailErr);
-          }
-        }
-      }
-    }
-
-    console.log('Order insert response:', data);
-    return res.json({ success: true, data });
-  } catch (err) {
-    console.error('Unexpected error in /verify-payment:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
-  }
-});
-
-// ✅ Get user's orders
-app.get('/get-orders', async (req, res) => {
-  const user_id = req.query.user_id;
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user_id)
-      .order('created_at', { ascending: false });
+      .eq('payment_status', 'completed')
+      .limit(1);
 
     if (error) {
       console.error('Supabase fetch error:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Database error' });
     }
 
-    return res.json({ orders: data });
+    return res.json({ paid: !!(data && data.length) });
   } catch (err) {
-    console.error('Unexpected error in /get-orders:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
+    console.error('Unexpected error in /has-paid-contact:', err);
+    return res.status(500).json({ error: 'Unexpected server error' });
   }
 });
 
-// ✅ Alternative endpoint for fetching orders
-app.get('/orders', async (req, res) => {
-  const user_id = req.query.user_id;
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
+// ✅ Create a generic Razorpay order (amount in rupees -> converted to paise)
+app.post('/create-order', authenticateToken, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user_id)
-      .order('created_at', { ascending: false });
+    const { amount, currency = 'INR', receipt } = req.body;
 
-    if (error) {
-      console.error('Supabase fetch error (alt):', error);
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.json({ orders: data });
-  } catch (err) {
-    console.error('Unexpected error in /orders:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
-  }
-});
-
-
-
-// Create order for Lost & Found contact unlock
-app.post('/create-lost-found-order', async (req, res) => {
-  try {
-    console.log('🔍 Lost & Found Order Request:', req.body);
-    console.log('🔍 Environment check - Supabase URL:', process.env.SUPABASE_URL ? 'Set' : 'Missing');
-    console.log('🔍 Environment check - Razorpay Key:', process.env.RAZORPAY_KEY_ID ? 'Set' : 'Missing');
-    
-    const { amount, itemId, itemTitle, itemPosterEmail, payerUserId, receipt } = req.body;
-
-    // Validate required fields
-    if (!amount || !itemId || !itemTitle || !payerUserId) {
-      console.log('❌ Missing required fields:', { amount, itemId, itemTitle, payerUserId });
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        required: ['amount', 'itemId', 'itemTitle', 'payerUserId'] 
+    if (!razorpay) {
+      return res.status(500).json({
+        error: 'Payment service not available - Razorpay not configured',
       });
     }
+    if (!amount || !receipt) {
+      return res.status(400).json({ error: 'Missing amount or receipt' });
+    }
 
-    console.log('⏳ Checking for existing payment...');
-    // For now, let's skip the unlock table check since it doesn't exist yet
-    // and check directly in the orders table
+    const order = await razorpay.orders.create({
+      amount: amount * 100, // rupees -> paise
+      currency,
+      receipt,
+    });
+
+    return res.json(order);
+  } catch (err) {
+    console.error('Error creating Razorpay order:', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// ✅ Verify a generic payment and record it to orders
+app.post('/verify-payment', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      service_name,
+      subservice_name,
+      amount,
+      payment_method = 'razorpay',
+      currency = 'INR',
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !service_name || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Signature verify
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Invalid payment signature' });
+    }
+
+    // Optional: fetch payment to double-check status
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
+    }
+
+    const { error } = await supabase.from('orders').insert({
+      user_id,
+      service_name,
+      subservice_name: subservice_name || null,
+      amount,
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      payment_method,
+      booking_details: { currency, razorpay_order_id },
+    });
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({ error: 'Failed to save order' });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Unexpected error in /verify-payment:', err);
+    return res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+// ✅ Create order for Lost & Found contact unlock (amount expected in **paise**)
+app.post('/create-lost-found-order', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // payer
+    const { amount, itemId, itemTitle, itemPosterEmail, receipt } = req.body;
+
+    if (!razorpay) {
+      return res.status(500).json({ error: 'Payment service not available' });
+    }
+    if (!amount || !itemId || !itemTitle) {
+      return res.status(400).json({ error: 'Missing amount, itemId, or itemTitle' });
+    }
+
+    // Validate item and prevent paying for own item
+    const { data: itemData, error: itemError } = await supabase
+      .from('lost_and_found_items')
+      .select('contact_email')
+      .eq('id', itemId)
+      .single();
+
+    if (itemError || !itemData) {
+      return res.status(404).json({ error: 'Lost item not found' });
+    }
+    if (itemData.contact_email && itemPosterEmail && itemData.contact_email === itemPosterEmail) {
+      return res.status(400).json({ error: 'You cannot unlock your own item' });
+    }
+
+    // Check existing completed payment for the same user & item
     const { data: existingPayment, error: checkError } = await supabase
       .from('orders')
       .select('id')
-      .eq('user_id', payerUserId)
+      .eq('user_id', user_id)
       .eq('service_name', 'LostAndFoundContact')
       .eq('payment_status', 'completed')
       .contains('booking_details', { item_id: itemId })
       .limit(1);
 
     if (checkError) {
-      console.error('❌ Error checking existing payment:', checkError);
-      return res.status(500).json({ error: 'Failed to validate payment status', details: checkError });
+      console.error('Check existing payment error:', checkError);
+      return res.status(500).json({ error: 'Failed to validate payment status' });
     }
-
     if (existingPayment && existingPayment.length > 0) {
-      console.log('❌ Payment already exists for this user/item combination');
-      return res.status(400).json({ 
-        error: 'Payment already completed', 
-        message: 'You have already unlocked contact details for this item' 
-      });
+      return res.status(400).json({ error: 'Payment already completed for this item' });
     }
 
-    console.log('⏳ Fetching item details...');
-    // Get the item details to check if user is the poster and item type
-    const { data: itemData, error: itemError } = await supabase
-      .from('lost_and_found_items')
-      .select('contact_email, item_type')
-      .eq('id', itemId)
-      .single();
-
-    if (itemError) {
-      console.error('❌ Error fetching item details:', itemError);
-      return res.status(500).json({ error: 'Failed to validate item', details: itemError });
-    }
-
-    if (!itemData) {
-      console.error('❌ Item not found with ID:', itemId);
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    console.log('⏳ Fetching user details...');
-    // Get user's email to check if they're the poster
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(payerUserId);
-    
-    if (userError) {
-      console.error('❌ Error fetching user details:', userError);
-      return res.status(500).json({ error: 'Failed to validate user', details: userError });
-    }
-
-    if (!userData?.user?.email) {
-      console.error('❌ User email not found for ID:', payerUserId);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Prevent users from paying for their own items (both lost and found)
-    if (itemData.contact_email === userData.user.email) {
-      console.log('❌ User trying to unlock their own item');
-      return res.status(400).json({ 
-        error: 'Cannot unlock own item', 
-        message: 'You cannot pay to unlock contact details for your own posted item' 
-      });
-    }
-
-    console.log('⏳ Creating Razorpay order...');
-    
-    // Check if Razorpay is available
-    if (!razorpay) {
-      console.error('❌ Razorpay not initialized - missing environment variables');
-      return res.status(500).json({ 
-        error: 'Payment service not available', 
-        details: 'Razorpay not configured - missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET',
-        message: 'Payment service is temporarily unavailable. Please contact support.' 
-      });
-    }
-    
-    // Create Razorpay order
-    const options = {
-      amount: amount, // amount in paise (15 rupees = 1500 paise)
+    const order = await razorpay.orders.create({
+      amount, // already in paise
       currency: 'INR',
-      receipt: receipt,
+      receipt: receipt || `lost_found_${itemId}_${Date.now()}`,
       notes: {
         item_id: itemId,
         item_title: itemTitle,
-        service: 'lost_found_contact',
-        payer_user_id: payerUserId,
-        poster_email: itemPosterEmail
-      }
-    };
-
-    const order = await razorpay.orders.create(options);
-    console.log('✅ Lost & Found order created successfully:', order.id);
-    res.json(order);
-
-  } catch (error) {
-    console.error('❌ Error creating Lost & Found order:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
+        payer_user_id: user_id,
+        poster_email: itemPosterEmail || '',
+      },
     });
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+
+    return res.json(order);
+  } catch (error) {
+    console.error('Error creating Lost & Found order:', error);
+    return res.status(500).json({ error: 'Failed to create order' });
   }
 });
 
-// Verify payment and process split for Lost & Found
-app.post('/verify-lost-found-payment', async (req, res) => {
+// ✅ Verify Lost & Found payment (paise) and store
+app.post('/verify-lost-found-payment', authenticateToken, async (req, res) => {
   try {
+    const user_id = req.user_id; // payer
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -700,150 +567,114 @@ app.post('/verify-lost-found-payment', async (req, res) => {
       itemId,
       itemTitle,
       itemPosterEmail,
-      payerUserId,
-      splitDetails
+      splitDetails, // optional metadata from client
     } = req.body;
 
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !itemId || !itemTitle) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     // Verify signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
-
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
     if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: 'Invalid signature' });
+      return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // Fetch payment details from Razorpay
-    const payment = await razorpay.payments.fetch(razorpay_payment_id);
-    
-    if (payment.status !== 'captured') {
-      return res.status(400).json({ success: false, message: 'Payment not captured' });
+    // Optional: verify captured
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
     }
 
-    // Store payment in existing orders table
-    const { error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: payerUserId,
-        service_name: 'LostAndFoundContact',
-        subservice_name: itemTitle,
-        amount: splitDetails.totalAmount,
-        payment_method: 'razorpay',
-        payment_status: 'completed',
-        transaction_id: razorpay_payment_id,
-        booking_details: {
-          item_id: itemId,
-          item_title: itemTitle,
-          poster_email: itemPosterEmail,
-          razorpay_order_id: razorpay_order_id,
-          split_details: splitDetails
-        }
-      });
-
+    const { error: orderError } = await supabase.from('orders').insert({
+      user_id,
+      service_name: 'LostAndFoundContact',
+      subservice_name: itemTitle,
+      amount: splitDetails?.totalAmount || null, // optional
+      payment_method: 'razorpay',
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      booking_details: {
+        item_id: itemId,
+        item_title: itemTitle,
+        poster_email: itemPosterEmail || '',
+        razorpay_order_id,
+        split_details: splitDetails || null,
+      },
+    });
     if (orderError) {
       console.error('Error storing order:', orderError);
-      // Don't fail the request as payment is successful
+      // continue — payment is successful regardless
     }
 
-    console.log('✅ Lost & Found payment verified and stored successfully');
-    res.json({
-      success: true,
-      message: 'Payment verified and contact details unlocked',
-      paymentId: razorpay_payment_id
-    });
-
+    return res.json({ success: true, paymentId: razorpay_payment_id });
   } catch (error) {
     console.error('Error verifying Lost & Found payment:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Payment verification failed', 
-      details: error.message 
-    });
+    return res.status(500).json({ error: 'Payment verification failed' });
   }
 });
-// Group balances endpoint for ViewBalances
-app.get('/api/group/:groupId/balances', async (req, res) => {
-  const { groupId } = req.params;
-  try {
-    const { data, error } = await supabase.rpc('calculate_group_balances', {
-      _group_id: groupId
-    });
-    if (error) return res.status(500).json({ error: error.message, data: [] });
-    res.json({ data });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch balances', data: [] });
-  }
-});
-// Check if user has already paid for Lost & Found contact details
-app.get('/has-paid-lost-found-contact', async (req, res) => {
-  try {
-    console.log('🔍 Checking payment status for user:', req.query.user_id, 'item:', req.query.item_id);
-    const { user_id, item_id } = req.query;
 
-    if (!user_id || !item_id) {
-      console.log('❌ Missing required parameters');
-      return res.status(400).json({ error: 'Missing user_id or item_id' });
+// ✅ Check if the authenticated user already paid for Lost & Found contact (by item)
+app.get('/has-paid-lost-found-contact', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const { item_id } = req.query;
+
+    if (!item_id) {
+      return res.status(400).json({ error: 'Missing item_id' });
     }
 
-    console.log('⏳ Checking orders table for payment history...');
-    // Check in the orders table for completed payments
     const { data, error } = await supabase
       .from('orders')
       .select('id')
       .eq('user_id', user_id)
       .eq('service_name', 'LostAndFoundContact')
       .eq('payment_status', 'completed')
-      .contains('booking_details', { item_id: item_id })
+      .contains('booking_details', { item_id })
       .limit(1);
 
     if (error) {
-      console.error('❌ Database error in orders table:', error);
+      console.error('Database error:', error);
       return res.status(500).json({ error: 'Database error' });
     }
 
-    const hasPaid = data && data.length > 0;
-    console.log(`${hasPaid ? '✅' : '❌'} Payment status result:`, hasPaid);
-    res.json({ paid: hasPaid });
-
+    return res.json({ paid: !!(data && data.length) });
   } catch (error) {
     console.error('Error checking Lost & Found payment status:', error);
-    res.status(500).json({ error: 'Failed to check payment status' });
+    return res.status(500).json({ error: 'Failed to check payment status' });
   }
 });
 
-// Submit application for a lost item
-app.post('/submit-lost-item-application', async (req, res) => {
+// ✅ Submit application for a lost item (owner will review later)
+app.post('/submit-lost-item-application', authenticateToken, async (req, res) => {
   try {
-    console.log('📝 Lost Item Application Submission:', req.body);
-    
+    const applicantUserId = req.user_id; // authenticated applicant
     const {
       lostItemId,
       lostItemTitle,
       lostItemOwnerEmail,
-      applicantUserId,
       applicantName,
       applicantEmail,
       applicantPhone,
       foundPhotoUrl,
       foundDescription,
       foundLocation,
-      foundDate
+      foundDate,
     } = req.body;
 
-    // Validate required fields
     if (!lostItemId || !lostItemOwnerEmail || !applicantName || !applicantEmail || !applicantPhone || !foundPhotoUrl || !foundDescription || !foundLocation || !foundDate) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
-        required: ['lostItemId', 'lostItemOwnerEmail', 'applicantName', 'applicantEmail', 'applicantPhone', 'foundPhotoUrl', 'foundDescription', 'foundLocation', 'foundDate']
       });
     }
 
-    console.log('⏳ Inserting application into database...');
-    console.log('Applicant User ID:', applicantUserId);
-    // Insert application into database
     const { data: applicationData, error: insertError } = await supabase
       .from('lost_found_applications')
       .insert({
@@ -856,63 +687,47 @@ app.post('/submit-lost-item-application', async (req, res) => {
         found_description: foundDescription,
         found_location: foundLocation,
         found_date: foundDate,
-        status: 'pending'
+        status: 'pending',
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error('❌ Database error:', insertError);
-      
-      // Check if it's a duplicate application error
-      if (insertError.code === '23505' || insertError.message.includes('unique_application_per_user_per_item')) {
-        return res.status(409).json({ 
+      if (insertError.code === '23505' || `${insertError.message}`.includes('unique_application_per_user_per_item')) {
+        return res.status(409).json({
           error: 'You have already applied for this lost item. Please wait for the owner to review your application.',
-          type: 'duplicate' 
+          type: 'duplicate',
         });
       }
-      
-      return res.status(500).json({ error: 'Failed to save application', details: insertError.message });
+      console.error('Database insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to save application' });
     }
 
-    console.log('✅ Application saved to database:', applicationData.id);
-
-    // Email notification removed - users can view applications directly in the portal
-    console.log('📧 Email notification skipped - owner can view applications in portal');
-
-    res.json({
+    return res.json({
       success: true,
       message: 'Application submitted successfully',
-      applicationId: applicationData.id
+      applicationId: applicationData.id,
     });
-
   } catch (error) {
-    console.error('❌ Error submitting application:', error);
-    res.status(500).json({ 
-      error: 'Failed to submit application', 
-      details: error.message 
-    });
+    console.error('Error submitting application:', error);
+    return res.status(500).json({ error: 'Failed to submit application' });
   }
 });
 
-// Create order for unlocking application contact details
-app.post('/create-application-unlock-order', async (req, res) => {
+// ✅ Create order for unlocking application contact details (owner pays) — amount in **paise**
+app.post('/create-application-unlock-order', authenticateToken, async (req, res) => {
   try {
-    console.log('🔓 Application Unlock Order Request:', req.body);
-    
-    const { amount, applicationId, lostItemTitle, ownerUserId, receipt } = req.body;
+    const ownerUserId = req.user_id; // authenticated owner
+    const { amount, applicationId, lostItemTitle, receipt } = req.body;
 
-    // Validate required fields
-    if (!amount || !applicationId || !ownerUserId) {
-      console.log('❌ Missing required fields');
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        required: ['amount', 'applicationId', 'ownerUserId'] 
-      });
+    if (!razorpay) {
+      return res.status(500).json({ error: 'Payment service not available' });
+    }
+    if (!amount || !applicationId) {
+      return res.status(400).json({ error: 'Missing amount or applicationId' });
     }
 
-    console.log('⏳ Checking if already paid for this application...');
-    // Check if already unlocked
+    // Check if already unlocked (status paid)
     const { data: existingApplication, error: checkError } = await supabase
       .from('lost_found_applications')
       .select('status')
@@ -920,515 +735,581 @@ app.post('/create-application-unlock-order', async (req, res) => {
       .single();
 
     if (checkError) {
-      console.error('❌ Error checking application:', checkError);
-      return res.status(500).json({ error: 'Failed to validate application', details: checkError });
+      console.error('Check application error:', checkError);
+      return res.status(500).json({ error: 'Failed to validate application' });
+    }
+    if (existingApplication?.status === 'paid') {
+      return res.status(400).json({ error: 'Already unlocked' });
     }
 
-    if (existingApplication.status === 'paid') {
-      console.log('❌ Application already unlocked');
-      return res.status(400).json({ 
-        error: 'Already unlocked', 
-        message: 'You have already unlocked this application' 
-      });
-    }
-
-    console.log('⏳ Creating Razorpay order...');
-    
-    if (!razorpay) {
-      console.error('❌ Razorpay not initialized');
-      return res.status(500).json({ 
-        error: 'Payment service not available',
-        message: 'Payment service is temporarily unavailable. Please contact support.' 
-      });
-    }
-    
-    // Create Razorpay order
-    const options = {
-      amount: amount, // amount in paise (5 rupees = 500 paise)
+    const order = await razorpay.orders.create({
+      amount, // paise
       currency: 'INR',
       receipt: receipt || `app_unlock_${applicationId}_${Date.now()}`,
       notes: {
         application_id: applicationId,
         service: 'application_contact_unlock',
         owner_user_id: ownerUserId,
-        lost_item_title: lostItemTitle
-      }
-    };
+        lost_item_title: lostItemTitle || '',
+      },
+    });
 
-    const order = await razorpay.orders.create(options);
-    console.log('✅ Application unlock order created:', order.id);
-    res.json(order);
-
+    return res.json(order);
   } catch (error) {
-    console.error('❌ Error creating application unlock order:', error);
-    res.status(500).json({ error: 'Failed to create order', details: error.message });
+    console.error('Error creating application unlock order:', error);
+    return res.status(500).json({ error: 'Failed to create order' });
   }
 });
 
-// Verify payment for application unlock
-app.post('/verify-application-unlock-payment', async (req, res) => {
+// ✅ Verify payment for application unlock and store
+app.post('/verify-application-unlock-payment', authenticateToken, async (req, res) => {
   try {
+    const ownerUserId = req.user_id; // authenticated owner
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       applicationId,
-      ownerUserId
     } = req.body;
 
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !applicationId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     // Verify signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
-
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
     if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: 'Invalid signature' });
+      return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // Fetch payment details from Razorpay
-    const payment = await razorpay.payments.fetch(razorpay_payment_id);
-    
-    if (payment.status !== 'captured') {
-      return res.status(400).json({ success: false, message: 'Payment not captured' });
+    // Optional: verify captured
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
     }
 
-    // Update application status to 'paid'
+    // Update application to paid
     const { error: updateError } = await supabase
       .from('lost_found_applications')
       .update({
         status: 'paid',
         paid_at: new Date().toISOString(),
-        payment_id: razorpay_payment_id
+        payment_id: razorpay_payment_id,
       })
       .eq('id', applicationId);
 
     if (updateError) {
       console.error('Error updating application:', updateError);
-      return res.status(500).json({ success: false, message: 'Failed to unlock application' });
+      return res.status(500).json({ error: 'Failed to unlock application' });
     }
 
-    // Store payment in orders table
-    const { error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        user_id: ownerUserId,
-        service_name: 'ApplicationContactUnlock',
-        subservice_name: `Application ${applicationId}`,
-        amount: 5,
-        payment_method: 'razorpay',
-        payment_status: 'completed',
-        transaction_id: razorpay_payment_id,
-        booking_details: {
-          application_id: applicationId,
-          razorpay_order_id: razorpay_order_id
-        }
-      });
-
+    // Record order (owner paid)
+    const { error: orderError } = await supabase.from('orders').insert({
+      user_id: ownerUserId,
+      service_name: 'ApplicationContactUnlock',
+      subservice_name: `Application ${applicationId}`,
+      amount: null, // optional to store; if you want a fixed amount, set it in client and pass here
+      payment_method: 'razorpay',
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      booking_details: {
+        application_id: applicationId,
+        razorpay_order_id,
+      },
+    });
     if (orderError) {
       console.error('Error storing order:', orderError);
-      // Don't fail the request as payment is successful
+      // continue — payment is successful regardless
     }
-
-    console.log('✅ Application contact unlocked successfully');
-    res.json({
-      success: true,
-      message: 'Contact details unlocked successfully',
-      paymentId: razorpay_payment_id
-    });
-
-  } catch (error) {
-    console.error('Error verifying application unlock payment:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Payment verification failed', 
-      details: error.message 
-    });
-  }
-});q
-
-// Store active SSE connections
-const sseClients = new Set();
-
-// SSE endpoint for real-time admin notifications
-app.get('/api/admin/realtime-notifications', (req, res) => {
-  // Set headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // For nginx
-
-  // Add client to active connections
-  sseClients.add(res);
-  console.log(`Admin client connected. Total clients: ${sseClients.size}`);
-
-  // Send initial connection success message
-  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Real-time connected' })}\n\n`);
-
-  // Remove client on disconnect
-  req.on('close', () => {
-    sseClients.delete(res);
-    console.log(`Admin client disconnected. Total clients: ${sseClients.size}`);
-  });
-});
-
-// Broadcast function to send to all connected clients
-const broadcastToAdmins = (notification) => {
-  const message = `data: ${JSON.stringify(notification)}\n\n`;
-  sseClients.forEach(client => {
-    try {
-      client.write(message);
-    } catch (error) {
-      console.error('Error sending SSE:', error);
-      sseClients.delete(client);
-    }
-  });
-};
-
-// Set up Supabase real-time subscriptions
-const setupAdminRealtimeSubscriptions = () => {
-  // Lost & Found channel
-  const lostFoundChannel = supabase
-    .channel('admin_lost_found_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'lost_found_requests'
-    }, (payload) => {
-      console.log('🔔 Lost & Found real-time event:', payload);
-      
-      const notification = {
-        type: 'lost_found',
-        eventType: payload.eventType,
-        data: payload.new,
-        timestamp: new Date().toISOString()
-      };
-      
-      broadcastToAdmins(notification);
-    })
-    .subscribe((status) => {
-      console.log('Lost & Found admin channel status:', status);
-    });
-
-  // Event Requests channel
-  const eventRequestsChannel = supabase
-    .channel('admin_event_requests_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'interview_event_requests'
-    }, (payload) => {
-      console.log('🔔 Event Request real-time event:', payload);
-      
-      const notification = {
-        type: 'event',
-        eventType: payload.eventType,
-        data: payload.new,
-        timestamp: new Date().toISOString()
-      };
-      
-      broadcastToAdmins(notification);
-    })
-    .subscribe();
-
-  // Resale Listings channel
-  const resaleListingsChannel = supabase
-    .channel('admin_resale_listings_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'resale_listings'
-    }, (payload) => {
-      console.log('🔔 Resale Listing real-time event:', payload);
-      
-      const notification = {
-        type: 'resale',
-        eventType: payload.eventType,
-        data: payload.new,
-        timestamp: new Date().toISOString()
-      };
-      
-      broadcastToAdmins(notification);
-    })
-    .subscribe();
-
-  // Contacts channel
-  const contactsChannel = supabase
-    .channel('admin_contacts_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'contacts'
-    }, (payload) => {
-      console.log('🔔 Contact Submission real-time event:', payload);
-      
-      const notification = {
-        type: 'contact',
-        eventType: payload.eventType,
-        data: payload.new,
-        timestamp: new Date().toISOString()
-      };
-      
-      broadcastToAdmins(notification);
-    })
-    .subscribe();
-
-  return { lostFoundChannel, eventRequestsChannel, resaleListingsChannel, contactsChannel };
-};
-
-// Initialize real-time subscriptions when server starts
-setupAdminRealtimeSubscriptions();
-
-
-//Group Dashboard SplitSaathi
-app.post("/api/profile/ensure", async (req, res) => {
-  const { user_id, email, full_name } = req.body;
-
-  if (!user_id || !email) {
-    return res.status(400).json({ success: false, message: "Missing required fields" });
-  }
-
-  try {
-    // Check if profile exists
-    const { data: existing, error: selectError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", user_id)
-      .maybeSingle();
-
-    if (selectError) throw selectError;
-
-    // If not, create one
-    if (!existing) {
-      const { error: insertError } = await supabase.from("profiles").insert([
-        { id: user_id, email, full_name: full_name || email },
-      ]);
-      if (insertError) throw insertError;
-    }
-
-    return res.json({ success: true });
-  } catch (err) {
-    console.error("Error ensuring profile:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-app.get("/api/group/:groupId", async (req, res) => {
-  const { groupId } = req.params;
-  const { user_id } = req.query; // pass logged-in user's id in query
-
-  try {
-    // Fetch group details
-    const { data: group, error: groupError } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", groupId)
-      .single();
-    if (groupError) throw groupError;
-
-    // Fetch members
-    const { data: members, error: membersError } = await supabase
-      .from("group_members")
-      .select("*")
-      .eq("group_id", groupId);
-    if (membersError) throw membersError;
-
-    // Fetch expenses
-    const { data: expenses, error: expensesError } = await supabase
-      .from("expenses")
-      .select(`
-        *,
-        paid_by_member:group_members(*)
-      `)
-      .eq("group_id", groupId)
-      .order("date", { ascending: false });
-    if (expensesError) throw expensesError;
 
     return res.json({
       success: true,
-      group,
-      members,
-      expenses,
+      message: 'Contact details unlocked successfully',
+      paymentId: razorpay_payment_id,
     });
-  } catch (err) {
-    console.error("Error loading group data:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error('Error verifying application unlock payment:', error);
+    return res.status(500).json({ error: 'Payment verification failed' });
   }
-});
+});q
 
-//HandleContactSubmit
-app.post("/api/contact", async (req, res) => {
+
+
+{/* ---------------------- assignment hook ENDPOINTS ---------------------- */}
+
+/**
+ * GET /api/assignments
+ * Fetch assignments for the logged-in user.
+ */
+/**
+ * ✅ GET /api/assignments (SECURED)
+ * Fetch assignments for the logged-in user.
+ */
+app.get('/api/assignments', authenticateToken, async (req, res) => {
   try {
-    const data = req.body;
+    const userId = req.user_id; // ✅ Secure user ID from token
 
-    // Validate input
-    if (!data.name || !data.email || !data.message) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
-    }
-
-    // Call your Supabase Edge Function securely
-    const { error } = await supabase.functions.invoke("send-contact-email", {
-      body: data,
-    });
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .select(`*, assignment_files(*)`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    return res.status(200).json({
-      success: true,
-      message: "Message sent successfully!",
-    });
+    res.json({ assignments: data || [] });
   } catch (err) {
-    console.error("Error invoking send-contact-email:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send message.",
-    });
+    console.error('Error fetching assignments:', err);
+    res.status(500).json({ error: 'Failed to fetch assignments' });
   }
 });
 
-//Events
-app.post('/api/events/add', async (req, res) => {
+
+/**
+ * ✅ POST /api/assignments (SECURED)
+ * Body: formData (no user_id required anymore — we use token)
+ */
+app.post('/api/assignments', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ success: false, message: 'Missing authorization header' });
+    const userId = req.user_id; // ✅ Secure user ID from token
+    const { name, whatsapp, year, branch, pages, deadline, hostel, room,
+      notes, urgent, matchHandwriting, deliveryMethod } = req.body;
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // ✅ Server-side pricing logic here
+    const basePrice = pages * (urgent ? 15 : 10);
+    const matchingFee = matchHandwriting ? 20 : 0;
+    const deliveryFee = deliveryMethod === 'hostel_delivery' ? 10 : 0;
+    const totalPrice = basePrice + matchingFee + deliveryFee;
 
-    if (authError || !user)
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
-
-    const { formData } = req.body;
-    if (!formData?.event_name || !formData?.event_date)
-      return res.status(400).json({ success: false, message: 'Event name and date are required' });
-
-    // ✅ Check if user is admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin, email')
-      .eq('id', user.id)
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .insert({
+        user_id: userId,
+        student_name: name,
+        whatsapp_number: whatsapp,
+        year,
+        branch,
+        pages,
+        deadline,
+        hostel_name: hostel,
+        room_number: room,
+        special_instructions: notes,
+        is_urgent: urgent,
+        match_handwriting: matchHandwriting,
+        delivery_method: deliveryMethod || 'hostel_delivery',
+        total_price: totalPrice,
+      })
+      .select()
       .single();
 
-    if (profileError) throw profileError;
+    if (error) throw error;
 
-    const reqs = formData.requirements || [];
-
-    if (profile?.is_admin) {
-      // Admin → directly publish to calendar
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([
-          {
-            ...formData,
-            requirements: reqs,
-            validation: true,
-          },
-        ])
-        .select();
-
-      if (error) throw error;
-
-      return res.json({
-        success: true,
-        message: 'Event published successfully!',
-        data,
-      });
-    } else {
-      // Regular user → create request
-      const { error } = await supabase
-        .from('interview_event_requests')
-        .insert({
-          ...formData,
-          requirements: reqs,
-          requester_email: user.email,
-          user_id: user.id,
-          status: 'pending',
-        });
-
-      if (error) throw error;
-
-      return res.json({
-        success: true,
-        message:
-          "Event submitted for review! You'll be notified once it's approved.",
-      });
-    }
-  } catch (error) {
-    console.error('Event add error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.json({ success: true, assignment: data });
+  } catch (err) {
+    console.error('Error creating assignment:', err);
+    res.status(500).json({ error: 'Failed to create assignment' });
   }
 });
-// server.js
-app.post("/api/interviews/add", async (req, res) => {
+
+
+/**
+ * ✅ GET /api/files/signed-url (SECURED)
+ */
+app.get('/api/files/signed-url', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const { path } = req.query;
+    if (!path) return res.status(400).json({ error: 'File path required' });
+
+    const { data, error } = await supabase.storage
+      .from('assignment-files')
+      .createSignedUrl(path, 3600); // 1 hour
+
+    if (error) throw error;
+
+    res.json({ url: data.signedUrl });
+  } catch (err) {
+    console.error('Error creating signed URL:', err);
+    res.status(500).json({ error: 'Failed to generate URL' });
+  }
+});
+
+
+
+{/* ---------------------- events hook ENDPOINTS  ---------------------- */}
+
+/**
+ * GET /api/events
+ * Returns validated and chronological events
+ */
+app.get('/api/events', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('validation', true)
+      .order('event_date', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ events: data || [] });
+  } catch (err) {
+    console.error('Error fetching events:', err);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+
+{/* ---------------------- group auto link ENDPOINTS  ---------------------- */}
+
+// ✅ FINAL FIXED BACKEND ENDPOINT (no foreign key joins required)
+// POST /api/groups/auto-link
+// ✅ SECURED version of POST /api/groups/auto-link
+// ✅ SECURED version of POST /api/groups/auto-link
+app.post('/api/groups/auto-link', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From token
+
+    // ✅ Fetch user email from Supabase Auth system
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
+    if (userError || !userData?.user?.email) {
+      return res.status(400).json({ error: 'Could not fetch user email' });
+    }
+    const email = userData.user.email;
+
+    // ✅ Extract roll number from email
+    const rollMatch = email.match(/^(\d+)@/);
+    if (!rollMatch) {
+      return res.json({ newGroups: [] });
+    }
+    const rollNumber = rollMatch[1];
+
+    // ✅  Fetch matching groups based on roll_number in group_members
+    const { data: matchingMembers, error: membersError } = await supabase
+      .from('group_members')
+      .select(`
+        id,
+        roll_number,
+        group_id,
+        groups!inner(
+          id,
+          name,
+          created_by
+        )
+      `)
+      .eq('roll_number', rollNumber);
+
+    if (membersError) throw membersError;
+    if (!matchingMembers || matchingMembers.length === 0) {
+      return res.json({ newGroups: [] });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token);
+    const newGroups = [];
 
-    if (userError || !user) {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    }
+    // ✅ Loop through matched groups
+    for (const member of matchingMembers) {
+      const group = member.groups;
+      if (!group) continue;
 
-    const { formData } = req.body;
-    if (!formData?.interview_name || !formData?.interview_date) {
-      return res.status(400).json({ success: false, message: "Interview name and date are required" });
-    }
+      // ✅ Skip if user created this group
+      if (group.created_by === user_id) continue;
 
-    const reqs = formData.requirements
-      ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
-      : [];
+      // ✅ Check if notification exists
+      const { data: existingNotification } = await supabase
+        .from('group_notifications')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('group_id', group.id)
+        .single();
 
-    // Get user profile to check admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+      if (existingNotification) continue;
 
-    if (profile?.is_admin) {
-      const { data, error } = await supabase
-        .from("interview_events")
-        .insert([{ ...formData, requirements: reqs, validation: true }])
-        .select();
+      // ✅ Insert notification
+      await supabase
+        .from('group_notifications')
+        .insert({ user_id, group_id: group.id });
 
-      if (error) {
-        return res.status(500).json({ success: false, message: error.message });
-      }
+      // ✅ Fetch group creator info
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', group.created_by)
+        .single();
 
-      return res.json({ success: true, message: "Interview added successfully", data });
-    } else {
-      const { error } = await supabase
-        .from("interview_event_requests")
-        .insert({
-          ...formData,
-          requirements: reqs,
-          requester_email: user.email,
-          user_id: user.id,
-          status: "pending",
-        });
+      const creatorName = creatorProfile?.full_name || 'Unknown';
+      const creatorEmail = creatorProfile?.email || '';
+      const creatorRollNumber = creatorEmail.match(/^(\d+)@/)?.[1] || '';
 
-      if (error) {
-        return res.status(500).json({ success: false, message: error.message });
-      }
-
-      return res.json({
-        success: true,
-        message: "Interview submitted for review! You'll be notified once it's approved",
+      newGroups.push({
+        name: group.name,
+        creatorName,
+        creatorRollNumber,
+        rollNumber
       });
     }
+
+    return res.json({ newGroups });
   } catch (err) {
-    console.error("Interview submit error:", err);
-    res.status(500).json({ success: false, message: "Failed to submit interview" });
+    console.error('Error auto-linking groups:', err);
+    return res.status(500).json({ error: 'Failed to auto-link groups' });
+  }
+});
+
+
+
+{/* ---------------------- use order history hook ENDPOINTS  ---------------------- */}
+
+// 1️⃣ GET /api/orders - Fetch user's orders
+// ✅ GET /api/orders - Fetch user's orders (SECURED)
+app.get('/api/orders', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ Secure user from token
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ orders: data || [] });
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    return res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+
+// ✅ POST /api/orders - Create new order (SECURED)
+app.post('/api/orders', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ Secure user from token
+    const { service_name, subservice_name, amount, payment_status, transaction_id, payment_method, booking_details } = req.body;
+
+    if (!service_name || !amount || !payment_status) {
+      return res.status(400).json({ error: 'Missing required fields: service_name, amount, or payment_status' });
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id,
+        service_name,
+        subservice_name: subservice_name || null,
+        amount,
+        payment_status,
+        transaction_id: transaction_id || null,
+        payment_method: payment_method || null,
+        booking_details: booking_details || null
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ order: data });
+  } catch (err) {
+    console.error('Error creating order:', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+
+// ✅ PATCH /api/orders/:id/status - Update order payment status (SECURED)
+app.patch('/api/orders/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ Secure user from token
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Missing status field' });
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_status: status })
+      .eq('id', id)
+      .eq('user_id', user_id); // ✅ Prevent updating others' orders
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating order status:', err);
+    return res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+{/* ---------------------- use policy manager hook ENDPOINTS END ---------------------- */}
+
+// ✅ Get user policy acceptance
+// ✅ Get user policy acceptance (SECURED)
+app.get('/api/policy', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From JWT
+
+    const { data, error } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    return res.json({ policyData: data || null });
+  } catch (err) {
+    console.error('Error fetching policy acceptance:', err);
+    return res.status(500).json({ error: 'Failed to fetch policy data' });
+  }
+});
+
+
+// ✅ Accept Privacy Policy (SECURED)
+app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From token
+    const { privacy_policy_version } = req.body;
+
+    if (!privacy_policy_version) {
+      return res.status(400).json({ error: 'Missing privacy_policy_version' });
+    }
+
+    const updateData = {
+      user_id,
+      privacy_policy_accepted: true,
+      privacy_policy_version,
+      last_updated: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting privacy policy:', err);
+    return res.status(500).json({ error: 'Failed to accept privacy policy' });
+  }
+});
+
+
+// ✅ Accept Terms & Conditions (SECURED)
+app.post('/api/policy/terms', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From token
+    const { terms_conditions_version } = req.body;
+
+    if (!terms_conditions_version) {
+      return res.status(400).json({ error: 'Missing terms_conditions_version' });
+    }
+
+    const updateData = {
+      user_id,
+      terms_conditions_accepted: true,
+      terms_conditions_version,
+      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting terms:', err);
+    return res.status(500).json({ error: 'Failed to accept terms' });
+  }
+});
+
+
+{/* ---------------------- use secure los tand found hook ENDPOINTS ---------------------- */}
+
+// ✅ GET Lost & Found items (active only)
+// ✅ GET Lost & Found items (active only) - SECURED
+app.get('/api/lostfound', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ items: data || [] });
+  } catch (err) {
+    console.error('Error fetching lost & found items:', err);
+    return res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+
+// ✅ POST - Add a new Lost/Found item (SECURED)
+app.post('/api/lostfound', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ SECURE USER ID
+    const { ...itemData } = req.body;
+
+    const newItem = {
+      ...itemData,
+      user_id,
+      status: 'active'
+    };
+
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .insert(newItem)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error adding lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to add item' });
+  }
+});
+
+
+// ✅ PATCH - Update an existing Lost/Found item (SECURED)
+app.patch('/api/lostfound/:id', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ SECURE USER ID
+    const { id } = req.params;
+    const { ...updates } = req.body;
+
+    // ✅ Only allow user to update THEIR item
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return res.status(403).json({ error: 'Unauthorized to update this item' });
+    }
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error updating lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to update item' });
   }
 });
 
@@ -1572,6 +1453,29 @@ app.post("/api/create-group", async (req, res) => {
 
 
 
+{/* ---------------------- use service visibility hook ENDPOINTS ---------------------- */}
+
+
+// ✅ GET service visibility data
+app.get('/api/service-visibility', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('service_visibility')
+      .select('*');
+
+    if (error) throw error;
+
+    return res.json({ services: data || [] });
+  } catch (err) {
+    console.error('Error fetching service visibility:', err);
+    return res.status(500).json({ error: 'Failed to fetch service visibility' });
+  }
+});
+
+
+
+
+
 /* ---------------------- SERVER ---------------------- */
-const PORT = 3001;
+const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

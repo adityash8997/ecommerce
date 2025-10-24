@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface ServiceVisibility {
   service_id: string;
@@ -15,21 +14,18 @@ export function useServiceVisibility() {
   useEffect(() => {
     async function fetchVisibility() {
       try {
-        const { data, error } = await supabase
-          .from('service_visibility')
-          .select('*');
+        const response = await fetch('http://localhost:5001/api/service-visibility');
+        const result = await response.json();
 
-        if (error) {
-          console.error('Error fetching service visibility:', error);
-          // On error, mark as fetched but keep empty map (all services hidden by default)
+        if (!response.ok || !result.services) {
+          console.error('Error fetching service visibility:', result.error || 'Unknown error');
           setHasFetchedData(true);
           setLoading(false);
           return;
         }
 
-        // Convert to map for easy lookup
         const map: Record<string, ServiceVisibility> = {};
-        data?.forEach(item => {
+        result.services.forEach((item: ServiceVisibility) => {
           map[item.service_id] = item;
         });
 
