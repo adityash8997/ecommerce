@@ -1708,6 +1708,36 @@ app.post("/api/interviews/add", async (req, res) => {
   }
 });
 
+//Society Events
+app.get("/api/society-events", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .gte("event_date", today)
+      .order("event_date", { ascending: true });
+
+    if (error) throw error;
+
+    // Group by society name (case-insensitive)
+    const eventsBySociety = {};
+    data?.forEach((event) => {
+      const normalizedName = event.society_name.toLowerCase().trim();
+      if (!eventsBySociety[normalizedName]) {
+        eventsBySociety[normalizedName] = [];
+      }
+      eventsBySociety[normalizedName].push(event);
+    });
+
+    res.status(200).json(eventsBySociety);
+  } catch (err) {
+    console.error("Error fetching events:", err.message);
+    res.status(500).json({ error: "Failed to load events" });
+  }
+});
+
 
 
 /* ---------------------- SERVER ---------------------- */
