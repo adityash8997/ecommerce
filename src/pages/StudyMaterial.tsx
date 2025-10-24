@@ -15,7 +15,6 @@ import {
   Bot,
   Search
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "../components/Footer";
 import { Navbar } from "../components/Navbar";
 import { FilterBar } from "@/components/study-materials/FilterBar";

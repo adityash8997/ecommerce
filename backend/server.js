@@ -763,7 +763,19 @@ app.post('/verify-lost-found-payment', async (req, res) => {
     });
   }
 });
-
+// Group balances endpoint for ViewBalances
+app.get('/api/group/:groupId/balances', async (req, res) => {
+  const { groupId } = req.params;
+  try {
+    const { data, error } = await supabase.rpc('calculate_group_balances', {
+      _group_id: groupId
+    });
+    if (error) return res.status(500).json({ error: error.message, data: [] });
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch balances', data: [] });
+  }
+});
 // Check if user has already paid for Lost & Found contact details
 app.get('/has-paid-lost-found-contact', async (req, res) => {
   try {

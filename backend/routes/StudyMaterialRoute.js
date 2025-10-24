@@ -7,7 +7,31 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+router.get("/study-materials", async (req, res) => {
+  try {
+    const { type, subject, semester, year, search } = req.query;
 
+    let query = supabase
+      .from('study_material_requests')
+      .select('*')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (type) query = query.eq('folder_type', type);
+    if (subject) query = query.eq('subject', subject);
+    if (semester) query = query.eq('semester', semester);
+    if (year) query = query.eq('year', year);
+    if (search) query = query.ilike('title', `%${search}%`);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json({ data: data || [] });
+  } catch (error) {
+    console.error("Error fetching study materials:", error);
+    res.status(500).json({ error: "Failed to fetch materials" });
+  }
+});
 // Upload study material and submit request
 router.post("/api/study-material/upload", async (req, res) => {
   try {
