@@ -22,6 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import  InspirationSection  from "@/components/Inspiration"
 
 const contactFormSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -85,6 +86,8 @@ const Index = () => {
         <NotificationBell />
       </div>
       <Hero />
+      <InspirationSection/>
+
 
       <div className="bg-gradient-to-br from-kiit-green-soft to-white/10">
 
