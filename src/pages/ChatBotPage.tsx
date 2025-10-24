@@ -7,108 +7,119 @@ import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MessageCircle, Zap, Clock, BookOpen, Send, Sparkles } from "lucide-react";
 import kiitMascot from "@/assets/kiitMascot.jpg"
+import { Alert } from "@/components/ui/alert";
+
+declare global {
+  interface Window {
+    botpressWebChat?: {
+      sendEvent: (event: any) => void;
+    };
+  }
+}
 
 const ChatBotPage = () => {
   const navigate = useNavigate();
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      type: 'bot',
-      text: "Hey there! 👋 I'm your KIIT Buddy. What can I help you with today?"
-    }
-  ]);
+  useEffect(() => {alert("KIIT Saathi's AI Assistant is online, At your right corner")}, []); 
+  // const [message, setMessage] = useState("");
+  // const [messages, setMessages] = useState([
+  //   {
+  //     type: 'bot',
+  //     text: "Hey there! 👋 I'm your KIIT Buddy. What can I help you with today?"
+  //   }
+  // ]);
 
-  useEffect(() => {
-    // Load Botpress webchat script dynamically
-    const loadBotpressScript = () => {
-      // Check if script already exists
-      if (document.getElementById('botpress-webchat')) {
-        console.log('Botpress script already loaded');
-        return;
-      }
 
-      // Load the inject script
-      const injectScript = document.createElement('script');
-      injectScript.id = 'botpress-webchat';
-      injectScript.src = 'https://cdn.botpress.cloud/webchat/v3.3/inject.js';
-      injectScript.async = true;
+  // useEffect(() => {
+  //   // Load Botpress webchat script dynamically
+  //   const loadBotpressScript = () => {
+  //     // Check if script already exists
+  //     if (document.getElementById('botpress-webchat')) {
+  //       console.log('Botpress script already loaded');
+  //       return;
+  //     }
 
-      injectScript.onload = () => {
-        console.log('Botpress inject script loaded successfully');
-        
-        // Load the configuration script
-        const configScript = document.createElement('script');
-        configScript.src = 'https://files.bpcontent.cloud/2025/08/09/19/20250809195719-5V5LMRXW.js';
-        configScript.defer = true;
-        
-        configScript.onload = () => {
-          console.log('Botpress configuration loaded successfully');
-        };
+  //     // Load the inject script
+  //     const injectScript = document.createElement('script');
+  //     injectScript.id = 'botpress-webchat';
+  //     injectScript.src = 'https://cdn.botpress.cloud/webchat/v3.3/inject.js';
+  //     injectScript.async = true;
 
-        configScript.onerror = () => {
-          console.error('Failed to load Botpress configuration script');
-        };
+  //     injectScript.onload = () => {
+  //       console.log('Botpress inject script loaded successfully');
 
-        document.body.appendChild(configScript);
-      };
+  //       // Load the configuration script
+  //       const configScript = document.createElement('script');
+  //       configScript.src = 'https://files.bpcontent.cloud/2025/08/09/19/20250809195719-5V5LMRXW.js';
+  //       configScript.defer = true;
 
-      injectScript.onerror = () => {
-        console.error('Failed to load Botpress inject script');
-      };
+  //       configScript.onload = () => {
+  //         console.log('Botpress configuration loaded successfully');
+  //       };
 
-      document.body.appendChild(injectScript);
-    };
+  //       configScript.onerror = () => {
+  //         console.error('Failed to load Botpress configuration script');
+  //       };
 
-    loadBotpressScript();
+  //       document.body.appendChild(configScript);
+  //     };
 
-    return () => {
-      console.log('ChatBotPage unmounting');
-      // Remove scripts on unmount
-      const injectScript = document.getElementById('botpress-webchat');
-      if (injectScript) {
-        injectScript.remove();
-      }
-      
-      // Remove config script if exists
-      const configScripts = document.querySelectorAll('script[src*="bpcontent.cloud"]');
-      configScripts.forEach(script => script.remove());
-    };
-  }, []);
+  //     injectScript.onerror = () => {
+  //       console.error('Failed to load Botpress inject script');
+  //     };
 
-  const sampleQuestions = [
-    "How do I book a carton for hostel move?",
-    "Where's the nearest printer?",
-    "Which seniors are available for mentoring?",
-    "What's happening in campus today?",
-    "Help me find my lost ID card"
-  ];
+  //     document.body.appendChild(injectScript);
+  //   };
 
-  const handleSampleClick = (question: string) => {
-    setMessage(question);
-  };
+  //   loadBotpressScript();
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // Add user message
-      setMessages(prev => [...prev, { type: 'user', text: message }]);
-      
-      // Simulate bot response (replace with actual API call)
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          type: 'bot',
-          text: "Thanks for your question! I'm still learning, but I'll help you the best I can."
-        }]);
-      }, 1000);
-      
-      setMessage("");
-    }
-  };
+  //   return () => {
+  //     console.log('ChatBotPage unmounting');
+  //     // Remove scripts on unmount
+  //     const injectScript = document.getElementById('botpress-webchat');
+  //     if (injectScript) {
+  //       injectScript.remove();
+  //     }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSendMessage();
-    }
-  };
+  //     // Remove config script if exists
+  //     const configScripts = document.querySelectorAll('script[src*="bpcontent.cloud"]');
+  //     configScripts.forEach(script => script.remove());
+  //   };
+  // }, []);
+
+  // const sampleQuestions = [
+  //   "How do I book a carton for hostel move?",
+  //   "Where's the nearest printer?",
+  //   "Which seniors are available for mentoring?",
+  //   "What's happening in campus today?",
+  //   "Help me find my lost ID card"
+  // ];
+
+  // const handleSampleClick = (question: string) => {
+  //   setMessage(question);
+  // };
+
+  // const handleSendMessage = () => {
+  //   if (message.trim()) {
+  //     // Add user message
+  //     setMessages(prev => [...prev, { type: 'user', text: message }]);
+
+  //     // Simulate bot response (replace with actual API call)
+  //     setTimeout(() => {
+  //       setMessages(prev => [...prev, {
+  //         type: 'bot',
+  //         text: "Thanks for your question! I'm still learning, but I'll help you the best I can."
+  //       }]);
+  //     }, 1000);
+
+  //     setMessage("");
+  //   }
+  // };
+
+  // const handleKeyPress = (e: React.KeyboardEvent) => {
+  //   if (e.key === 'Enter') {
+  //     handleSendMessage();
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 to-muted">
@@ -181,11 +192,20 @@ const ChatBotPage = () => {
         </div>
       </section>
 
+      {/* <button
+        onClick={() =>
+          window.botpressWebChat?.sendEvent({ type: 'show' })
+        }
+        className="px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/90"
+      >
+        Chat Now
+      </button> */}
+
       {/* Chat Interface */}
-      <section className="py-8 px-4 pb-20">
+      {/* <section className="py-8 px-4 pb-20">
         <div className="max-w-4xl mx-auto">
           <div className="glass-card overflow-hidden shadow-2xl">
-            {/* Header */}
+            Header
             <div className="bg-gradient-to-r from-kiit-green to-campus-blue p-4 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -198,7 +218,7 @@ const ChatBotPage = () => {
               </div>
             </div>
 
-            {/* Messages */}
+            Messages
             <div className="p-6 h-96 overflow-y-auto bg-white/50 backdrop-blur-sm">
               {messages.map((msg, index) => (
                 <div key={index} className={`flex items-start gap-3 mb-4 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -215,7 +235,7 @@ const ChatBotPage = () => {
                 </div>
               ))}
 
-              {/* Sample Questions - Only show at start */}
+              Sample Questions - Only show at start
               {messages.length === 1 && (
                 <div className="space-y-2 mt-6">
                   <p className="text-xs text-muted-foreground font-medium mb-3 flex items-center gap-1">
@@ -235,7 +255,7 @@ const ChatBotPage = () => {
               )}
             </div>
 
-            {/* Input */}
+            Input
             <div className="p-4 border-t border-gray-200 bg-white">
               <div className="flex gap-2">
                 <input
@@ -257,7 +277,7 @@ const ChatBotPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <Footer />
     </div>
