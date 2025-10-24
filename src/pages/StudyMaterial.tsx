@@ -250,6 +250,7 @@ export default function StudyMaterial() {
 
     fetchMaterials();
   }, [activeSection]);
+  
   const availableSubjects =
     selectedSemester === "all"
       ? semesterSubjects.flatMap(s => s.subjects) // all subjects
