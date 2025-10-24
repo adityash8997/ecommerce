@@ -5,8 +5,12 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import adminRoutes from "./routes/AdminRoute.js";
+import SemBooksRoutes from "./routes/SemBooksRoutes.js"
+
 
 const app = express();
+import cookieParser from 'cookie-parser';
 
 const allowedOrigins = [
   "http://localhost:8080",
@@ -16,6 +20,11 @@ const allowedOrigins = [
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
    "https://ksaathi.vercel.app"
 ];
+
+app.use(cookieParser());
+app.use("/api/admin", adminRoutes);
+app.use("/", SemBooksRoutes); 
+
 
 // CORS configuration
 app.use(cors({
@@ -69,6 +78,246 @@ app.get('/health', async (req, res) => {
 // Test endpoint
 app.get('/test', (req, res) => {
   res.json({ message: 'Server is running!' });
+});
+
+// ============================================
+// AUTHENTICATION ENDPOINTS
+// ============================================
+
+// Check current session
+
+app.get("/api/auth/callback", async (req, res) => {
+  try {
+    const { access_token } = req.query; // or handle from headers or cookies
+
+    if (!access_token) {
+      return res.status(400).json({ error: "Missing access token" });
+    }
+
+    // Verify and get user info
+    const { data: user, error } = await supabase.auth.getUser(access_token);
+    if (error || !user) {
+      console.error(error);
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // Check if user email confirmed
+    if (user.user?.email_confirmed_at) {
+      // Optional: create your own session/cookie or issue JWT
+      return res.json({ success: true, message: "Email confirmed" });
+    } else {
+      return res.status(403).json({ success: false, message: "Email not confirmed yet" });
+    }
+  } catch (err) {
+    console.error("Auth callback failed:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+app.get('/api/auth/session', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.json({ session: null, profile: null });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.json({ session: null, profile: null });
+    }
+
+    // Get profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_email_verified')
+      .eq('id', user.id)
+      .single();
+
+    res.json({ 
+      session: { user }, 
+      profile 
+    });
+  } catch (error) {
+    console.error('Session check error:', error);
+    res.status(500).json({ error: 'Failed to check session' });
+  }
+});
+
+// Sign up with email/password
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password, fullName } = req.body;
+
+    // Validate KIIT email
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
+      });
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: "https://ksaathi.vercel.app/auth/callback",
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      user: data.user, 
+      session: data.session,
+      message: data?.user && !data.session 
+        ? 'Check your email for the confirmation link' 
+        : 'Account created successfully'
+    });
+  } catch (error) {
+    console.error('Sign up error:', error);
+    res.status(400).json({ 
+      error: error.message || 'An error occurred during sign up' 
+    });
+  }
+});
+
+// Sign in with email/password
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate KIIT email
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
+      });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      session: data.session,
+      user: data.user
+    });
+  } catch (error) {
+    console.error('Sign in error:', error);
+    res.status(400).json({ 
+      error: error.message || 'An error occurred during sign in' 
+    });
+  }
+});
+
+// Sign out
+app.post('/api/auth/signout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      await supabase.auth.admin.signOut(token);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Sign out error:', error);
+    res.status(500).json({ error: 'Failed to sign out' });
+  }
+});
+
+// Resend confirmation email
+app.post('/api/auth/resend-confirmation', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const { error } = await supabase.auth.resend({ 
+      type: 'signup', 
+      email 
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      message: 'Confirmation email resent' 
+    });
+  } catch (error) {
+    console.error('Resend confirmation error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to resend confirmation email' 
+    });
+  }
+});
+
+// Forgot password
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate KIIT email
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed' 
+      });
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.FRONTEND_URL || 'https://ksaathi.vercel.app'}/reset-password`,
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      message: 'Password reset email sent' 
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to send password reset email' 
+    });
+  }
+});
+
+// Verify email callback
+app.post('/api/auth/verify-email-callback', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { error } = await supabase.functions.invoke('verify-email-callback', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Verify email callback error:', error);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
 });
 
 // Test Lost & Found order creation (simplified)
@@ -1307,9 +1556,12 @@ app.get('/api/service-visibility', async (req, res) => {
 });
 
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> origin/main
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
