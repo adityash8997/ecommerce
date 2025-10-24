@@ -191,19 +191,36 @@ const InterviewDeadlinesTracker = () => {
 ];
 
   // Fetch user
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
+useEffect(() => {
+  const getUser = async () => {
+    try {
+      // Get the JWT from localStorage or cookie (where Supabase stores it)
+      const token = localStorage.getItem("sb-access-token"); // default key in Supabase auth
+      if (!token) {
+        toast("Please login to add events to calendar");
+        return;
+      }
+
+      const res = await fetch("/api/auth/session", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        setUser(result.user);
       } else {
         toast("Please login to add events to calendar");
       }
-    };
-    getUser();
-  }, []);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      toast("Something went wrong. Please login again.");
+    }
+  };
+  getUser();
+}, []);
+
 
   // Filter + search
   const filteredEvents = useMemo(() => {
@@ -265,78 +282,47 @@ const InterviewDeadlinesTracker = () => {
     window.open(googleCalendarUrl, "_blank");
     setSelectedEvent(null);
   };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.event_name || !formData.event_date) {
-      toast.error("Event name and date are required!");
-      return;
-    }
+  e.preventDefault();
 
-    if (!user?.email) {
-      toast.error("Please sign in to add events");
-      return;
-    }
+  if (!formData.event_name || !formData.event_date) {
+    toast.error("Event name and date are required!");
+    return;
+  }
 
-    const reqs: string[] = formData.requirements
-      ? formData.requirements
-          .split(",")
-          .map((r) => r.trim())
-          .filter(Boolean)
-      : [];
+  if (!user) {
+    toast.error("Please sign in to add events");
+    return;
+  }
 
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
+  const reqs = formData.requirements
+    ? formData.requirements.split(",").map((r) => r.trim()).filter(Boolean)
+    : [];
 
-      if (profile?.is_admin) {
-        const { data, error } = await supabase
-          .from("calendar_events")
-          .insert([
-            {
-              ...formData,
-              requirements: reqs,
-              validation: true,
-            },
-          ])
-          .select();
+  setIsSubmitting(true);
 
-        if (error) {
-          console.error("Insert error:", error);
-          toast.error("Error adding event: " + error.message);
-        } else {
-          console.log("Event inserted:", data);
-          toast.success("Event published successfully!");
-          setAddEventOpen(false);
-          setShowConfetti(true);
-          setTimeout(() => setShowConfetti(false), 3000);
-        }
-      } else {
-        const { error } = await supabase
-          .from("interview_event_requests")
-          .insert({
-            ...formData,
-            requirements: reqs,
-            requester_email: user.email,
-            user_id: user.id,
-            status: "pending",
-          });
+  try {
+    const accessToken = (await supabase.auth.getSession()).data?.session?.access_token;
 
-        if (error) {
-          console.error("Request submit error:", error);
-          toast.error("Error submitting event request: " + error.message);
-        } else {
-          toast.success(
-            "Event submitted for review! You'll be notified once it's approved."
-          );
-          setAddEventOpen(false);
-        }
-      }
+    const response = await fetch("/api/events/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ formData: { ...formData, requirements: reqs } }),
+    });
 
+    const result = await response.json();
+
+    if (result.success) {
+      toast.success(result.message);
+      setAddEventOpen(false);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       setFormData({
         society_name: "",
         event_name: "",
@@ -350,84 +336,49 @@ const InterviewDeadlinesTracker = () => {
         requirements: "",
         validation: false,
       });
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      toast.error("Failed to submit event");
+    } else {
+      toast.error(result.message || "Failed to add event");
     }
-  };
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    toast.error("Failed to submit event");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-  const handleInterviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !interviewFormData.interview_name ||
-      !interviewFormData.interview_date
-    ) {
-      toast.error("Interview name and date are required!");
-      return;
-    }
 
-    if (!user?.email) {
-      toast.error("Please sign in to add interviews");
-      return;
-    }
+const handleInterviewSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!interviewFormData.interview_name || !interviewFormData.interview_date) {
+    toast.error("Interview name and date are required!");
+    return;
+  }
 
-    const reqs: string[] = interviewFormData.requirements
-      ? interviewFormData.requirements
-          .split(",")
-          .map((r) => r.trim())
-          .filter(Boolean)
-      : [];
+  if (!user?.email) {
+    toast.error("Please sign in to add interviews");
+    return;
+  }
 
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .single();
+  setIsSubmitting(true);
+  try {
+    const accessToken = (await supabase.auth.getSession()).data?.session?.access_token;
 
-      if (profile?.is_admin) {
-        const { data, error } = await supabase
-          .from("interview_events")
-          .insert([
-            {
-              ...interviewFormData,
-              requirements: reqs,
-              validation: true,
-            },
-          ])
-          .select();
+    const response = await fetch("/api/interviews/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ formData: interviewFormData }),
+    });
 
-        if (error) {
-          console.error("Insert error:", error);
-          toast.error("Error adding interview: " + error.message);
-        } else {
-          console.log("Interview inserted:", data);
-          toast.success("Interview added successfully!");
-          setAddInterviewOpen(false);
-          setShowConfetti(true);
-          setTimeout(() => setShowConfetti(false), 3000);
-        }
-      } else {
-        const { error } = await supabase
-          .from("interview_event_requests")
-          .insert({
-            ...interviewFormData,
-            requirements: reqs,
-            requester_email: user.email,
-            user_id: user.id,
-            status: "pending",
-          });
-
-        if (error) {
-          console.error("Request submit error:", error);
-          toast.error("Error submitting interview request: " + error.message);
-        } else {
-          toast.success(
-            "Interview submitted for review! You'll be notified once it's approved."
-          );
-          setAddInterviewOpen(false);
-        }
-      }
+    const result = await response.json();
+    if (result.success) {
+      toast.success(result.message);
+      setAddInterviewOpen(false);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
 
       setInterviewFormData({
         company_name: "",
@@ -442,11 +393,17 @@ const InterviewDeadlinesTracker = () => {
         requirements: "",
         validation: false,
       });
-    } catch (err) {
-      console.error("Unexpected error:", err);
-      toast.error("Failed to submit interview");
+    } else {
+      toast.error(result.message || "Failed to submit interview");
     }
-  };
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    toast.error("Failed to submit interview");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   if (loading) {
     return (
@@ -874,9 +831,10 @@ const InterviewDeadlinesTracker = () => {
                 <Button
                   type="submit"
                   className="w-full bg-kiit-green hover:bg-kiit-green-dark text-white h-12"
+                  disabled={isSubmitting}
                 >
                   <CalendarIcon className="w-5 h-5 mr-2" />
-                  Save Event
+                  {isSubmitting ? "Saving..." : "Save Event"}
                 </Button>
               </form>
             </DialogContent>
