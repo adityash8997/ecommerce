@@ -1457,6 +1457,81 @@ app.post("/api/feedback", async (req, res) => {
   }
 });
 
+//Group Dashboard SplitSaathi
+app.post("/api/profile/ensure", async (req, res) => {
+  const { user_id, email, full_name } = req.body;
+
+  if (!user_id || !email) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    // Check if profile exists
+    const { data: existing, error: selectError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    if (selectError) throw selectError;
+
+    // If not, create one
+    if (!existing) {
+      const { error: insertError } = await supabase.from("profiles").insert([
+        { id: user_id, email, full_name: full_name || email },
+      ]);
+      if (insertError) throw insertError;
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Error ensuring profile:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+app.get("/api/group/:groupId", async (req, res) => {
+  const { groupId } = req.params;
+  const { user_id } = req.query; // pass logged-in user's id in query
+
+  try {
+    // Fetch group details
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("id", groupId)
+      .single();
+    if (groupError) throw groupError;
+
+    // Fetch members
+    const { data: members, error: membersError } = await supabase
+      .from("group_members")
+      .select("*")
+      .eq("group_id", groupId);
+    if (membersError) throw membersError;
+
+    // Fetch expenses
+    const { data: expenses, error: expensesError } = await supabase
+      .from("expenses")
+      .select(`
+        *,
+        paid_by_member:group_members(*)
+      `)
+      .eq("group_id", groupId)
+      .order("date", { ascending: false });
+    if (expensesError) throw expensesError;
+
+    return res.json({
+      success: true,
+      group,
+      members,
+      expenses,
+    });
+  } catch (err) {
+    console.error("Error loading group data:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 
 
 /* ---------------------- SERVER ---------------------- */
