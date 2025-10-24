@@ -1565,6 +1565,150 @@ app.post("/api/contact", async (req, res) => {
   }
 });
 
+//Events
+app.post('/api/events/add', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ success: false, message: 'Missing authorization header' });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user)
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { formData } = req.body;
+    if (!formData?.event_name || !formData?.event_date)
+      return res.status(400).json({ success: false, message: 'Event name and date are required' });
+
+    // ✅ Check if user is admin
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin, email')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) throw profileError;
+
+    const reqs = formData.requirements || [];
+
+    if (profile?.is_admin) {
+      // Admin → directly publish to calendar
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert([
+          {
+            ...formData,
+            requirements: reqs,
+            validation: true,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        message: 'Event published successfully!',
+        data,
+      });
+    } else {
+      // Regular user → create request
+      const { error } = await supabase
+        .from('interview_event_requests')
+        .insert({
+          ...formData,
+          requirements: reqs,
+          requester_email: user.email,
+          user_id: user.id,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        message:
+          "Event submitted for review! You'll be notified once it's approved.",
+      });
+    }
+  } catch (error) {
+    console.error('Event add error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+// server.js
+app.post("/api/interviews/add", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+
+    const { formData } = req.body;
+    if (!formData?.interview_name || !formData?.interview_date) {
+      return res.status(400).json({ success: false, message: "Interview name and date are required" });
+    }
+
+    const reqs = formData.requirements
+      ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
+      : [];
+
+    // Get user profile to check admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.is_admin) {
+      const { data, error } = await supabase
+        .from("interview_events")
+        .insert([{ ...formData, requirements: reqs, validation: true }])
+        .select();
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({ success: true, message: "Interview added successfully", data });
+    } else {
+      const { error } = await supabase
+        .from("interview_event_requests")
+        .insert({
+          ...formData,
+          requirements: reqs,
+          requester_email: user.email,
+          user_id: user.id,
+          status: "pending",
+        });
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({
+        success: true,
+        message: "Interview submitted for review! You'll be notified once it's approved",
+      });
+    }
+  } catch (err) {
+    console.error("Interview submit error:", err);
+    res.status(500).json({ success: false, message: "Failed to submit interview" });
+  }
+});
+
+
 
 /* ---------------------- SERVER ---------------------- */
 const PORT = 3001;
