@@ -26,7 +26,6 @@ import { Footer } from "@/components/Footer";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { supabase } from "@/integrations/supabase/client";
 import moment from "moment";
 
 const KiitSocieties = () => {
@@ -679,43 +678,27 @@ const KiitSocieties = () => {
 
   // Fetch events for all societies
   // Fetch events for all societies
-useEffect(() => {
-  const fetchSocietyEvents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("calendar_events")
-        .select("*")
-        .gte("event_date", new Date().toISOString().split("T")[0])
-        .order("event_date", { ascending: true });
-        
-      if (error) throw error;
-      
-      // Group events by society name (case-insensitive)
-      const eventsBySociety: Record<string, any> = {};
-      data?.forEach((event) => {
-        const normalizedName = event.society_name.toLowerCase().trim();
-        if (!eventsBySociety[normalizedName]) {
-          eventsBySociety[normalizedName] = [];
-        }
-        eventsBySociety[normalizedName].push(event);
-      });
-      
-      setSocietyEvents(eventsBySociety);
-      
-      // Debug logs (INSIDE the function)
-      console.log("Events by society:", eventsBySociety);
-      console.log("Society names in array:", kiitSocieties.map((s) => s.name));
-      
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      toast.error("Failed to load events");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  fetchSocietyEvents();
-}, []);
+  useEffect(() => {
+    const fetchSocietyEvents = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/society-events");
+        const eventsBySociety = await res.json();
+        setSocietyEvents(eventsBySociety);
+        console.log("Events by society:", eventsBySociety);
+        console.log(
+          "Society names in array:",
+          kiitSocieties.map((s) => s.name)
+        );
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        toast.error("Failed to load events");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSocietyEvents();
+  }, []);
 
   const handleServiceClick = (route: string) => {
     if (route) {

@@ -838,7 +838,7 @@ app.post('/verify-application-unlock-payment', authenticateToken, async (req, re
     console.error('Error verifying application unlock payment:', error);
     return res.status(500).json({ error: 'Payment verification failed' });
   }
-});
+});q
 
 
 
@@ -1312,6 +1312,145 @@ app.patch('/api/lostfound/:id', authenticateToken, async (req, res) => {
     return res.status(500).json({ error: 'Failed to update item' });
   }
 });
+
+//Society Events
+app.get("/api/society-events", async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .gte("event_date", today)
+      .order("event_date", { ascending: true });
+
+    if (error) throw error;
+
+    // Group by society name (case-insensitive)
+    const eventsBySociety = {};
+    data?.forEach((event) => {
+      const normalizedName = event.society_name.toLowerCase().trim();
+      if (!eventsBySociety[normalizedName]) {
+        eventsBySociety[normalizedName] = [];
+      }
+      eventsBySociety[normalizedName].push(event);
+    });
+
+    res.status(200).json(eventsBySociety);
+  } catch (err) {
+    console.error("Error fetching events:", err.message);
+    res.status(500).json({ error: "Failed to load events" });
+  }
+});
+
+//SplitSaathi
+app.post("/api/user-groups", async (req, res) => {
+  try {
+    const { userId, email } = req.body;
+    if (!userId || !email) {
+      return res.status(400).json({ error: "Missing userId or email" });
+    }
+
+    // Extract roll number from email (e.g., "2105555@kiit.ac.in")
+    const rollNumberMatch = email.match(/^(\d+)@/);
+    const rollNumber = rollNumberMatch?.[1];
+
+    // Load groups created by user
+    const { data: createdGroups, error: createdError } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false });
+
+    if (createdError) throw createdError;
+
+    let linkedGroups = [];
+
+    // If roll number found, load groups they're a member of
+    if (rollNumber) {
+      const { data: memberRecords, error: memberError } = await supabase
+        .from("group_members")
+        .select("group_id, groups!inner(*)")
+        .eq("roll_number", rollNumber);
+
+      if (memberError) throw memberError;
+
+      linkedGroups = memberRecords
+        .map((record) => record.groups)
+        .filter((group) => group.created_by !== userId); // Avoid duplicates
+    }
+
+    // Merge & deduplicate
+    const allGroups = [...(createdGroups || []), ...linkedGroups];
+    const uniqueGroups = Array.from(
+      new Map(allGroups.map((g) => [g.id, g])).values()
+    );
+
+    res.status(200).json(uniqueGroups);
+  } catch (error) {
+    console.error("Error loading user groups:", error.message);
+    res.status(500).json({ error: "Failed to load user groups" });
+  }
+});
+app.post("/api/create-group", async (req, res) => {
+  try {
+    const { userId, groupForm } = req.body;
+
+    if (!userId || !groupForm?.name?.trim()) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Validate members
+    const validMembers = (groupForm.members || []).filter(
+      (m) => m.name && m.name.trim() !== ""
+    );
+
+    if (validMembers.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "At least one member with a name is required" });
+    }
+
+    // 1️⃣ Create the group
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .insert({
+        name: groupForm.name,
+        description: groupForm.description,
+        currency: groupForm.currency || "₹",
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (groupError) throw groupError;
+
+    // 2️⃣ Insert members
+    const { error: membersError } = await supabase
+      .from("group_members")
+      .insert(
+        validMembers.map((member) => ({
+          group_id: group.id,
+          name: member.name.trim(),
+          email_phone: "",
+          roll_number: member.rollNumber?.trim() || null,
+        }))
+      );
+
+    if (membersError) throw membersError;
+
+    // Return the created group
+    res.status(200).json({
+      message: "Group created successfully",
+      group,
+      memberCount: validMembers.length,
+    });
+  } catch (error) {
+    console.error("❌ Error creating group:", error.message);
+    res.status(500).json({ error: "Failed to create group" });
+  }
+});
+
 
 
 {/* ---------------------- use service visibility hook ENDPOINTS ---------------------- */}
