@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const app = express();
+import cookieParser from 'cookie-parser';
 
 const allowedOrigins = [
   "http://localhost:8080",
@@ -16,6 +17,8 @@ const allowedOrigins = [
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
    "https://ksaathi.vercel.app"
 ];
+
+app.use(cookieParser());
 
 // CORS configuration
 app.use(cors({
@@ -76,6 +79,36 @@ app.get('/test', (req, res) => {
 // ============================================
 
 // Check current session
+
+app.get("/api/auth/callback", async (req, res) => {
+  try {
+    const { access_token } = req.query; // or handle from headers or cookies
+
+    if (!access_token) {
+      return res.status(400).json({ error: "Missing access token" });
+    }
+
+    // Verify and get user info
+    const { data: user, error } = await supabase.auth.getUser(access_token);
+    if (error || !user) {
+      console.error(error);
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    // Check if user email confirmed
+    if (user.user?.email_confirmed_at) {
+      // Optional: create your own session/cookie or issue JWT
+      return res.json({ success: true, message: "Email confirmed" });
+    } else {
+      return res.status(403).json({ success: false, message: "Email not confirmed yet" });
+    }
+  } catch (err) {
+    console.error("Auth callback failed:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 app.get('/api/auth/session', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
