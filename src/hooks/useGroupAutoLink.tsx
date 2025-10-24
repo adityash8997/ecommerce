@@ -1,101 +1,59 @@
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * Hook to automatically link users to groups based on their roll number
- * Runs when user logs in and checks if their roll number matches any group members
+ * Hook to automatically link users to groups based on their roll number.
+ * Now calls backend endpoint /api/groups/auto-link
  */
 export function useGroupAutoLink() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email || !session?.access_token) return;
 
-    const checkAndLinkGroups = async () => {
+    const autoLinkGroups = async () => {
       try {
-        // Extract roll number from email (e.g., 24155637@kiit.ac.in -> 24155637)
-        const rollNumberMatch = user.email.match(/^(\d+)@/);
-        if (!rollNumberMatch) return;
+        const response = await fetch('/api/groups/auto-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // 🔒 Temporary: manually sending user info
+            // Later: replace with token-only (Authorization)
+            Authorization: `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            user_id: user.id, // TEMPORARY: will be removed later
+            email: user.email // TEMPORARY: will be removed later
+          })
+        });
 
-        const rollNumber = rollNumberMatch[1];
-
-        // Find groups where this roll number is listed as a member
-        const { data: matchingMembers, error: membersError } = await supabase
-          .from('group_members')
-          .select(`
-            id,
-            name,
-            roll_number,
-            group_id,
-            groups!inner(
-              id,
-              name,
-              created_by,
-              profiles!groups_created_by_fkey(
-                full_name,
-                email
-              )
-            )
-          `)
-          .eq('roll_number', rollNumber);
-
-        if (membersError) {
-          console.error('Error fetching matching members:', membersError);
+        const result = await response.json();
+        if (!response.ok || result.error) {
+          console.error('Failed to auto-link groups:', result.error);
           return;
         }
 
-        if (!matchingMembers || matchingMembers.length === 0) return;
-
-        // Check which groups haven't been notified yet
-        for (const member of matchingMembers) {
-          const group = member.groups as any;
-          
-          // Skip if user created this group
-          if (group.created_by === user.id) continue;
-
-          // Check if we've already notified about this group
-          const { data: existingNotification } = await supabase
-            .from('group_notifications')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('group_id', group.id)
-            .single();
-
-          if (existingNotification) continue;
-
-          // Record this notification
-          await supabase
-            .from('group_notifications')
-            .insert({
-              user_id: user.id,
-              group_id: group.id
+        // Show notifications from backend response
+        if (result.newGroups && result.newGroups.length > 0) {
+          result.newGroups.forEach((group: any) => {
+            toast({
+              title: `🎉 You've been added to a group!`,
+              description: `Group: "${group.name}" • Added by: ${group.creatorName}${
+                group.creatorRollNumber ? ` (${group.creatorRollNumber})` : ''
+              } • Your roll number: ${group.rollNumber}`,
+              duration: 6000,
+              className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white border-none"
             });
-
-          // Extract creator info
-          const creatorProfile = group.profiles as any;
-          const creatorName = creatorProfile?.full_name || 'Unknown';
-          const creatorEmail = creatorProfile?.email || '';
-          const creatorRollNumber = creatorEmail.match(/^(\d+)@/)?.[1] || '';
-
-          // Show toast notification
-          toast({
-            title: `🎉 You've been added to a group!`,
-            description: `Group: "${group.name}" • Added by: ${creatorName}${creatorRollNumber ? ` (${creatorRollNumber})` : ''} • Your roll number: ${rollNumber}`,
-            duration: 6000,
-            className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white border-none",
           });
         }
       } catch (error) {
-        console.error('Error in auto-link groups:', error);
+        console.error('Error during group auto-link:', error);
       }
     };
 
-    // Run check after a short delay to ensure everything is loaded
-    const timeoutId = setTimeout(checkAndLinkGroups, 1000);
-
+    const timeoutId = setTimeout(autoLinkGroups, 1000);
     return () => clearTimeout(timeoutId);
-  }, [user, toast]);
+  }, [user, session, toast]);
 }

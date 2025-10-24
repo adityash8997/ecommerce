@@ -289,4 +289,4 @@ export const ResumeHistoryList = ({ onEdit, onPreview, quotaExhausted = false }:
       </Card>
     </div>
   );
-};
+}; 
