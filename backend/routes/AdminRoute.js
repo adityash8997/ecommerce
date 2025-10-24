@@ -12,7 +12,7 @@ const supabase = createClient(
 // ============================================
 // ADMIN DASHBOARD DATA
 // ============================================
-router.get("/dashboard-data", async (req, res) => {
+router.get("/api/admin/dashboard-data", async (req, res) => {
   try {
     const { data: lfRequests } = await supabase
       .from("lost_found_requests")
