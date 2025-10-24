@@ -5,6 +5,9 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import adminRoutes from "./routes/AdminRoute.js";
+import SemBooksRoutes from "./routes/SemBooksRoutes.js"
+
 
 const app = express();
 import cookieParser from 'cookie-parser';
@@ -19,6 +22,9 @@ const allowedOrigins = [
 ];
 
 app.use(cookieParser());
+app.use("/api/admin", adminRoutes);
+app.use("/", SemBooksRoutes); 
+
 
 // CORS configuration
 app.use(cors({
