@@ -16,6 +16,7 @@ export default function Feedback() {
   const [rating, setRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
  const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
@@ -27,7 +28,7 @@ export default function Feedback() {
   setIsSubmitting(true);
 
   try {
-    const res = await fetch("/api/feedback", {
+    const res = await fetch(`${HOSTED_URL}/api/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -74,7 +75,7 @@ export default function Feedback() {
               We'd Love Your Feedback!
             </h1>
             <p className="text-lg text-gray-600">
-              Help us make KIIT Saathi even better ❤️
+              Help us make KIIT Saathi even better ❤
             </p>
           </div>
 
@@ -88,13 +89,13 @@ export default function Feedback() {
                   If you find anything missing, incorrect, or want to share ideas — please tell us.
                   <br />
                   <span className="font-semibold text-green-600">
-                    Our team will review and act within 24 hours ❤️
+                    Our team will review and act within 24 hours ❤
                   </span>
                 </p>
                 <div className="flex items-center justify-center gap-2 text-sm text-orange-600 bg-orange-50 px-4 py-2 rounded-lg border border-orange-200">
                   <Heart className="w-4 h-4" />
                   <span className="font-medium">
-                    ⚠️ No personal details will be collected. Your feedback is 100% anonymous.
+                    ⚠ No personal details will be collected. Your feedback is 100% anonymous.
                   </span>
                 </div>
               </CardTitle>
