@@ -28,6 +28,7 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
@@ -37,6 +38,8 @@ import { useEvents } from "@/hooks/useEvents";
 import { toast } from "sonner";
 
 const localizer = momentLocalizer(moment);
+
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
 type CalendarEvent = Database["public"]["Tables"]["calendar_events"]["Row"];
 
@@ -100,6 +103,7 @@ const societies = [
 const InterviewDeadlinesTracker = () => {
   const navigate = useNavigate();
   const { width, height } = useWindowSize();
+  const { user } = useAuth();
   const { events, upcomingEvents, loading, error } = useEvents();
   const [view, setView] = useState<View>(Views.MONTH);
   const [date, setDate] = useState(new Date());
@@ -111,7 +115,6 @@ const InterviewDeadlinesTracker = () => {
   const [selectedSociety, setSelectedSociety] = useState<string>("All");
   const [showConfetti, setShowConfetti] = useState(false);
   const [addEventOpen, setAddEventOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [addInterviewOpen, setAddInterviewOpen] = useState(false);
   const [formData, setFormData] = useState({
     society_name: "",
@@ -189,37 +192,6 @@ const InterviewDeadlinesTracker = () => {
   { name: "SPIC MACAY", section: "spic-macay" },
   {name: "Other", section: "other"}
 ];
-
-  // Fetch user
-useEffect(() => {
-  const getUser = async () => {
-    try {
-      // Get the JWT from localStorage or cookie (where Supabase stores it)
-      const token = localStorage.getItem("sb-access-token"); // default key in Supabase auth
-      if (!token) {
-        toast("Please login to add events to calendar");
-        return;
-      }
-
-      const res = await fetch("/api/auth/session", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const result = await res.json();
-      if (result.success) {
-        setUser(result.user);
-      } else {
-        toast("Please login to add events to calendar");
-      }
-    } catch (err) {
-      console.error("Error fetching user:", err);
-      toast("Something went wrong. Please login again.");
-    }
-  };
-  getUser();
-}, []);
 
 
   // Filter + search
@@ -307,7 +279,7 @@ useEffect(() => {
   try {
     const accessToken = (await supabase.auth.getSession()).data?.session?.access_token;
 
-    const response = await fetch("/api/events/add", {
+    const response = await fetch(`${HOSTED_URL}/api/events/add`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

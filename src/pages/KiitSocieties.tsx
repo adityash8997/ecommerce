@@ -24,12 +24,18 @@ import {
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
 import moment from "moment";
 
+
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 const KiitSocieties = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { accessToken } = useAuth();
   const [societyEvents, setSocietyEvents] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const societyServices = [
@@ -677,11 +683,22 @@ const KiitSocieties = () => {
   ];
 
   // Fetch events for all societies
-  // Fetch events for all societies
   useEffect(() => {
     const fetchSocietyEvents = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/society-events");
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json'
+        };
+
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+
+        const res = await fetch(`${HOSTED_URL}/api/events`, {
+          headers,
+          credentials: 'include'
+        });
+
         const eventsBySociety = await res.json();
         setSocietyEvents(eventsBySociety);
         console.log("Events by society:", eventsBySociety);
@@ -698,7 +715,7 @@ const KiitSocieties = () => {
     };
 
     fetchSocietyEvents();
-  }, []);
+  }, [accessToken]);
 
   const handleServiceClick = (route: string) => {
     if (route) {

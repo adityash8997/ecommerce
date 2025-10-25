@@ -50,6 +50,11 @@ export function useSecureLostAndFound() {
       }
       
       const data = await response.json();
+      console.log('📦 Fetched Lost & Found items:', data.items?.length || 0);
+      console.log('🖼️ Sample image URLs:', data.items?.slice(0, 3).map((item: any) => ({ 
+        title: item.title, 
+        image_url: item.image_url 
+      })));
       return data.items as LostAndFoundItem[];
     }, { 
       fallback: [] as LostAndFoundItem[],

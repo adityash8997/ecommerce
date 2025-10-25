@@ -51,11 +51,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signOut = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
+    try {
+      // Clear state immediately before signing out
+      setUser(null);
+      setSession(null);
+      setAccessToken(null);
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        throw error;
+      }
+      
+      // Clear any remaining local storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      console.log('✅ Successfully signed out');
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
  const value = {

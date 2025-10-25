@@ -23,14 +23,16 @@ export const Navbar = () => {
   const isAdmin = user?.email === 'adityash8997@gmail.com' || user?.email === '24155598@kiit.ac.in';
 
 
-  
+
   const handleSignOut = async () => {
     try {
       await signOut();
       toast.success("Successfully signed out");
-      navigate("/auth");
+      // Force redirect after sign out
+      window.location.href = "/auth";
     } catch (error) {
       toast.error("Error signing out");
+      console.error("Sign out error:", error);
     }
   };
 

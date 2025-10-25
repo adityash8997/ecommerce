@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { PolicyWrapper } from "@/components/PolicyWrapper";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteLogger from "./components/RouteLogger";
 import { Toaster as HotToaster } from "react-hot-toast";
@@ -45,7 +44,6 @@ import SGPACalculator from "./pages/SGPACalculator";
 import AdminDashboard from "./pages/AdminDashboard";
 import { AdminGuard } from "@/components/AdminGuard";
 import ResumeSaathi from "./pages/ResumeSaathi/ResumeSaathi";
-import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import BakeryDashboard from "./pages/BakeryDashboard";
 import Feedback from "./pages/Feedback";
@@ -125,7 +123,6 @@ const AppRoutes = () => {
           }
         />
         <Route path="/resume-saathi" element={<ResumeSaathi />} />
-        <Route path="/terms-and-conditions" element={<TermsAndConditionsPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/bakery-dashboard" element={<BakeryDashboard />} />
         <Route path="/feedback" element={<Feedback />} />
@@ -180,18 +177,16 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <PolicyWrapper>
-          <TooltipProvider>
-            <HotToaster position="top-center" />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
-            <Analytics />
-            <SpeedInsights />
-          </TooltipProvider>
-        </PolicyWrapper>
+        <TooltipProvider>
+          <HotToaster position="top-center" />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+          <Analytics />
+          <SpeedInsights />
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
