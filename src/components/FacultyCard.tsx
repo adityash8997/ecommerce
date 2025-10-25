@@ -16,29 +16,122 @@ export const FacultyCard = ({ faculty, isExpanded, onToggle }: FacultyCardProps)
   const [showEmail, setShowEmail] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showLinkedIn, setShowLinkedIn] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string>('');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isLoadingPhoto, setIsLoadingPhoto] = useState(true);
+  const [photoError, setPhotoError] = useState(false);
   const [showUploadOverlay, setShowUploadOverlay] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isAdmin, uploading, getPhotoUrl, uploadPhoto } = useFacultyPhotos();
+  const imageRef = useRef<HTMLImageElement>(null);
 
-  // Load photo on mount
+  // Load photo on mount with better error handling
   useEffect(() => {
+    let mounted = true;
+
     const loadPhoto = async () => {
-      const url = await getPhotoUrl(faculty.id);
-      setPhotoUrl(url);
+      if (!faculty.id) return;
+
+      setIsLoadingPhoto(true);
+      setPhotoError(false);
+
+      try {
+        const url = await getPhotoUrl(faculty.id);
+        if (!mounted) return;
+
+        if (url) {
+          // Pre-load image to avoid blinking
+          const img = new Image();
+          img.onload = () => {
+            if (mounted) {
+              setPhotoUrl(url);
+              setIsLoadingPhoto(false);
+            }
+          };
+          img.onerror = () => {
+            if (mounted) {
+              setPhotoError(true);
+              setIsLoadingPhoto(false);
+            }
+          };
+          img.src = url;
+        } else {
+          setPhotoError(true);
+          setIsLoadingPhoto(false);
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('Error loading faculty photo:', error);
+          setPhotoError(true);
+          setIsLoadingPhoto(false);
+        }
+      }
     };
+
     loadPhoto();
+
+    return () => {
+      mounted = false;
+    };
   }, [faculty.id, getPhotoUrl]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const newUrl = await uploadPhoto(faculty.id, file);
-    if (newUrl) {
-      setPhotoUrl(newUrl + '?t=' + Date.now());
+    try {
+      setIsLoadingPhoto(true);
+      const newUrl = await uploadPhoto(faculty.id, file);
+      if (newUrl) {
+        // Pre-load new image
+        const img = new Image();
+        img.onload = () => {
+          setPhotoUrl(newUrl + '?t=' + Date.now());
+          setPhotoError(false);
+          setIsLoadingPhoto(false);
+        };
+        img.onerror = () => {
+          setPhotoError(true);
+          setIsLoadingPhoto(false);
+        };
+        img.src = newUrl + '?t=' + Date.now();
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      setPhotoError(true);
+    } finally {
+      setShowUploadOverlay(false);
+      setIsLoadingPhoto(false);
     }
-    setShowUploadOverlay(false);
+  };
+
+  const renderPhoto = () => {
+    if (isLoadingPhoto) {
+      return (
+        <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700" />
+        </div>
+      );
+    }
+
+    if (photoError || !photoUrl) {
+      return (
+        <div className="w-20 h-20 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center">
+          <svg className="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+          </svg>
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        ref={imageRef}
+        src={photoUrl}
+        alt={faculty.name}
+        className="w-full h-full object-cover rounded-full"
+        onError={() => setPhotoError(true)}
+      />
+    );
   };
 
   const handleActionClick = (action: 'email' | 'phone' | 'linkedin') => {
@@ -65,29 +158,16 @@ export const FacultyCard = ({ faculty, isExpanded, onToggle }: FacultyCardProps)
         <div className="flex justify-center mb-5">
           <div 
             className="relative w-24 h-24 rounded-full group/photo cursor-pointer"
-            onMouseEnter={() => isAdmin && setShowUploadOverlay(true)}
+            onMouseEnter={() => isAdmin && !isLoadingPhoto && setShowUploadOverlay(true)}
             onMouseLeave={() => !uploading && setShowUploadOverlay(false)}
-            onClick={() => isAdmin && fileInputRef.current?.click()}
+            onClick={() => isAdmin && !isLoadingPhoto && fileInputRef.current?.click()}
           >
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#006400] to-[#228B22] flex items-center justify-center ring-2 ring-gray-100 dark:ring-gray-700 transition-all group-hover:ring-4 overflow-hidden">
-              {photoUrl ? (
-                <img 
-                  src={photoUrl} 
-                  alt={faculty.name}
-                  className="w-full h-full object-cover rounded-full"
-                  onError={() => setPhotoUrl('')}
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center">
-                  <svg className="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              )}
+              {renderPhoto()}
             </div>
             
             {/* Upload Overlay - Admin Only */}
-            {isAdmin && showUploadOverlay && (
+            {isAdmin && showUploadOverlay && !isLoadingPhoto && (
               <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center transition-opacity animate-fade-in">
                 <div className="text-center">
                   <Camera className="w-7 h-7 text-white mx-auto mb-1" />
