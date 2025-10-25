@@ -6,19 +6,15 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import SemBooksRoutes from "./routes/SemBooksRoutes.js"
-import FacultyRoute from "./routes/FacultyRoute.js"
-import StudyMaterialRoute from "./routes/StudyMaterialRoute.js"
-import authRoute from './routes/authRoute.js'
-import lostFoundRoute from './routes/lost-foundRoute.js'
 
-import createAdminRoutes, { createFeedbackRoute } from "./routes/AdminRoute.js";
-import createSemBooksRoutes from "./routes/SemBooksRoutes.js";
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 
 
 const app = express();
+
+app.use(express.json());
+app.use(cookieParser());
 
 const allowedOrigins = [  
   "http://localhost:8080",
@@ -26,14 +22,16 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://kiitsaathi.vercel.app",
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
-  "https://ksaathi.vercel.app"
+  "https://ksaathi.vercel.app",
+  "https://kiitsaathi.in"
 ];
 
 // ✅ MIDDLEWARE MUST COME FIRST (before any routes)
 
 
 
-app.use(express.json());
+
+
 
 // CORS configuration
 app.use(cors({
@@ -51,28 +49,33 @@ app.use(cors({
 }));
 
 // ✅ Add request logger
-app.use((req, res, next) => {
-  console.log(`📨 ${new Date().toISOString()} - ${req.method} ${req.url}`);
-  next();
-});
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization']; // Expecting "Bearer <token>"
-  const token = authHeader?.split(' ')[1]; // Get token part
+
+async function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader?.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
-    req.user_id = decoded.sub; // Supabase stores user ID in "sub"
+    // ✅ Verify token using Supabase Auth system
+    const { data, error } = await supabase.auth.getUser(token);
+
+    if (error || !data?.user) {
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+
+    // ✅ Attach user ID (same as before with JWT 'sub')
+    req.user_id = data.user.id;
     next();
   } catch (err) {
-    console.error('Invalid token:', err);
+    console.error('Token verification failed:', err);
     return res.status(403).json({ error: 'Invalid or expired token.' });
   }
 }
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -94,13 +97,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-app.use(cookieParser());
-app.use("/api/admin", createAdminRoutes(supabase));
-app.use("/", createSemBooksRoutes(supabase)); 
-app.use("/",FacultyRoute);
-app.use("/",StudyMaterialRoute);
-app.use("/",authRoute);
-app.use("/",lostFoundRoute);
+
 
 // Razorpay instance
 let razorpay = null;
@@ -149,14 +146,1813 @@ app.get('/health', async (req, res) => {
 });
 
 // ✅ NOW register route files (AFTER middleware and supabase initialization)
-app.use("/api/admin", createAdminRoutes(supabase));
-app.use("/api/feedback", createFeedbackRoute(supabase));
-app.use("/", createSemBooksRoutes(supabase));
+
 
 
 // ============================================
-// PAYMENT ENDPOINTS (SECURED + CLEANED)
+// ADMIN ROUTES
 // ============================================
+
+// Admin Dashboard Data
+app.get("/api/admin/dashboard-data", async (req, res) => {
+  try {
+    const { data: lfRequests } = await supabase
+      .from("lost_found_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: eventReqs } = await supabase
+      .from("interview_event_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: resaleReqs } = await supabase
+      .from("resale_listings")
+      .select(`
+        *,
+        seller:profiles!seller_id(full_name, email),
+        images:resale_listing_images(storage_path)
+      `)
+      .order("created_at", { ascending: false });
+
+    const { data: contacts } = await supabase
+      .from("contacts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: feedbackData } = await supabase
+      .from("feedbacks")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: actions } = await supabase
+      .from("admin_actions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    const { count: totalUsers } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true });
+
+    const today = new Date().toISOString().split("T")[0];
+    const actionsToday =
+      actions?.filter((a) => a.created_at.startsWith(today)).length || 0;
+
+    const stats = {
+      totalPendingLostFound:
+        lfRequests?.filter((r) => r.status === "pending").length || 0,
+      totalPendingEvents:
+        eventReqs?.filter((r) => r.status === "pending").length || 0,
+      totalPendingResale:
+        resaleReqs?.filter((r) => r.status === "pending").length || 0,
+      totalPendingContacts:
+        contacts?.filter((c) => c.status === "new").length || 0,
+      totalActionsToday: actionsToday,
+      totalUsers: totalUsers || 0,
+      totalFeedbacks: feedbackData?.length || 0,
+      totalUnresolvedFeedbacks:
+        feedbackData?.filter((f) => !f.resolved).length || 0,
+    };
+
+    res.json({
+      lostFoundRequests: lfRequests || [],
+      eventRequests: eventReqs || [],
+      resaleListings: resaleReqs || [],
+      contactSubmissions: contacts || [],
+      feedbacks: feedbackData || [],
+      adminActions: actions || [],
+      stats,
+    });
+  } catch (error) {
+    console.error("Error fetching admin data:", error);
+    res.status(500).json({
+      error: "Failed to fetch admin data",
+      message: error.message,
+    });
+  }
+});
+
+// Approve Item
+app.post('/api/admin/approve-item', async (req, res) => {
+  try {
+    const { itemId, type, adminUserId } = req.body;
+    
+    const functionName = type === 'lost-found' ? 'admin-approve-lost-item' : 'admin-approve-event';
+    
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { 
+        requestId: itemId, 
+        adminUserId 
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Approval error:', error);
+    res.status(500).json({ 
+      error: 'Failed to approve item',
+      message: error.message 
+    });
+  }
+});
+
+// Approve Resale
+app.post('/api/admin/approve-resale', async (req, res) => {
+  try {
+    const { listingId, adminUserId } = req.body;
+    
+    const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+      body: { 
+        listingId,
+        action: 'approve',
+        adminUserId
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Resale approval error:', error);
+    res.status(500).json({ 
+      error: 'Failed to approve listing',
+      message: error.message 
+    });
+  }
+});
+
+// Reject Item
+app.post('/api/admin/reject-item', async (req, res) => {
+  try {
+    const { itemId, type, reason, adminUserId } = req.body;
+    
+    if (!reason?.trim()) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+    
+    const functionName = type === 'lost-found' ? 'admin-reject-lost-item' : 'admin-reject-event';
+    
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body: { 
+        requestId: itemId, 
+        reason,
+        adminUserId 
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Rejection error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reject item',
+      message: error.message 
+    });
+  }
+});
+
+// Reject Resale
+app.post('/api/admin/reject-resale', async (req, res) => {
+  try {
+    const { listingId, reason, adminUserId } = req.body;
+    
+    if (!reason?.trim()) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+    
+    const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+      body: { 
+        listingId,
+        action: 'reject',
+        adminUserId,
+        reason
+      }
+    });
+
+    if (error) throw error;
+    
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Resale rejection error:', error);
+    res.status(500).json({ 
+      error: 'Failed to reject listing',
+      message: error.message 
+    });
+  }
+});
+
+// Update Contact Status
+app.patch('/api/admin/update-contact-status', async (req, res) => {
+  try {
+    const { contactId, status } = req.body;
+    
+    const { error } = await supabase
+      .from('contacts')
+      .update({ status })
+      .eq('id', contactId);
+
+    if (error) throw error;
+    
+    res.json({ success: true, message: `Contact marked as ${status}` });
+  } catch (error) {
+    console.error('Error updating contact status:', error);
+    res.status(500).json({ 
+      error: 'Failed to update contact status',
+      message: error.message 
+    });
+  }
+});
+
+// Resolve Feedback
+app.patch('/api/admin/resolve-feedback', async (req, res) => {
+  try {
+    const { feedbackId, resolved } = req.body;
+    
+    const { error } = await supabase
+      .from('feedbacks')
+      .update({ 
+        resolved,
+        resolved_at: resolved ? new Date().toISOString() : null
+      })
+      .eq('id', feedbackId);
+
+    if (error) throw error;
+    
+    res.json({ 
+      success: true, 
+      message: resolved ? 'Feedback marked as resolved' : 'Feedback marked as unresolved' 
+    });
+  } catch (error) {
+    console.error('Error updating feedback:', error);
+    res.status(500).json({ 
+      error: 'Failed to update feedback',
+      message: error.message 
+    });
+  }
+});
+
+// Delete Feedback
+app.delete('/api/admin/delete-feedback/:feedbackId', async (req, res) => {
+  try {
+    const { feedbackId } = req.params;
+    
+    const { error } = await supabase
+      .from('feedbacks')
+      .delete()
+      .eq('id', feedbackId);
+
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Feedback deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting feedback:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete feedback',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// FEEDBACK ROUTES
+// ============================================
+
+// Submit Feedback
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const { category, feedback_text, rating } = req.body;
+
+    if (!category || !feedback_text) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const { error } = await supabase
+      .from("feedbacks")
+      .insert([{ category, feedback_text, rating: rating || null }]);
+
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return res.status(500).json({ success: false, message: "Database insert failed" });
+    }
+
+    return res.status(200).json({ success: true, message: "Feedback submitted successfully" });
+  } catch (err) {
+    console.error("Feedback submission failed:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+// ============================================
+// LOST & FOUND IMAGE UPLOAD ROUTE
+// ============================================
+
+// Upload lost & found application image
+app.post("/api/upload-lost-found-image", async (req, res) => {
+  try {
+    // Use express-fileupload or multer for file parsing if not already set up
+    if (!req.files || !req.files.image) {
+      return res.status(400).json({ error: "No image uploaded" });
+    }
+    const { lostItemId } = req.body;
+    const file = req.files.image;
+    if (!lostItemId || !file) {
+      return res.status(400).json({ error: "Missing lostItemId or file" });
+    }
+    // Validate file type and size
+    if (!file.mimetype.match(/^image\/(jpeg|jpg|png)$/)) {
+      return res.status(400).json({ error: "Only JPG and PNG files are allowed" });
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "File size must be less than 5MB" });
+    }
+    const fileExt = file.name.split('.').pop();
+    const fileName = `application_${lostItemId}_${Date.now()}.${fileExt}`;
+    // Upload new image
+    const { error: uploadError } = await supabase.storage
+      .from("lost-and-found-images")
+      .upload(fileName, file.data, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: file.mimetype,
+      });
+    if (uploadError) throw uploadError;
+    // Get public URL
+    const { data } = supabase.storage.from("lost-and-found-images").getPublicUrl(fileName);
+    res.json({ publicUrl: data.publicUrl });
+  } catch (error) {
+    console.error("Lost & Found image upload error:", error);
+    res.status(500).json({ error: "Failed to upload image" });
+  }
+});
+
+// ============================================
+// ASSIGNMENT ROUTES
+// ============================================
+
+/**
+ * ✅ GET /api/assignments (SECURED)
+ * Fetch assignments for the logged-in user.
+ */
+app.get('/api/assignments', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user_id; // ✅ Secure user ID from token
+
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .select(`*, assignment_files(*)`)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ assignments: data || [] });
+  } catch (err) {
+    console.error('Error fetching assignments:', err);
+    res.status(500).json({ error: 'Failed to fetch assignments' });
+  }
+});
+
+/**
+ * ✅ POST /api/assignments (SECURED)
+ * Body: formData (no user_id required anymore — we use token)
+ */
+app.post('/api/assignments', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user_id; // ✅ Secure user ID from token
+    const { name, whatsapp, year, branch, pages, deadline, hostel, room,
+      notes, urgent, matchHandwriting, deliveryMethod } = req.body;
+
+    // ✅ Server-side pricing logic here
+    const basePrice = pages * (urgent ? 15 : 10);
+    const matchingFee = matchHandwriting ? 20 : 0;
+    const deliveryFee = deliveryMethod === 'hostel_delivery' ? 10 : 0;
+    const totalPrice = basePrice + matchingFee + deliveryFee;
+
+    const { data, error } = await supabase
+      .from('assignment_requests')
+      .insert({
+        user_id: userId,
+        student_name: name,
+        whatsapp_number: whatsapp,
+        year,
+        branch,
+        pages,
+        deadline,
+        hostel_name: hostel,
+        room_number: room,
+        special_instructions: notes,
+        is_urgent: urgent,
+        match_handwriting: matchHandwriting,
+        delivery_method: deliveryMethod || 'hostel_delivery',
+        total_price: totalPrice,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, assignment: data });
+  } catch (err) {
+    console.error('Error creating assignment:', err);
+    res.status(500).json({ error: 'Failed to create assignment' });
+  }
+});
+
+/**
+ * ✅ GET /api/files/signed-url (SECURED)
+ */
+app.get('/api/files/signed-url', authenticateToken, async (req, res) => {
+  try {
+    const { path } = req.query;
+    if (!path) return res.status(400).json({ error: 'File path required' });
+
+    const { data, error } = await supabase.storage
+      .from('assignment-files')
+      .createSignedUrl(path, 3600); // 1 hour
+
+    if (error) throw error;
+
+    res.json({ url: data.signedUrl });
+  } catch (err) {
+    console.error('Error creating signed URL:', err);
+    res.status(500).json({ error: 'Failed to generate URL' });
+  }
+});
+
+// ============================================
+// AUTHENTICATION ROUTES
+// ============================================
+
+app.get("/api/auth/callback", async (req, res) => {
+  try {
+    const { access_token } = req.query;
+
+    if (!access_token) {
+      return res.status(400).json({ error: "Missing access token" });
+    }
+
+    const { data: user, error } = await supabase.auth.getUser(access_token);
+    if (error || !user) {
+      console.error(error);
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    if (user.user?.email_confirmed_at) {
+      return res.json({ success: true, message: "Email confirmed" });
+    } else {
+      return res.status(403).json({ success: false, message: "Email not confirmed yet" });
+    }
+  } catch (err) {
+    console.error("Auth callback failed:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get('/api/auth/session', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.json({ session: null, profile: null });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.json({ session: null, profile: null });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_email_verified')
+      .eq('id', user.id)
+      .single();
+
+    res.json({ 
+      session: { user }, 
+      profile 
+    });
+  } catch (error) {
+    console.error('Session check error:', error);
+    res.status(500).json({ error: 'Failed to check session' });
+  }
+});
+
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, password, fullName } = req.body;
+
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
+      });
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: "https://ksaathi.vercel.app/auth/callback",
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      user: data.user, 
+      session: data.session,
+      message: data?.user && !data.session 
+        ? 'Check your email for the confirmation link' 
+        : 'Account created successfully'
+    });
+  } catch (error) {
+    console.error('Sign up error:', error);
+    res.status(400).json({ 
+      error: error.message || 'An error occurred during sign up' 
+    });
+  }
+});
+
+app.post('/api/auth/signin', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.' 
+      });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      session: data.session,
+      user: data.user
+    });
+  } catch (error) {
+    console.error('Sign in error:', error);
+    res.status(400).json({ 
+      error: error.message || 'An error occurred during sign in' 
+    });
+  }
+});
+
+app.post('/api/auth/signout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      await supabase.auth.admin.signOut(token);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Sign out error:', error);
+    res.status(500).json({ error: 'Failed to sign out' });
+  }
+});
+
+app.post('/api/auth/resend-confirmation', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const { error } = await supabase.auth.resend({ 
+      type: 'signup', 
+      email 
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      message: 'Confirmation email resent' 
+    });
+  } catch (error) {
+    console.error('Resend confirmation error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to resend confirmation email' 
+    });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    if (!email.endsWith('@kiit.ac.in')) {
+      return res.status(400).json({ 
+        error: 'Only KIIT College Email IDs (@kiit.ac.in) are allowed' 
+      });
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.FRONTEND_URL || 'https://ksaathi.vercel.app'}/reset-password`,
+    });
+
+    if (error) throw error;
+
+    res.json({ 
+      success: true, 
+      message: 'Password reset email sent' 
+    });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(400).json({ 
+      error: error.message || 'Failed to send password reset email' 
+    });
+  }
+});
+
+app.post('/api/auth/verify-email-callback', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { error } = await supabase.functions.invoke('verify-email-callback', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Verify email callback error:', error);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+});
+
+// ============================================
+// ADMIN REAL-TIME NOTIFICATIONS (SSE)
+// ============================================
+
+// Store active SSE connections
+const sseClients = new Set();
+
+// SSE endpoint for real-time admin notifications
+app.get('/api/admin/realtime-notifications', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  sseClients.add(res);
+  console.log(`Admin client connected. Total clients: ${sseClients.size}`);
+
+  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Real-time connected' })}\n\n`);
+
+  req.on('close', () => {
+    sseClients.delete(res);
+    console.log(`Admin client disconnected. Total clients: ${sseClients.size}`);
+  });
+});
+
+// Broadcast function
+const broadcastToAdmins = (notification) => {
+  const message = `data: ${JSON.stringify(notification)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(message);
+    } catch (error) {
+      console.error('Error sending SSE:', error);
+      sseClients.delete(client);
+    }
+  });
+};
+
+// Set up Supabase real-time subscriptions
+const setupAdminRealtimeSubscriptions = () => {
+  const lostFoundChannel = supabase
+    .channel('admin_lost_found_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'lost_found_requests'
+    }, (payload) => {
+      console.log('🔔 Lost & Found real-time event:', payload);
+      broadcastToAdmins({
+        type: 'lost_found',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      });
+    })
+    .subscribe();
+
+  const eventRequestsChannel = supabase
+    .channel('admin_event_requests_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'interview_event_requests'
+    }, (payload) => {
+      console.log('🔔 Event Request real-time event:', payload);
+      broadcastToAdmins({
+        type: 'event',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      });
+    })
+    .subscribe();
+
+  const resaleListingsChannel = supabase
+    .channel('admin_resale_listings_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'resale_listings'
+    }, (payload) => {
+      console.log('🔔 Resale Listing real-time event:', payload);
+      broadcastToAdmins({
+        type: 'resale',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      });
+    })
+    .subscribe();
+
+  const contactsChannel = supabase
+    .channel('admin_contacts_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'contacts'
+    }, (payload) => {
+      console.log('🔔 Contact Submission real-time event:', payload);
+      broadcastToAdmins({
+        type: 'contact',
+        eventType: payload.eventType,
+        data: payload.new,
+        timestamp: new Date().toISOString()
+      });
+    })
+    .subscribe();
+
+  return { lostFoundChannel, eventRequestsChannel, resaleListingsChannel, contactsChannel };
+};
+
+// Initialize real-time subscriptions
+setupAdminRealtimeSubscriptions();
+
+
+
+// ============================================
+// FACULTY ROUTES
+// ============================================
+
+// Get faculty photo URL
+app.get('/api/faculty/photo-url', async (req, res) => {
+  try {
+    const { facultyId } = req.query;
+    if (!facultyId) {
+      return res.status(400).json({ error: 'Missing facultyId parameter' });
+    }
+    const fileName = `${facultyId}.jpg`;
+    const { data } = supabase.storage.from('faculty-photos').getPublicUrl(fileName);
+    res.json({ photoUrl: data.publicUrl });
+  } catch (error) {
+    console.error('Error fetching faculty photo URL:', error);
+    res.status(500).json({ error: 'Failed to fetch photo URL' });
+  }
+});
+
+// Upload faculty photo
+app.post("/api/faculty/upload-photo", async (req, res) => {
+  try {
+    if (!req.files || !req.files.photo) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    const { facultyId } = req.body;
+    const file = req.files.photo;
+    if (!facultyId || !file) {
+      return res.status(400).json({ error: "Missing facultyId or file" });
+    }
+    if (!file.mimetype.match(/^image\/(jpeg|jpg|png)$/)) {
+      return res.status(400).json({ error: "Only JPG and PNG files are allowed" });
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      return res.status(400).json({ error: "File size must be less than 2MB" });
+    }
+    const fileName = `${facultyId}.jpg`;
+    await supabase.storage.from("faculty-photos").remove([fileName]);
+    const { error: uploadError } = await supabase.storage
+      .from("faculty-photos")
+      .upload(fileName, file.data, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: file.mimetype,
+      });
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("faculty-photos").getPublicUrl(fileName);
+    res.json({ photoUrl: data.publicUrl });
+  } catch (error) {
+    console.error("Faculty photo upload error:", error);
+    res.status(500).json({ error: "Failed to upload photo" });
+  }
+});
+
+
+// ============================================
+// LOST & FOUND ROUTES
+// ============================================
+
+// ✅ Create order for Lost & Found contact unlock (amount expected in **paise**)
+app.post('/api/lostfound/create-lost-found-order', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // payer
+    const { amount, itemId, itemTitle, itemPosterEmail, receipt } = req.body;
+
+    if (!razorpay) {
+      return res.status(500).json({ error: 'Payment service not available' });
+    }
+    if (!amount || !itemId || !itemTitle) {
+      return res.status(400).json({ error: 'Missing amount, itemId, or itemTitle' });
+    }
+
+    // Validate item and prevent paying for own item
+    const { data: itemData, error: itemError } = await supabase
+      .from('lost_and_found_items')
+      .select('contact_email')
+      .eq('id', itemId)
+      .single();
+
+    if (itemError || !itemData) {
+      return res.status(404).json({ error: 'Lost item not found' });
+    }
+    if (itemData.contact_email && itemPosterEmail && itemData.contact_email === itemPosterEmail) {
+      return res.status(400).json({ error: 'You cannot unlock your own item' });
+    }
+
+    // Check existing completed payment for the same user & item
+    const { data: existingPayment, error: checkError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('service_name', 'LostAndFoundContact')
+      .eq('payment_status', 'completed')
+      .contains('booking_details', { item_id: itemId })
+      .limit(1);
+
+    if (checkError) {
+      console.error('Check existing payment error:', checkError);
+      return res.status(500).json({ error: 'Failed to validate payment status' });
+    }
+    if (existingPayment && existingPayment.length > 0) {
+      return res.status(400).json({ error: 'Payment already completed for this item' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount, // already in paise
+      currency: 'INR',
+      receipt: receipt || `lost_found_${itemId}_${Date.now()}`,
+      notes: {
+        item_id: itemId,
+        item_title: itemTitle,
+        payer_user_id: user_id,
+        poster_email: itemPosterEmail || '',
+      },
+    });
+
+    return res.json(order);
+  } catch (error) {
+    console.error('Error creating Lost & Found order:', error);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// ✅ Verify Lost & Found payment (paise) and store
+app.post('/api/lostfound/verify-lost-found-payment', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // payer
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      itemId,
+      itemTitle,
+      itemPosterEmail,
+      splitDetails,
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !itemId || !itemTitle) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    // Optional: verify captured
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
+    }
+
+    const { error: orderError } = await supabase.from('orders').insert({
+      user_id,
+      service_name: 'LostAndFoundContact',
+      subservice_name: itemTitle,
+      amount: splitDetails?.totalAmount || null,
+      payment_method: 'razorpay',
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      booking_details: {
+        item_id: itemId,
+        item_title: itemTitle,
+        poster_email: itemPosterEmail || '',
+        razorpay_order_id,
+        split_details: splitDetails || null,
+      },
+    });
+    if (orderError) {
+      console.error('Error storing order:', orderError);
+    }
+
+    return res.json({ success: true, paymentId: razorpay_payment_id });
+  } catch (error) {
+    console.error('Error verifying Lost & Found payment:', error);
+    return res.status(500).json({ error: 'Payment verification failed' });
+  }
+});
+
+// ✅ Check if the authenticated user already paid for Lost & Found contact
+app.get('/api/lostfound/has-paid-lost-found-contact', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const { item_id } = req.query;
+
+    if (!item_id) {
+      return res.status(400).json({ error: 'Missing item_id' });
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('service_name', 'LostAndFoundContact')
+      .eq('payment_status', 'completed')
+      .contains('booking_details', { item_id })
+      .limit(1);
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    return res.json({ paid: !!(data && data.length) });
+  } catch (error) {
+    console.error('Error checking Lost & Found payment status:', error);
+    return res.status(500).json({ error: 'Failed to check payment status' });
+  }
+});
+
+// ✅ Submit application for a lost item
+app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async (req, res) => {
+  try {
+    const applicantUserId = req.user_id;
+    const {
+      lostItemId,
+      lostItemTitle,
+      lostItemOwnerEmail,
+      applicantName,
+      applicantEmail,
+      applicantPhone,
+      foundPhotoUrl,
+      foundDescription,
+      foundLocation,
+      foundDate,
+    } = req.body;
+
+    if (!lostItemId || !lostItemOwnerEmail || !applicantName || !applicantEmail || !applicantPhone || !foundPhotoUrl || !foundDescription || !foundLocation || !foundDate) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const { data: applicationData, error: insertError } = await supabase
+      .from('lost_found_applications')
+      .insert({
+        lost_item_id: lostItemId,
+        applicant_user_id: applicantUserId || null,
+        applicant_name: applicantName,
+        applicant_email: applicantEmail,
+        applicant_phone: applicantPhone,
+        found_photo_url: foundPhotoUrl,
+        found_description: foundDescription,
+        found_location: foundLocation,
+        found_date: foundDate,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      if (insertError.code === '23505' || `${insertError.message}`.includes('unique_application_per_user_per_item')) {
+        return res.status(409).json({
+          error: 'You have already applied for this lost item.',
+          type: 'duplicate',
+        });
+      }
+      console.error('Database insert error:', insertError);
+      return res.status(500).json({ error: 'Failed to save application' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Application submitted successfully',
+      applicationId: applicationData.id,
+    });
+  } catch (error) {
+    console.error('Error submitting application:', error);
+    return res.status(500).json({ error: 'Failed to submit application' });
+  }
+});
+
+// ✅ Create order for unlocking application contact details
+app.post('/api/lostfound/create-application-unlock-order', authenticateToken, async (req, res) => {
+  try {
+    const ownerUserId = req.user_id;
+    const { amount, applicationId, lostItemTitle, receipt } = req.body;
+
+    if (!razorpay) {
+      return res.status(500).json({ error: 'Payment service not available' });
+    }
+    if (!amount || !applicationId) {
+      return res.status(400).json({ error: 'Missing amount or applicationId' });
+    }
+
+    const { data: existingApplication, error: checkError } = await supabase
+      .from('lost_found_applications')
+      .select('status')
+      .eq('id', applicationId)
+      .single();
+
+    if (checkError) {
+      console.error('Check application error:', checkError);
+      return res.status(500).json({ error: 'Failed to validate application' });
+    }
+    if (existingApplication?.status === 'paid') {
+      return res.status(400).json({ error: 'Already unlocked' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount,
+      currency: 'INR',
+      receipt: receipt || `app_unlock_${applicationId}_${Date.now()}`,
+      notes: {
+        application_id: applicationId,
+        service: 'application_contact_unlock',
+        owner_user_id: ownerUserId,
+        lost_item_title: lostItemTitle || '',
+      },
+    });
+
+    return res.json(order);
+  } catch (error) {
+    console.error('Error creating application unlock order:', error);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// ✅ Verify payment for application unlock
+app.post('/api/lostfound/verify-application-unlock-payment', authenticateToken, async (req, res) => {
+  try {
+    const ownerUserId = req.user_id;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      applicationId,
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !applicationId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
+    }
+
+    const { error: updateError } = await supabase
+      .from('lost_found_applications')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        payment_id: razorpay_payment_id,
+      })
+      .eq('id', applicationId);
+
+    if (updateError) {
+      console.error('Error updating application:', updateError);
+      return res.status(500).json({ error: 'Failed to unlock application' });
+    }
+
+    const { error: orderError } = await supabase.from('orders').insert({
+      user_id: ownerUserId,
+      service_name: 'ApplicationContactUnlock',
+      subservice_name: `Application ${applicationId}`,
+      amount: null,
+      payment_method: 'razorpay',
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      booking_details: {
+        application_id: applicationId,
+        razorpay_order_id,
+      },
+    });
+    if (orderError) {
+      console.error('Error storing order:', orderError);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Contact details unlocked successfully',
+      paymentId: razorpay_payment_id,
+    });
+  } catch (error) {
+    console.error('Error verifying application unlock payment:', error);
+    return res.status(500).json({ error: 'Payment verification failed' });
+  }
+});
+
+// ✅ GET Lost & Found items (active only) - SECURED
+app.get('/api/lostfound/items', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ items: data || [] });
+  } catch (err) {
+    console.error('Error fetching lost & found items:', err);
+    return res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+// ✅ POST - Add a new Lost/Found item (SECURED)
+app.post('/api/lostfound/items', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const { ...itemData } = req.body;
+
+    const newItem = {
+      ...itemData,
+      user_id,
+      status: 'active'
+    };
+
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .insert(newItem)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error adding lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to add item' });
+  }
+});
+
+// ✅ PATCH - Update an existing Lost/Found item (SECURED)
+app.patch('/api/lostfound/items/:id', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const { id } = req.params;
+    const { ...updates } = req.body;
+
+    const { data, error } = await supabase
+      .from('lost_and_found_items')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return res.status(403).json({ error: 'Unauthorized to update this item' });
+    }
+
+    return res.json({ item: data });
+  } catch (err) {
+    console.error('Error updating lost & found item:', err);
+    return res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+
+// ============================================
+// PAYMENT ROUTES (LOST & FOUND SPECIFIC)
+// ============================================
+
+// Create order for Lost & Found contact unlock
+app.post('/api/payments/create-lost-found-order', async (req, res) => {
+  try {
+    const { amount, itemId, itemTitle, itemPosterEmail, payerUserId, receipt } = req.body;
+
+    // Validate required fields
+    if (!amount || !itemId || !itemTitle || !payerUserId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        required: ['amount', 'itemId', 'itemTitle', 'payerUserId'] 
+      });
+    }
+
+    // Create Razorpay order
+    const options = {
+      amount: amount, // amount in paise (15 rupees = 1500 paise)
+      currency: 'INR',
+      receipt: receipt,
+      notes: {
+        item_id: itemId,
+        item_title: itemTitle,
+        service: 'lost_found_contact',
+        payer_user_id: payerUserId,
+        poster_email: itemPosterEmail
+      }
+    };
+
+    const order = await razorpay.orders.create(options);
+    
+    // Store order details in database
+    const { error: dbError } = await supabase
+      .from('payment_orders')
+      .insert({
+        order_id: order.id,
+        amount: amount / 100, // Convert back to rupees for storage
+        currency: 'INR',
+        status: 'created',
+        service_type: 'lost_found_contact',
+        user_id: payerUserId,
+        metadata: {
+          item_id: itemId,
+          item_title: itemTitle,
+          poster_email: itemPosterEmail
+        }
+      });
+
+    if (dbError) {
+      console.error('Database error:', dbError);
+      return res.status(500).json({ error: 'Database error while storing order' });
+    }
+
+    console.log('Lost & Found order created:', order);
+    res.json(order);
+
+  } catch (error) {
+    console.error('Error creating Lost & Found order:', error);
+    res.status(500).json({ error: 'Failed to create order', details: error.message });
+  }
+});
+
+// Verify payment and process split for Lost & Found
+app.post('/api/payments/verify-lost-found-payment', async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      itemId,
+      itemTitle,
+      itemPosterEmail,
+      payerUserId,
+      splitDetails
+    } = req.body;
+
+    // Verify signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Invalid signature' });
+    }
+
+    // Fetch payment details from Razorpay
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    
+    if (payment.status !== 'captured') {
+      return res.status(400).json({ success: false, message: 'Payment not captured' });
+    }
+
+    // Update order status in database
+    const { error: updateError } = await supabase
+      .from('payment_orders')
+      .update({ 
+        status: 'completed',
+        payment_id: razorpay_payment_id,
+        completed_at: new Date().toISOString()
+      })
+      .eq('order_id', razorpay_order_id);
+
+    if (updateError) {
+      console.error('Error updating order:', updateError);
+    }
+
+    // Record the contact unlock transaction
+    const { error: unlockError } = await supabase
+      .from('lost_found_contact_unlocks')
+      .insert({
+        item_id: itemId,
+        payer_user_id: payerUserId,
+        amount_paid: splitDetails.totalAmount,
+        platform_fee: splitDetails.platformFee,
+        poster_reward: splitDetails.posterAmount,
+        payment_id: razorpay_payment_id,
+        order_id: razorpay_order_id
+      });
+
+    if (unlockError) {
+      console.error('Error recording unlock:', unlockError);
+      // Don't fail the request if this fails, as payment is already successful
+    }
+
+    // TODO: Implement Razorpay PayoutX for automatic splitting
+    // For now, we'll handle the split manually through transfers
+    
+    try {
+      // Create payout to item poster (10 rupees)
+      // Note: This requires PayoutX or Route feature to be enabled
+      const payout = await razorpay.payouts.create({
+        account_number: process.env.RAZORPAY_ACCOUNT_NUMBER, // Your account number
+        fund_account_id: 'fa_poster_account_id', // This needs to be created for each poster
+        amount: splitDetails.posterAmount * 100, // 10 rupees in paise
+        currency: 'INR',
+        mode: 'IMPS',
+        purpose: 'refund', // or 'payout'
+        queue_if_low_balance: true,
+        reference_id: `lf_reward_${itemId}_${Date.now()}`,
+        narration: `Reward for helping find: ${itemTitle}`
+      });
+      
+      console.log('Payout created for poster:', payout);
+    } catch (payoutError) {
+      console.error('Payout creation failed (non-critical):', payoutError);
+      // This is non-critical for the contact unlock functionality
+    }
+
+    // Send contact details email
+    try {
+      // This would typically call your email service
+      await fetch(`${process.env.BASE_URL}/api/payments/send-contact-details`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId,
+          itemTitle,
+          payerUserId,
+          posterContactDetails: {
+            email: itemPosterEmail
+          }
+        })
+      });
+    } catch (emailError) {
+      console.error('Email sending failed (non-critical):', emailError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment verified and contact details unlocked',
+      paymentId: razorpay_payment_id,
+      splitProcessed: true
+    });
+
+  } catch (error) {
+    console.error('Error verifying Lost & Found payment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Payment verification failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Send contact details via email
+app.post('/api/payments/send-contact-details', async (req, res) => {
+  try {
+    const { itemId, itemTitle, payerUserId, posterContactDetails } = req.body;
+
+    // Get payer's email from user profile
+    const { data: payerProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', payerUserId)
+      .single();
+
+    if (profileError || !payerProfile) {
+      console.error('Could not fetch payer profile:', profileError);
+      return res.status(400).json({ error: 'Could not find payer profile' });
+    }
+
+    // TODO: Integrate with your email service (SendGrid, etc.)
+    // For now, we'll just log the details
+    console.log('Contact details to send:', {
+      to: payerProfile.email,
+      itemTitle,
+      posterContactDetails
+    });
+
+    // Email would contain:
+    // - Item details
+    // - Poster's contact information
+    // - Thank you message
+    // - Platform info
+
+    res.json({ success: true, message: 'Contact details sent via email' });
+
+  } catch (error) {
+    console.error('Error sending contact details:', error);
+    res.status(500).json({ error: 'Failed to send contact details' });
+  }
+});
+
+// Check if user has already paid for contact details
+app.get('/api/payments/has-paid-contact', async (req, res) => {
+  try {
+    const { user_id, item_id } = req.query;
+
+    if (!user_id || !item_id) {
+      return res.status(400).json({ error: 'Missing user_id or item_id' });
+    }
+
+    const { data, error } = await supabase
+      .from('lost_found_contact_unlocks')
+      .select('id')
+      .eq('item_id', item_id)
+      .eq('payer_user_id', user_id)
+      .limit(1);
+
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    res.json({ paid: data && data.length > 0 });
+
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    res.status(500).json({ error: 'Failed to check payment status' });
+  }
+});
+
+// ============================================
+// POLICY ROUTES
+// ============================================
+
+// ✅ Get user policy acceptance (SECURED)
+app.get('/api/policy', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From JWT
+
+    const { data, error } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    return res.json({ policyData: data || null });
+  } catch (err) {
+    console.error('Error fetching policy acceptance:', err);
+    return res.status(500).json({ error: 'Failed to fetch policy data' });
+  }
+});
+
+// ✅ Accept Privacy Policy (SECURED)
+app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From token
+    const { privacy_policy_version } = req.body;
+
+    if (!privacy_policy_version) {
+      return res.status(400).json({ error: 'Missing privacy_policy_version' });
+    }
+
+    const updateData = {
+      user_id,
+      privacy_policy_accepted: true,
+      privacy_policy_version,
+      last_updated: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting privacy policy:', err);
+    return res.status(500).json({ error: 'Failed to accept privacy policy' });
+  }
+});
+
+// ✅ Accept Terms & Conditions (SECURED)
+app.post('/api/policy/terms', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ From token
+    const { terms_conditions_version } = req.body;
+
+    if (!terms_conditions_version) {
+      return res.status(400).json({ error: 'Missing terms_conditions_version' });
+    }
+
+    const updateData = {
+      user_id,
+      terms_conditions_accepted: true,
+      terms_conditions_version,
+      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('policy_acceptances')
+      .upsert(updateData, { onConflict: 'user_id' });
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error accepting terms:', err);
+    return res.status(500).json({ error: 'Failed to accept terms' });
+  }
+});
+
+// ============================================
+// SEMESTER BOOKS ROUTES
+// ============================================
+
+// Get semester books
+app.get('/api/semester-books', async (req, res) => {
+  const { semester } = req.query;
+  if (!semester || isNaN(Number(semester))) {
+    return res.status(400).json({ error: 'Invalid or missing semester parameter' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('semester_books')
+      .select('*')
+      .eq('semester', Number(semester))
+      .order('subject_category', { ascending: true });
+
+    if (error) throw error;
+    res.json({ data: data || [] });
+  } catch (error) {
+    console.error('Error fetching semester books:', error);
+    res.status(500).json({ error: 'Failed to fetch semester books' });
+  }
+});
+
+// Get semester combos
+app.get('/api/semester-combos', async (req, res) => {
+  const { semester } = req.query;
+  if (!semester || isNaN(Number(semester))) {
+    return res.status(400).json({ error: 'Invalid or missing semester parameter' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('semester_combos')
+      .select('*')
+      .eq('semester_number', Number(semester));
+
+    if (error) throw error;
+    res.json({ data: data || [] });
+  } catch (error) {
+    console.error('Error fetching semester combos:', error);
+    res.status(500).json({ error: 'Failed to fetch semester combos' });
+  }
+});
+
+
+// ============================================
+// STUDY MATERIAL ROUTES
+// ============================================
+
+// Get study materials
+app.get("/api/study-materials", async (req, res) => {
+  try {
+    const { type, subject, semester, year, search } = req.query;
+
+    let query = supabase
+      .from('study_material_requests')
+      .select('*')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (type) query = query.eq('folder_type', type);
+    if (subject) query = query.eq('subject', subject);
+    if (semester) query = query.eq('semester', semester);
+    if (year) query = query.eq('year', year);
+    if (search) query = query.ilike('title', `%${search}%`);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json({ data: data || [] });
+  } catch (error) {
+    console.error("Error fetching study materials:", error);
+    res.status(500).json({ error: "Failed to fetch materials" });
+  }
+});
+
+// Upload study material and submit request
+app.post('/api/study-materials/upload', async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ error: 'No file uploaded', success: false });
+    }
+    const file = req.files.file;
+    const { title, subject, semester, branch, year, folder_type, uploader_name } = req.body;
+    if (!title || !subject || !semester || !folder_type || !uploader_name) {
+      return res.status(400).json({ error: 'Missing required fields', success: false });
+    }
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type', success: false });
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File size exceeds 50MB limit', success: false });
+    }
+    const userId = req.user?.id || 'anonymous';
+    const timestamp = Date.now();
+    const filename = `${userId}/${timestamp}_${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from('study-material-pending')
+      .upload(filename, file.data, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return res.status(500).json({ error: 'Failed to upload file', success: false });
+    }
+    const { error: insertError } = await supabase
+      .from('study_material_requests')
+      .insert({
+        title,
+        subject,
+        semester,
+        branch,
+        year,
+        folder_type,
+        filename: file.name,
+        storage_path: filename,
+        filesize: file.size,
+        mime_type: file.mimetype,
+        uploader_name,
+        status: 'pending'
+      });
+    if (insertError) {
+      await supabase.storage.from('study-material-pending').remove([filename]);
+      throw insertError;
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Study material upload error:', error);
+    res.status(500).json({ error: 'Failed to upload material', success: false });
+  }
+});
+
+// Fetch study material requests (Admin)
+app.get('/api/admin/study-material-requests', async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = supabase
+      .from('study_material_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ data });
+  } catch (error) {
+    console.error('Error fetching study material requests:', error);
+    res.status(500).json({ error: 'Failed to fetch requests' });
+  }
+});
+
+// Get signed preview URL (Admin)
+app.get('/api/admin/study-material-preview-url', async (req, res) => {
+  try {
+    const { path } = req.query;
+    if (!path) return res.status(400).json({ error: 'Missing path' });
+    const { data, error } = await supabase.storage
+      .from('study-material-pending')
+      .createSignedUrl(path, 300);
+    if (error) throw error;
+    res.json({ signedUrl: data.signedUrl });
+  } catch (error) {
+    console.error('Error creating signed URL:', error);
+    res.status(500).json({ error: 'Failed to create signed URL' });
+  }
+});
+
+// Approve study material (Admin)
+app.post('/api/admin/study-material-approve', async (req, res) => {
+  try {
+    const { request_id, adminUserId } = req.body;
+    const { error } = await supabase
+      .from('study_material_requests')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', request_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error approving material:', error);
+    res.status(500).json({ success: false, error: 'Failed to approve material' });
+  }
+});
+
+// Reject study material (Admin)
+app.post('/api/admin/study-material-reject', async (req, res) => {
+  try {
+    const { request_id, admin_comment } = req.body;
+    const { error } = await supabase
+      .from('study_material_requests')
+      .update({ status: 'rejected', admin_comment, updated_at: new Date().toISOString() })
+      .eq('id', request_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error rejecting material:', error);
+    res.status(500).json({ success: false, error: 'Failed to reject material' });
+  }
+});
+
+
+
+
+
+
+
 
 // ✅ Check if the authenticated user has paid to view a Lost & Found contact
 app.get('/has-paid-contact', authenticateToken, async (req, res) => {
@@ -190,50 +1986,38 @@ app.get('/has-paid-contact', authenticateToken, async (req, res) => {
 });
 
 // ✅ Check if user has paid for contact unlock for a specific item
-app.get('/has-paid-contact', async (req, res) => {
-  const { user_id, item_id, item_title } = req.query;
-  if (!user_id || !item_id || !item_title) {
-    return res.status(400).json({ error: 'Missing user_id, item_id, or item_title' });
-  }
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('service_name', 'LostAndFound')
-      .eq('subservice_name', item_title)
-      .eq('payment_status', 'completed')
-      .limit(1);
-
-    if (error) {
-      console.error('Supabase fetch error:', error);
-      return res.status(500).json({ error: 'Database error' });
-    }
-
-    return res.json({ paid: !!(data && data.length) });
-  } catch (err) {
-    console.error('Unexpected error in /has-paid-contact:', err);
-    return res.status(500).json({ error: 'Unexpected server error' });
-  }
-});
 
 // ✅ Create a generic Razorpay order (amount in rupees -> converted to paise)
 app.post('/create-order', authenticateToken, async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
 
-    if (error) {
-      console.error('Supabase fetch error (alt):', error);
-      return res.status(500).json({ error: error.message });
+    if (!razorpay) {
+      return res.status(500).json({
+        error: 'Payment service not available - Razorpay not configured',
+      });
     }
 
-    return res.json({ orders: data });
+    if (!amount || !receipt) {
+      return res.status(400).json({ error: 'Missing amount or receipt' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount: amount * 100, // rupees -> paise
+      currency,
+      receipt,
+    });
+
+    console.log('✅ Razorpay order created:', order.id);
+    return res.json(order);
   } catch (err) {
-    console.error('Unexpected error in /orders:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
+    console.error('❌ Error creating Razorpay order:', err);
+    return res.status(500).json({ 
+      error: 'Failed to create order',
+      details: err.message 
+    });
   }
 });
-
 
 //Group Dashboard SplitSaathi
 app.post("/api/profile/ensure", async (req, res) => {
@@ -342,6 +2126,10 @@ app.post('/verify-payment', authenticateToken, async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+
+
+
 app.get("/api/group/:groupId", async (req, res) => {
   const { groupId } = req.params;
   const { user_id } = req.query;
@@ -754,5 +2542,5 @@ app.get('/api/service-visibility', async (req, res) => {
   
 
 /* ---------------------- SERVER ---------------------- */
-const PORT = 5001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

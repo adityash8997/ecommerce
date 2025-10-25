@@ -54,6 +54,9 @@ interface FormData {
   item_type: "lost" | "found"
 }
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
+
 const testimonials = [
   { text: "Lost my AirPods near Food Court — got them back in 2 hours!", author: "Rahul, CSE 3rd Year", icon: "🎧" },
   { text: "Someone found my file near Block 5. Thank you so much 💗", author: "Sneha, IT 2nd Year", icon: "📁" },
@@ -144,7 +147,7 @@ export default function LostAndFound() {
         for (const item of items) {
           try {
             const res = await fetch(
-              `${import.meta.env.VITE_LOST_FOUND_API_URL}/has-paid-lost-found-contact?user_id=${user.id}&item_id=${item.id}`,
+              `${HOSTED_URL}/api/has-paid-lost-found-contact?user_id=${user.id}&item_id=${item.id}`,
             )
             const result = await res.json()
             if (result.paid) {
@@ -404,7 +407,7 @@ export default function LostAndFound() {
         })
 
         try {
-          await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/send-contact-details`, {
+          await fetch(`${HOSTED_URL}/api/send-contact-details`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

@@ -12,6 +12,8 @@ import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -23,20 +25,19 @@ export default function Auth() {
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkUser = async () => {
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
       try {
-        const response = await fetch('/api/auth/session', {
+        const response = await fetch(`${HOSTED_URL}/api/auth/session`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         const data = await response.json();
-        
+
         if (data.session && data.profile?.is_email_verified) {
           navigate('/');
         } else if (data.session) {
@@ -48,7 +49,6 @@ export default function Auth() {
     };
     checkUser();
 
-    // Friendly message from callback
     const reason = new URLSearchParams(window.location.search).get('reason');
     if (reason === 'confirm_failed') {
       setNotice('The confirmation link is invalid or expired. You can request a new email below.');
@@ -58,11 +58,9 @@ export default function Auth() {
       setNotice('⚠️ Please verify your email before accessing services. Check your inbox for the verification link.');
     }
 
-    // Keep Supabase auth listener ONLY for OAuth flows (Google login)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          // This handles OAuth (Google) login only
           if (session.user?.email && !session.user.email.endsWith('@kiit.ac.in')) {
             await supabase.auth.signOut();
             setError('Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.');
@@ -70,21 +68,19 @@ export default function Auth() {
             return;
           }
 
-          // Store token for OAuth login
           localStorage.setItem('access_token', session.access_token);
 
-          // Check verification
-          const response = await fetch('/api/auth/session', {
+          const response = await fetch(`${HOSTED_URL}/api/auth/session`, {
             headers: {
               'Authorization': `Bearer ${session.access_token}`
             }
           });
-          
+
           const data = await response.json();
 
           if (data.profile?.is_email_verified) {
             toast.success('Successfully signed in!');
-            await fetch('/api/auth/verify-email-callback', {
+            await fetch(`${HOSTED_URL}/api/auth/verify-email-callback`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${session.access_token}`
@@ -100,7 +96,7 @@ export default function Auth() {
         } else if (event === 'USER_UPDATED') {
           const token = localStorage.getItem('access_token');
           if (token) {
-            await fetch('/api/auth/verify-email-callback', {
+            await fetch(`${HOSTED_URL}/api/auth/verify-email-callback`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -116,16 +112,15 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Google Login (keep using Supabase client for OAuth)
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
     setEmailError('');
-    
+
     toast.info('Please sign in with your KIIT College email (@kiit.ac.in)', {
       duration: 4000,
     });
-    
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -142,23 +137,21 @@ export default function Auth() {
     }
   };
 
-  // Validate KIIT email domain with friendly messages
   const validateKiitEmail = (email: string, showFriendly: boolean = false) => {
     if (!email.trim()) return null;
-    
+
     if (!email.endsWith('@kiit.ac.in')) {
-      return showFriendly 
+      return showFriendly
         ? '🚫 Access Denied! Please use your official KIIT ID (example: 2000000@kiit.ac.in).'
         : 'Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.';
     }
     return null;
   };
 
-  // Handle email input change with real-time validation
   const handleEmailChange = (value: string) => {
     setEmail(value);
     setError('');
-    
+
     const emailValidationError = validateKiitEmail(value, true);
     setEmailError(emailValidationError || '');
   };
@@ -169,7 +162,6 @@ export default function Auth() {
     setError('');
     setEmailError('');
 
-    // Validate KIIT email domain
     const emailValidationError = validateKiitEmail(email);
     if (emailValidationError) {
       setEmailError(emailValidationError);
@@ -180,7 +172,7 @@ export default function Auth() {
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(`${HOSTED_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName })
@@ -192,7 +184,6 @@ export default function Auth() {
         throw new Error(data.error || 'Sign up failed');
       }
 
-      // Store token if session exists
       if (data.session) {
         localStorage.setItem('access_token', data.session.access_token);
         toast.success('Account created successfully!');
@@ -202,7 +193,7 @@ export default function Auth() {
           duration: 6000,
         });
       }
-      
+
       setEmail('');
       setPassword('');
       setFullName('');
@@ -221,7 +212,6 @@ export default function Auth() {
     setError('');
     setEmailError('');
 
-    // Validate KIIT email domain
     const emailValidationError = validateKiitEmail(email);
     if (emailValidationError) {
       setEmailError(emailValidationError);
@@ -232,7 +222,7 @@ export default function Auth() {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/signin', {
+      const response = await fetch(`${HOSTED_URL}/api/auth/signin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -244,9 +234,8 @@ export default function Auth() {
         throw new Error(data.error || 'Sign in failed');
       }
 
-      // Store token
       localStorage.setItem('access_token', data.session.access_token);
-      
+
       toast.success('Successfully signed in!');
       navigate('/');
     } catch (error) {
@@ -265,8 +254,8 @@ export default function Auth() {
     }
     try {
       setLoading(true);
-      
-      const response = await fetch('/api/auth/resend-confirmation', {
+
+      const response = await fetch(`${HOSTED_URL}/api/auth/resend-confirmation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -301,8 +290,8 @@ export default function Auth() {
 
     try {
       setLoading(true);
-      
-      const response = await fetch('/api/auth/forgot-password', {
+
+      const response = await fetch(`${HOSTED_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -313,7 +302,7 @@ export default function Auth() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to send reset email');
       }
-      
+
       toast.success('Password reset email sent! Check your inbox.');
     } catch (err: any) {
       console.error('Password reset error:', err);
@@ -322,6 +311,7 @@ export default function Auth() {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-kiit-green-soft via-background to-campus-blue/20">

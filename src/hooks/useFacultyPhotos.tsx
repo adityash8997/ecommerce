@@ -10,12 +10,12 @@ export function useFacultyPhotos() {
     user?.email === "adityash8997@gmail.com" ||
     user?.email === "24155598@kiit.ac.in";
 
-  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
   const getPhotoUrl = async (facultyId: string) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/api/faculty/photo-url?facultyId=${facultyId}`,
+        `${HOSTED_URL}/api/faculty/photo-url?facultyId=${facultyId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -72,7 +72,7 @@ export function useFacultyPhotos() {
       formData.append("facultyId", facultyId);
       formData.append("photo", file);
 
-      const response = await fetch("/api/faculty/upload-photo", {
+      const response = await fetch(`${HOSTED_URL}/api/faculty/upload-photo`, {
         method: "POST",
         body: formData,
         credentials: "include",

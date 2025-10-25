@@ -20,6 +20,9 @@ interface LostAndFoundItem {
   contact_phone?: string;
 }
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
+
 export function useSecureLostAndFound() {
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
   const { user } = useAuth();
@@ -48,7 +51,7 @@ export function useSecureLostAndFound() {
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch('/api/lostfound', {
+      const response = await fetch(`${HOSTED_URL}/api/lostfound`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -74,7 +77,7 @@ export function useSecureLostAndFound() {
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch(`/api/lostfound/${id}`, {
+      const response = await fetch(`${HOSTED_URL}/api/lostfound/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
