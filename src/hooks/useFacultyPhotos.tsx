@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import { Button } from '@/components/ui/button';
+import { Linkedin } from 'lucide-react';
 
 // Cache for storing preloaded images and their status
 const imageCache = new Map<string, {
