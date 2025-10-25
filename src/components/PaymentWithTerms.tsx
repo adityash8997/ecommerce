@@ -33,7 +33,7 @@ export function PaymentWithTerms({
   const { requireTermsAcceptance, acceptTermsAndConditions } = usePolicyManager();
 
   const handlePaymentAttempt = () => {
-    const termsAccepted = requireTermsAcceptance(service_name);
+    const termsAccepted = requireTermsAcceptance();
     
     if (!termsAccepted) {
       setShowTerms(true);
