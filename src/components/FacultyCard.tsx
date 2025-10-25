@@ -260,9 +260,18 @@ export const FacultyCard = ({ faculty, isExpanded, onToggle }: FacultyCardProps)
                 {showLinkedIn && (
                   <div className="flex items-center gap-2.5 text-gray-700 dark:text-gray-300">
                     <Linkedin className="w-4 h-4 text-[#228B22] flex-shrink-0" />
-                    <a href={faculty.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-[#228B22] hover:underline break-all transition-colors">
-                      View Profile
-                    </a>
+                    {faculty.linkedin && faculty.linkedin !== 'No LinkedIn' ? (
+                      <a 
+                        href={faculty.linkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="hover:text-[#228B22] hover:underline break-all transition-colors"
+                      >
+                        View LinkedIn
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">Not Available</span>
+                    )}
                   </div>
                 )}
               </div>
