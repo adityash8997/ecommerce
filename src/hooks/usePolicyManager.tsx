@@ -9,7 +9,8 @@ interface PolicyAcceptance {
   terms_conditions_version: string;
   last_updated: string;
 }
-  const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
 export function usePolicyManager() {
   const { user, accessToken } = useAuth();
@@ -22,12 +23,12 @@ export function usePolicyManager() {
   const CURRENT_TERMS_VERSION = "1.0";
 
   useEffect(() => {
-    if (user) {
+    if (user && accessToken) {
       loadPolicyAcceptance();
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, accessToken]);
 
   const loadPolicyAcceptance = async () => {
     if (!user || !accessToken) return;
@@ -39,9 +40,21 @@ export function usePolicyManager() {
           'Content-Type': 'application/json'
         }
       });
+
+      if (!response.ok) {
+        // ✅ Handle 401/403 errors gracefully
+        if (response.status === 401 || response.status === 403) {
+          console.error('Authentication failed - token may be invalid');
+          toast.error('Session expired. Please sign in again.');
+          // ✅ Optionally trigger logout here
+          return;
+        }
+        throw new Error(`HTTP ${response.status}: Failed to load policy data`);
+      }
+
       const result = await response.json();
 
-      if (response.ok && result.policyData) {
+      if (result.policyData) {
         setPolicyData(result.policyData);
 
         if (
@@ -53,15 +66,19 @@ export function usePolicyManager() {
       } else {
         setShowPrivacyPolicy(true); // First-time user
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in loadPolicyAcceptance:', error);
+      toast.error('Failed to load policy data');
     } finally {
       setLoading(false);
     }
   };
 
   const acceptPrivacyPolicy = async () => {
-    if (!user || !accessToken) return;
+    if (!user || !accessToken) {
+      toast.error('Please sign in to continue');
+      return;
+    }
 
     try {
       const response = await fetch(`${HOSTED_URL}/api/policy/privacy`, {
@@ -77,6 +94,13 @@ export function usePolicyManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // ✅ Better error handling
+        if (response.status === 401 || response.status === 403) {
+          toast.error('Session expired. Please sign in again.');
+          return;
+        }
+        
         throw new Error(errorData.error || 'Policy update failed');
       }
 
@@ -89,14 +113,17 @@ export function usePolicyManager() {
 
       setShowPrivacyPolicy(false);
       toast.success('Privacy policy accepted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in acceptPrivacyPolicy:', error);
-      toast.error('Failed to accept privacy policy');
+      toast.error(error.message || 'Failed to accept privacy policy');
     }
   };
 
   const acceptTermsAndConditions = async () => {
-    if (!user || !accessToken) return false;
+    if (!user || !accessToken) {
+      toast.error('Please sign in to continue');
+      return false;
+    }
 
     try {
       const response = await fetch(`${HOSTED_URL}/api/policy/terms`, {
@@ -112,6 +139,13 @@ export function usePolicyManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // ✅ Better error handling
+        if (response.status === 401 || response.status === 403) {
+          toast.error('Session expired. Please sign in again.');
+          return false;
+        }
+        
         throw new Error(errorData.error || 'Terms update failed');
       }
 
@@ -125,9 +159,9 @@ export function usePolicyManager() {
       setShowTermsAndConditions(false);
       toast.success('Terms and conditions accepted');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in acceptTermsAndConditions:', error);
-      toast.error('Failed to accept terms and conditions');
+      toast.error(error.message || 'Failed to accept terms and conditions');
       return false;
     }
   };

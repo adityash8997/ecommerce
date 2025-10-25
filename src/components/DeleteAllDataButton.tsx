@@ -18,7 +18,7 @@ interface DeleteAllDataButtonProps {
 }
 
 export function DeleteAllDataButton({ onDataDeleted }: DeleteAllDataButtonProps) {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -39,7 +39,7 @@ export function DeleteAllDataButton({ onDataDeleted }: DeleteAllDataButtonProps)
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ user_id: user.id }),
         }

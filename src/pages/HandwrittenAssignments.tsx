@@ -42,7 +42,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const HandwrittenAssignments = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const { helpers, createAssignment, loading } = useAssignmentManager();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,7 +195,7 @@ const HandwrittenAssignments = () => {
       const response = await fetch(`${BASE_URL}/api/assignments/submit`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${user.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: formDataWithFiles,
       });
