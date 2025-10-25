@@ -16,40 +16,48 @@ export default function Feedback() {
   const [rating, setRating] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!category || !feedbackText.trim()) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  if (!category || !feedbackText.trim()) {
+    toast.error("Please fill in all required fields");
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      const { error } = await supabase.from('feedbacks').insert({
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
         category,
         feedback_text: feedbackText.trim(),
-        rating: rating || null,
-      });
+        rating,
+      }),
+    });
 
-      if (error) throw error;
+    const data = await res.json();
 
-      toast.success('Thanks for your feedback! Our team will review it soon 💚', {
-        duration: 5000,
-      });
+    if (!res.ok) throw new Error(data.message);
 
-      // Clear form
-      setCategory('');
-      setFeedbackText('');
-      setRating(null);
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast.error('Failed to submit feedback. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    toast.success("Thanks for your feedback! Our team will review it soon 💚", {
+      duration: 5000,
+    });
+
+    setCategory("");
+    setFeedbackText("");
+    setRating(null);
+  } catch (error) {
+    console.error("Error submitting feedback:", error);
+    toast.error("Failed to submit feedback. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
