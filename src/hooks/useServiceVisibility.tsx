@@ -6,6 +6,8 @@ export interface ServiceVisibility {
   replaced_text: string | null;
 }
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 export function useServiceVisibility() {
   const [visibilityMap, setVisibilityMap] = useState<Record<string, ServiceVisibility>>({});
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,7 @@ export function useServiceVisibility() {
   useEffect(() => {
     async function fetchVisibility() {
       try {
-        const response = await fetch('http://localhost:5001/api/service-visibility');
+        const response = await fetch(`${HOSTED_URL}/api/service-visibility`);
         const result = await response.json();
 
         if (!response.ok || !result.services) {

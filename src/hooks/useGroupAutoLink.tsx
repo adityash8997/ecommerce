@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
  * Hook to automatically link users to groups based on their roll number.
  * Now calls backend endpoint /api/groups/auto-link
  */
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 export function useGroupAutoLink() {
   const { user, session } = useAuth();
   const { toast } = useToast();
@@ -15,7 +17,7 @@ export function useGroupAutoLink() {
 
     const autoLinkGroups = async () => {
       try {
-        const response = await fetch('/api/groups/auto-link', {
+        const response = await fetch(`${HOSTED_URL}/api/groups/auto-link`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

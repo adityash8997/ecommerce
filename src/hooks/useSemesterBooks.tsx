@@ -37,6 +37,9 @@ interface BookSelection {
   };
 }
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
+
 export function useSemesterBooks() {
   const { invokeEdgeFunction, isAuthenticated } = useAuthenticatedFetch();
   const [books, setBooks] = useState<SemesterBook[]>([]);
@@ -46,15 +49,14 @@ export function useSemesterBooks() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
   const fetchSemesterData = async (semester: number) => {
     setIsLoading(true);
 
     try {
       const [booksResponse, combosResponse] = await Promise.all([
-        fetch(`${BASE_URL}/api/semester-books?semester=${semester}`),
-        fetch(`${BASE_URL}/api/semester-combos?semester=${semester}`),
+        fetch(`${HOSTED_URL}/api/semester-books?semester=${semester}`),
+        fetch(`${HOSTED_URL}/api/semester-combos?semester=${semester}`),
       ]);
 
       if (!booksResponse.ok) {
