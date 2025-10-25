@@ -1,7 +1,12 @@
+// hooks/useEvents.ts
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/lib/database-types';
+
+type CalendarEvent = Database['public']['Tables']['calendar_events']['Row'];
 
 export function useEvents() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -9,18 +14,20 @@ export function useEvents() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/events');
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch events');
+        const { data, error } = await supabase
+          .from("calendar_events") // Fixed typo
+          .select("*")
+          .eq("validation", true)
+          .order("event_date", { ascending: true });
+        
+        if (error) {
+          throw new Error(`Supabase error: ${error.message} (Check table name and permissions)`);
         }
-
-        setEvents(data.events || []);
+        setEvents(data || []);
         setError(null);
       } catch (err: any) {
         setError(err.message);
-        console.error('Fetch error:', err.message);
+        console.error("Fetch error:", err.message);
       } finally {
         setLoading(false);
       }

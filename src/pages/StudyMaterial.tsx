@@ -15,6 +15,7 @@ import {
   Bot,
   Search
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Footer } from "../components/Footer";
 import { Navbar } from "../components/Navbar";
 import { FilterBar } from "@/components/study-materials/FilterBar";
@@ -25,8 +26,7 @@ import { toast } from "sonner";
 import { semesters, years, semesterSubjects } from "@/data/studyMaterials";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {supabase} from "@/integrations/supabase/client"
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 
 // Types
 interface StudyMaterialItem {
@@ -200,46 +200,56 @@ export default function StudyMaterial() {
     getUser();
   }, []);
 
+  // Fetch materials from Supabase
   useEffect(() => {
-    fetchMaterials();
-  }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery]);
+    const fetchMaterials = async () => {
+      setLoading(true);
+      setError("");
 
-  const fetchMaterials = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const params = new URLSearchParams({
-        type: activeSection,
-        subject: selectedSubject !== 'all' ? selectedSubject : '',
-        semester: selectedSemester !== 'all' ? selectedSemester : '',
-        year: selectedYear !== 'all' ? selectedYear : '',
-        search: searchQuery
-      });
-
-      const response = await fetch(`${BASE_URL}/api/study-materials?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch materials: ${response.status} - ${errorText}`);
+      let query;
+      if (activeSection === "notes") {
+        query = supabase.from("notes").select("*").order("created_at", { ascending: false });
+      } else if (activeSection === "pyqs") {
+        query = supabase.from("pyqs").select("*").order("created_at", { ascending: false });
+      } else if (activeSection === "ppts") {
+        query = supabase.from("ppts").select("*").order("created_at", { ascending: false });
+      } else if (activeSection === "ebooks") {
+        query = supabase.from("ebooks").select("*").order("created_at", { ascending: false });
       }
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        throw new Error(`Invalid response: Expected JSON, got ${contentType} - ${text.slice(0, 100)}...`);
+      if (!query) {
+        setLoading(false);
+        return;
       }
 
-      const { data } = await response.json();
-      setMaterials(data || []);
-    } catch (err: any) {
-      setError(err.message);
-      toast.error('Failed to load materials');
-    } finally {
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Fetch error:", error);
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      const mapped = data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        subject: item.subject,
+        semester: item.semester,
+        branch: item.branch || "",
+        year: item.year || "",
+        views: item.views ?? 0,
+        uploadedBy: item.uploaded_by,
+        uploadDate: item.upload_date ?? item.created_at,
+        downloadUrl: activeSection === "ppts" ? item.ppt_url : item.pdf_url,
+      }));
+
+      setMaterials(mapped);
       setLoading(false);
-    }
-  };
-  
+    };
+
+    fetchMaterials();
+  }, [activeSection]);
   const availableSubjects =
     selectedSemester === "all"
       ? semesterSubjects.flatMap(s => s.subjects) // all subjects
@@ -337,6 +347,14 @@ const handleDownload = async (material: StudyMaterialItem) => {
       toast.error("Material not found");
       return;
     }
+
+    // Update views count in Supabase
+    const { error } = await supabase
+      .from(table)
+      .update({ views: material.views + 1 })
+      .eq("id", id);
+
+    if (error) throw error;
 
     // Update local state instantly
     setMaterials((prev) =>

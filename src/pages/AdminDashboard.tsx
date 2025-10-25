@@ -134,228 +134,290 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-  if (loading) return;
-  
-  if (!isAdmin) {
-    toast.error('Access denied - Admin privileges required');
-    navigate('/');
-    return;
-  }
-  
-  fetchData();
-  
-  // Set up SSE connection for real-time notifications
-  const eventSource = new EventSource('/api/admin/realtime-notifications');
-  
-  eventSource.onopen = () => {
-    console.log('✅ Admin real-time connection opened');
-    setIsRealtimeActive(true);
-  };
-  
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('🔔 Admin real-time notification:', data);
-      
-      if (data.type === 'connected') {
-        return; // Initial connection message
-      }
-      
-      // Refresh data when any change occurs
-      fetchData();
-      
-      // Show appropriate toast notification
-      if (data.eventType === 'INSERT') {
-        switch (data.type) {
-          case 'lost_found':
-            const newItem = data.data;
-            toast.success(`🕵️ New Lost & Found: ${newItem?.title || 'Untitled'}`, {
-              description: `${newItem?.item_type === 'lost' ? 'Lost' : 'Found'} item submitted`,
-              duration: 5000
-            });
-            break;
-            
-          case 'event':
-            const newEvent = data.data;
-            toast.success(`📅 New Event Request: ${newEvent?.event_name || 'Untitled'}`, {
-              description: `${newEvent?.society_name || 'Unknown society'} - ${newEvent?.category || 'Event'}`,
-              duration: 5000
-            });
-            break;
-            
-          case 'resale':
-            const newListing = data.data;
-            toast.success(`🛍️ New Resale Listing: ${newListing?.title || 'Untitled'}`, {
-              description: `Price: ₹${newListing?.price || '0'}`,
-              duration: 5000
-            });
-            break;
-            
-          case 'contact':
-            const newContact = data.data;
-            toast.success(`💬 New Contact Message: ${newContact?.subject || 'No subject'}`, {
-              description: `From: ${newContact?.full_name || 'Unknown'}`,
-              duration: 5000
-            });
-            break;
+    if (loading) return;
+    
+    if (!isAdmin) {
+      toast.error('Access denied - Admin privileges required');
+      navigate('/');
+      return;
+    }
+    
+    fetchData();
+    
+    // Set up real-time subscriptions with notifications for ALL modules
+    const lostFoundChannel = supabase
+      .channel('lost_found_requests_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'lost_found_requests'
+      }, (payload) => {
+        console.log('🔔 Lost & Found real-time event:', payload);
+        fetchData();
+        if (payload.eventType === 'INSERT') {
+          const newItem = payload.new as any;
+          toast.success(`🕵️ New Lost & Found: ${newItem?.title || 'Untitled'}`, {
+            description: `${newItem?.item_type === 'lost' ? 'Lost' : 'Found'} item submitted`,
+            duration: 5000
+          });
         }
-      }
+      })
+      .subscribe((status) => {
+        console.log('Lost & Found channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          setIsRealtimeActive(true);
+          console.log('✅ Real-time active for Lost & Found');
+        }
+      });
+
+    const eventRequestsChannel = supabase
+      .channel('event_requests_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interview_event_requests'
+      }, (payload) => {
+        console.log('🔔 Event Request real-time event:', payload);
+        fetchData();
+        if (payload.eventType === 'INSERT') {
+          const newEvent = payload.new as any;
+          toast.success(`📅 New Event Request: ${newEvent?.event_name || 'Untitled'}`, {
+            description: `${newEvent?.society_name || 'Unknown society'} - ${newEvent?.category || 'Event'}`,
+            duration: 5000
+          });
+        }
+      })
+      .subscribe();
+
+    const resaleListingsChannel = supabase
+      .channel('resale_listings_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'resale_listings'
+      }, (payload) => {
+        console.log('🔔 Resale Listing real-time event:', payload);
+        fetchData();
+        if (payload.eventType === 'INSERT') {
+          const newListing = payload.new as any;
+          toast.success(`🛍️ New Resale Listing: ${newListing?.title || 'Untitled'}`, {
+            description: `Price: ₹${newListing?.price || '0'}`,
+            duration: 5000
+          });
+        }
+      })
+      .subscribe();
+
+    const contactsChannel = supabase
+      .channel('contacts_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'contacts'
+      }, (payload) => {
+        console.log('🔔 Contact Submission real-time event:', payload);
+        fetchData();
+        if (payload.eventType === 'INSERT') {
+          const newContact = payload.new as any;
+          toast.success(`💬 New Contact Message: ${newContact?.subject || 'No subject'}`, {
+            description: `From: ${newContact?.full_name || 'Unknown'}`,
+            duration: 5000
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(lostFoundChannel);
+      supabase.removeChannel(eventRequestsChannel);
+      supabase.removeChannel(resaleListingsChannel);
+      supabase.removeChannel(contactsChannel);
+    };
+  }, [isAdmin, loading, navigate]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch lost & found requests
+      const { data: lfRequests } = await supabase
+        .from('lost_found_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      // Fetch event requests  
+      const { data: eventReqs } = await supabase
+        .from('interview_event_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Fetch resale listings
+      const { data: resaleReqs } = await supabase
+        .from('resale_listings')
+        .select(`
+          *,
+          seller:profiles!seller_id(full_name, email),
+          images:resale_listing_images(storage_path)
+        `)
+        .order('created_at', { ascending: false });
+
+      // Fetch contact submissions
+      const { data: contacts } = await supabase
+        .from('contacts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Fetch feedbacks
+      const { data: feedbackData } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      // Fetch admin actions
+      const { data: actions } = await supabase
+        .from('admin_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Fetch stats
+      const { count: totalUsers } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      setLostFoundRequests(lfRequests || []);
+      setEventRequests(eventReqs || []);
+      setResaleListings(resaleReqs || []);
+      setContactSubmissions(contacts || []);
+      setFeedbacks(feedbackData || []);
+      setAdminActions(actions || []);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const actionsToday = actions?.filter(action => 
+        action.created_at.startsWith(today)
+      ).length || 0;
+      
+      setStats({
+        totalPendingLostFound: lfRequests?.filter(r => r.status === 'pending').length || 0,
+        totalPendingEvents: eventReqs?.filter(r => r.status === 'pending').length || 0,
+        totalPendingResale: resaleReqs?.filter(r => r.status === 'pending').length || 0,
+        totalPendingContacts: contacts?.filter(c => c.status === 'new').length || 0,
+        totalActionsToday: actionsToday,
+        totalUsers: totalUsers || 0,
+        totalFeedbacks: feedbackData?.length || 0,
+        totalUnresolvedFeedbacks: feedbackData?.filter(f => !f.resolved).length || 0
+      });
+      
     } catch (error) {
-      console.error('Error parsing SSE message:', error);
+      console.error('Error fetching admin data:', error);
+      toast.error('Failed to load admin data');
     }
   };
-  
-  eventSource.onerror = (error) => {
-    console.error('❌ Admin SSE connection error:', error);
-    setIsRealtimeActive(false);
-    // EventSource will automatically try to reconnect
-  };
-  
-  // Cleanup on unmount
-  return () => {
-    console.log('Closing admin SSE connection');
-    eventSource.close();
-    setIsRealtimeActive(false);
-  };
-}, [isAdmin, loading, navigate]);
 
-// Replace fetchData function
-const fetchData = async () => {
-  try {
-    const response = await fetch('/api/admin/dashboard-data');
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch admin data');
+  const handleApprove = async (item: any, type: 'lost-found' | 'event') => {
+    try {
+      const functionName = type === 'lost-found' ? 'admin-approve-lost-item' : 'admin-approve-event';
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { 
+          requestId: item.id, 
+          adminUserId: user?.id 
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success(`${type === 'lost-found' ? 'Item' : 'Event'} approved and published successfully! ✅`);
+      setSelectedItem(null);
+      fetchData();
+    } catch (error) {
+      console.error('Approval error:', error);
+      toast.error('Failed to approve item');
     }
-    
-    const data = await response.json();
-    
-    setLostFoundRequests(data.lostFoundRequests);
-    setEventRequests(data.eventRequests);
-    setResaleListings(data.resaleListings);
-    setContactSubmissions(data.contactSubmissions);
-    setFeedbacks(data.feedbacks);
-    setAdminActions(data.adminActions);
-    setStats(data.stats);
-  } catch (error) {
-    console.error('Error fetching admin data:', error);
-    toast.error('Failed to load admin data');
-  }
-};
+  };
 
-// Replace handleApprove function
-const handleApprove = async (item: any, type: 'lost-found' | 'event') => {
-  try {
-    const response = await fetch('/api/admin/approve-item', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        itemId: item.id, 
-        type,
-        adminUserId: user?.id 
-      })
-    });
+  const handleResaleApprove = async (listing: any) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+        body: { 
+          listingId: listing.id,
+          action: 'approve',
+          adminUserId: user?.id
+        }
+      });
 
-    if (!response.ok) throw new Error('Approval failed');
-    
-    toast.success(`${type === 'lost-found' ? 'Item' : 'Event'} approved and published successfully! ✅`);
-    setSelectedItem(null);
-    fetchData();
-  } catch (error) {
-    console.error('Approval error:', error);
-    toast.error('Failed to approve item');
-  }
-};
+      if (error) throw error;
+      
+      toast.success('Listing approved and published! ✅');
+      setSelectedItem(null);
+      fetchData();
+    } catch (error) {
+      console.error('Resale approval error:', error);
+      toast.error('Failed to approve listing');
+    }
+  };
 
-// Replace handleResaleApprove function
-const handleResaleApprove = async (listing: any) => {
-  try {
-    const response = await fetch('/api/admin/approve-resale', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        listingId: listing.id,
-        adminUserId: user?.id
-      })
-    });
+  const handleResaleReject = async () => {
+    if (!selectedItem || !rejectReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
 
-    if (!response.ok) throw new Error('Approval failed');
-    
-    toast.success('Listing approved and published! ✅');
-    setSelectedItem(null);
-    fetchData();
-  } catch (error) {
-    console.error('Resale approval error:', error);
-    toast.error('Failed to approve listing');
-  }
-};
+    try {
+      const { data, error } = await supabase.functions.invoke('moderate-resale-listing', {
+        body: { 
+          listingId: selectedItem.id,
+          action: 'reject',
+          adminUserId: user?.id,
+          reason: rejectReason
+        }
+      });
 
-// Replace handleResaleReject function
-const handleResaleReject = async () => {
-  if (!selectedItem || !rejectReason.trim()) {
-    toast.error('Please provide a rejection reason');
-    return;
-  }
+      if (error) throw error;
+      
+      toast.success('Listing rejected and seller notified');
+      setShowRejectDialog(false);
+      setRejectReason('');
+      setSelectedItem(null);
+      fetchData();
+    } catch (error) {
+      console.error('Resale rejection error:', error);
+      toast.error('Failed to reject listing');
+    }
+  };
 
-  try {
-    const response = await fetch('/api/admin/reject-resale', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        listingId: selectedItem.id,
-        reason: rejectReason,
-        adminUserId: user?.id
-      })
-    });
+  const handleReject = async () => {
+    if (!selectedItem || !rejectReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
 
-    if (!response.ok) throw new Error('Rejection failed');
-    
-    toast.success('Listing rejected and seller notified');
-    setShowRejectDialog(false);
-    setRejectReason('');
-    setSelectedItem(null);
-    fetchData();
-  } catch (error) {
-    console.error('Resale rejection error:', error);
-    toast.error('Failed to reject listing');
-  }
-};
+    // Handle resale rejection separately
+    if (activeTab === 'resale') {
+      return handleResaleReject();
+    }
 
-// Replace handleReject function
-const handleReject = async () => {
-  if (!selectedItem || !rejectReason.trim()) {
-    toast.error('Please provide a rejection reason');
-    return;
-  }
+    try {
+      const functionName = activeTab === 'lost-found' ? 'admin-reject-lost-item' : 'admin-reject-event';
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: { 
+          requestId: selectedItem.id, 
+          reason: rejectReason,
+          adminUserId: user?.id 
+        }
+      });
 
-  if (activeTab === 'resale') {
-    return handleResaleReject();
-  }
-
-  try {
-    const response = await fetch('/api/admin/reject-item', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        itemId: selectedItem.id, 
-        type: activeTab,
-        reason: rejectReason,
-        adminUserId: user?.id 
-      })
-    });
-
-    if (!response.ok) throw new Error('Rejection failed');
-    
-    toast.success('Item rejected and user notified');
-    setShowRejectDialog(false);
-    setRejectReason('');
-    setSelectedItem(null);
-    fetchData();
-  } catch (error) {
-    console.error('Rejection error:', error);
-    toast.error('Failed to reject item');
-  }
-};
+      if (error) throw error;
+      
+      toast.success('Item rejected and user notified');
+      setShowRejectDialog(false);
+      setRejectReason('');
+      setSelectedItem(null);
+      fetchData();
+    } catch (error) {
+      console.error('Rejection error:', error);
+      toast.error('Failed to reject item');
+    }
+  };
 
   if (loading) {
     return (
@@ -424,60 +486,59 @@ const handleReject = async () => {
     return matchesSearch && matchesStatus;
   });
 
-// Replace handleContactStatusUpdate function
-const handleContactStatusUpdate = async (contactId: string, newStatus: 'new' | 'read' | 'resolved') => {
-  try {
-    const response = await fetch('/api/admin/update-contact-status', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId, status: newStatus })
-    });
+  const handleContactStatusUpdate = async (contactId: string, newStatus: 'new' | 'read' | 'resolved') => {
+    try {
+      const { error } = await supabase
+        .from('contacts')
+        .update({ status: newStatus })
+        .eq('id', contactId);
 
-    if (!response.ok) throw new Error('Update failed');
-    
-    toast.success(`Contact marked as ${newStatus}`);
-    fetchData();
-  } catch (error) {
-    console.error('Error updating contact status:', error);
-    toast.error('Failed to update contact status');
-  }
-};
+      if (error) throw error;
+      
+      toast.success(`Contact marked as ${newStatus}`);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating contact status:', error);
+      toast.error('Failed to update contact status');
+    }
+  };
 
-// Replace handleFeedbackResolve function
-const handleFeedbackResolve = async (feedbackId: string, resolved: boolean) => {
-  try {
-    const response = await fetch('/api/admin/resolve-feedback', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedbackId, resolved })
-    });
+  const handleFeedbackResolve = async (feedbackId: string, resolved: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ 
+          resolved,
+          resolved_at: resolved ? new Date().toISOString() : null
+        })
+        .eq('id', feedbackId);
 
-    if (!response.ok) throw new Error('Update failed');
-    
-    toast.success(resolved ? 'Feedback marked as resolved' : 'Feedback marked as unresolved');
-    fetchData();
-  } catch (error) {
-    console.error('Error updating feedback:', error);
-    toast.error('Failed to update feedback');
-  }
-};
+      if (error) throw error;
+      
+      toast.success(resolved ? 'Feedback marked as resolved' : 'Feedback marked as unresolved');
+      fetchData();
+    } catch (error) {
+      console.error('Error updating feedback:', error);
+      toast.error('Failed to update feedback');
+    }
+  };
 
-// Replace handleFeedbackDelete function
-const handleFeedbackDelete = async (feedbackId: string) => {
-  try {
-    const response = await fetch(`/api/admin/delete-feedback/${feedbackId}`, {
-      method: 'DELETE'
-    });
+  const handleFeedbackDelete = async (feedbackId: string) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .delete()
+        .eq('id', feedbackId);
 
-    if (!response.ok) throw new Error('Delete failed');
-    
-    toast.success('Feedback deleted successfully');
-    fetchData();
-  } catch (error) {
-    console.error('Error deleting feedback:', error);
-    toast.error('Failed to delete feedback');
-  }
-};
+      if (error) throw error;
+      
+      toast.success('Feedback deleted successfully');
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      toast.error('Failed to delete feedback');
+    }
+  };
 
   const filteredFeedbacks = feedbacks.filter(item => {
     const matchesSearch = item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||

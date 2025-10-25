@@ -25,25 +25,20 @@ export default function Auth() {
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) return;
-
-      try {
-        const response = await fetch('/api/auth/session', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Verify email is confirmed before allowing navigation
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_email_verified')
+          .eq('id', session.user.id)
+          .single();
         
-        const data = await response.json();
-        
-        if (data.session && data.profile?.is_email_verified) {
+        if (profile?.is_email_verified) {
           navigate('/');
-        } else if (data.session) {
+        } else {
           setNotice('Please verify your email before accessing KIIT Saathi. Check your inbox for the verification link.');
         }
-      } catch (error) {
-        console.error('Session check error:', error);
       }
     };
     checkUser();
@@ -58,37 +53,31 @@ export default function Auth() {
       setNotice('⚠️ Please verify your email before accessing services. Check your inbox for the verification link.');
     }
 
-    // Keep Supabase auth listener ONLY for OAuth flows (Google login)
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          // This handles OAuth (Google) login only
+          // Validate KIIT email domain for Google OAuth and other providers
           if (session.user?.email && !session.user.email.endsWith('@kiit.ac.in')) {
+            // Sign out the user immediately
             await supabase.auth.signOut();
             setError('Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.');
             toast.error('🚫 Only KIIT College Email IDs (@kiit.ac.in) are allowed to sign up or log in to KIIT Saathi.');
             return;
           }
 
-          // Store token for OAuth login
-          localStorage.setItem('access_token', session.access_token);
+          // Check if email is verified
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_email_verified')
+            .eq('id', session.user.id)
+            .single();
 
-          // Check verification
-          const response = await fetch('/api/auth/session', {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          });
-          
-          const data = await response.json();
-
-          if (data.profile?.is_email_verified) {
+          if (profile?.is_email_verified) {
             toast.success('Successfully signed in!');
-            await fetch('/api/auth/verify-email-callback', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`
-              }
+            // Call verify-email-callback to ensure verification is marked
+            await supabase.functions.invoke('verify-email-callback', {
+              headers: { Authorization: `Bearer ${session.access_token}` }
             });
             navigate('/');
           } else {
@@ -98,13 +87,11 @@ export default function Auth() {
         } else if (event === 'PASSWORD_RECOVERY') {
           toast.success('Check your email for password recovery instructions.');
         } else if (event === 'USER_UPDATED') {
-          const token = localStorage.getItem('access_token');
-          if (token) {
-            await fetch('/api/auth/verify-email-callback', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
+          // Mark email as verified
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase.functions.invoke('verify-email-callback', {
+              headers: { Authorization: `Bearer ${session.access_token}` }
             });
           }
           toast.success('Email confirmed successfully!');
@@ -116,12 +103,13 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Google Login (keep using Supabase client for OAuth)
+  // Google Login with pre-validation (note: we can't validate the Google email before OAuth)
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
     setEmailError('');
     
+    // Show info toast about KIIT email requirement
     toast.info('Please sign in with your KIIT College email (@kiit.ac.in)', {
       duration: 4000,
     });
@@ -140,6 +128,8 @@ export default function Auth() {
       toast.error(errorMsg);
       console.error('Google login error:', error);
     }
+    
+    // Note: Loading state will be cleared by auth state change or component unmount
   };
 
   // Validate KIIT email domain with friendly messages
@@ -157,8 +147,9 @@ export default function Auth() {
   // Handle email input change with real-time validation
   const handleEmailChange = (value: string) => {
     setEmail(value);
-    setError('');
+    setError(''); // Clear general errors
     
+    // Real-time validation
     const emailValidationError = validateKiitEmail(value, true);
     setEmailError(emailValidationError || '');
   };
@@ -180,29 +171,27 @@ export default function Auth() {
     }
 
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://ksaathi.vercel.app/auth/callback",
+          data: {
+            full_name: fullName,
+          },
+        },
       });
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Sign up failed');
-      }
-
-      // Store token if session exists
-      if (data.session) {
-        localStorage.setItem('access_token', data.session.access_token);
-        toast.success('Account created successfully!');
-        navigate('/');
-      } else {
+      if (data?.user && !data.session) {
         toast.success('🎉 Almost there! Check your email for the confirmation link to activate your account.', {
           duration: 6000,
         });
+      } else if (data?.session) {
+        toast.success('Account created successfully!');
+        navigate('/');
       }
-      
       setEmail('');
       setPassword('');
       setFullName('');
@@ -232,21 +221,13 @@ export default function Auth() {
     }
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await response.json();
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Sign in failed');
-      }
-
-      // Store token
-      localStorage.setItem('access_token', data.session.access_token);
-      
       toast.success('Successfully signed in!');
       navigate('/');
     } catch (error) {
@@ -265,19 +246,8 @@ export default function Auth() {
     }
     try {
       setLoading(true);
-      
-      const response = await fetch('/api/auth/resend-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to resend confirmation');
-      }
-
+      const { error } = await supabase.auth.resend({ type: 'signup', email });
+      if (error) throw error;
       toast.success('Confirmation email resent. Please check your inbox.');
     } catch (err: any) {
       console.error('Resend confirmation error:', err);
@@ -301,18 +271,11 @@ export default function Auth() {
 
     try {
       setLoading(true);
-      
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send reset email');
-      }
+      
+      if (error) throw error;
       
       toast.success('Password reset email sent! Check your inbox.');
     } catch (err: any) {

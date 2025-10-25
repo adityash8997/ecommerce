@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingUp, TrendingDown, Users, DollarSign, ArrowRight, CheckCircle, RefreshCw } from "lucide-react";
 
 interface Balance {
@@ -39,8 +40,39 @@ export const ViewBalances = ({ groupId, currency }: ViewBalancesProps) => {
     console.log('ViewBalances useEffect triggered, loading balances...');
     loadBalances();
     
-    // Optionally, you can implement polling or SSE for real-time updates
-    // For now, just fetch on mount and when groupId changes
+    // Set up realtime subscription for expense changes
+    const channel = supabase
+      .channel('expense-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+          filter: `group_id=eq.${groupId}`
+        },
+        () => {
+          console.log('Expense changed, reloading balances...');
+          loadBalances();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expense_splits',
+        },
+        () => {
+          console.log('Expense splits changed, reloading balances...');
+          loadBalances();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [groupId]);
 
   const calculateSettlements = (balances: Balance[]): Settlement[] => {
@@ -89,14 +121,18 @@ export const ViewBalances = ({ groupId, currency }: ViewBalancesProps) => {
   const loadBalances = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/group/${groupId}/balances`, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch balances');
-      const result = await response.json();
-      const balanceData = result.data || [];
+      const { data, error } = await supabase.rpc('calculate_group_balances', {
+        _group_id: groupId
+      });
+
+      if (error) throw error;
+      const balanceData = data || [];
       setBalances(balanceData);
+      
       // Calculate settlements with the updated balance data
       const settlements = calculateSettlements(balanceData);
       setSettlements(settlements);
+      
       console.log('Balance data loaded:', balanceData);
       console.log('Creditors (owe money):', balanceData.filter(b => b.net_balance > 0.01));
       console.log('Debtors (should receive money):', balanceData.filter(b => b.net_balance < -0.01));

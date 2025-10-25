@@ -291,12 +291,12 @@ export const ServicesGrid = () => {
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-poppins font-bold text-gradient mb-4 sm:mb-6">
             Everything You Need
-            <span className="block">In One Platform</span>
+            <span className="block">In One App</span>
           </h2>
 
           <p className="text-sm sm:text-base md:text-lg lg:text-xl text-black max-w-3xl mx-auto leading-relaxed px-2 sm:px-4">
             From academic support to daily essentials, we have built the complete ecosystem
-            to enrich your KIIT experience. <span className="font-semibold text-kiit-green block">Because campus life is hectic enough already.</span>
+            to enrich your KIIT experience. <span className="font-semibold text-kiit-green">Because campus life is hectic enough already.</span>
           </p>
         </div>
 

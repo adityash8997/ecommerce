@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useSecureDatabase } from './useSecureDatabase';
 
@@ -25,12 +26,17 @@ export function useSecureLostAndFound() {
   const { user } = useAuth();
   const { loading, error, executeQuery, clearError } = useSecureDatabase();
 
-  // ✅ Fetch active items from backend
   const fetchItems = async () => {
     const result = await executeQuery(async () => {
-      const response = await fetch('/api/lostfound');
-      const data = await response.json();
-      return data.items as LostAndFoundItem[];
+      // Always use the main table for now - the views may not be ready yet
+      const { data, error } = await supabase
+        .from('lost_and_found_items')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as LostAndFoundItem[];
     }, { 
       fallback: [] as LostAndFoundItem[],
       retries: 3 
@@ -41,53 +47,54 @@ export function useSecureLostAndFound() {
     }
   };
 
-  // ✅ Add a new item (requires user)
   const addItem = async (itemData: Omit<LostAndFoundItem, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'status'>) => {
     if (!user) {
       throw new Error('Authentication required to add items');
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch('/api/lostfound', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase
+        .from('lost_and_found_items')
+        .insert({
+          ...itemData,
           user_id: user.id,
-          ...itemData
-        })
-      });
-      const data = await response.json();
-      return data.item as LostAndFoundItem;
+          status: 'active'
+        } as any)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as LostAndFoundItem;
     });
 
     if (result) {
-      await fetchItems(); // Refresh after adding
+      // Refresh the list
+      await fetchItems();
       return result;
     }
     return null;
   };
 
-  // ✅ Update an item
   const updateItem = async (id: string, updates: Partial<LostAndFoundItem>) => {
     if (!user) {
       throw new Error('Authentication required to update items');
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch(`/api/lostfound/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.id,
-          ...updates
-        })
-      });
-      const data = await response.json();
-      return data.item as LostAndFoundItem;
+      const { data, error } = await supabase
+        .from('lost_and_found_items')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     });
 
     if (result) {
-      await fetchItems(); // Refresh after update
+      // Refresh the list
+      await fetchItems();
       return result;
     }
     return null;

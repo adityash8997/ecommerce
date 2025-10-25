@@ -55,32 +55,44 @@ export function useAssignmentManager() {
 
   // Fetch user's assignments
   const fetchAssignments = async () => {
-  if (!user) return;
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('assignment_requests')
+        .select(`
+          *,
+          assignment_files (*)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-  setLoading(true);
-  try {
-    const response = await fetch(`/api/assignments?user_id=${user.id}`);
-    const result = await response.json();
-    setAssignments(result.assignments || []);
-  } catch (error) {
-    console.error('Error fetching assignments:', error);
-    toast.error('Failed to load assignments');
-  } finally {
-    setLoading(false);
-  }
-};
-
+      if (error) throw error;
+      setAssignments(data || []);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      toast.error('Failed to load assignments');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Fetch available helpers
   const fetchHelpers = async () => {
-  try {
-    const response = await fetch('/api/helpers');
-    const result = await response.json();
-    setHelpers(result.helpers || []);
-  } catch (error) {
-    console.error('Error fetching helpers:', error);
-  }
-};
+    try {
+      const { data, error } = await supabase
+        .from('assignment_helpers')
+        .select('*')
+        .eq('is_active', true)
+        .order('rating', { ascending: false });
+
+      if (error) throw error;
+      setHelpers(data || []);
+    } catch (error) {
+      console.error('Error fetching helpers:', error);
+    }
+  };
 
   // Upload files to storage
   const uploadFiles = async (files: File[], assignmentId: string): Promise<string[]> => {
@@ -124,44 +136,68 @@ export function useAssignmentManager() {
 
   // Create assignment request
   const createAssignment = async (formData: any, files: File[]) => {
-  if (!user) {
-    toast.error('Please log in to create assignment request');
-    return null;
-  }
+    if (!user) {
+      toast.error('Please log in to create assignment request');
+      return null;
+    }
 
-  setLoading(true);
-  try {
-    const response = await fetch('/api/assignments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: user.id,
-        ...formData
-      })
-    });
+    setLoading(true);
+    try {
+      // Calculate pricing
+      const basePrice = formData.pages * (formData.urgent ? 15 : 10);
+      const matchingFee = formData.matchHandwriting ? 20 : 0;
+      const deliveryFee = formData.deliveryMethod === 'hostel_delivery' ? 10 : 0;
+      const totalPrice = basePrice + matchingFee + deliveryFee;
 
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Failed to create assignment');
+      // Create assignment request
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('assignment_requests')
+        .insert({
+          user_id: user.id,
+          student_name: formData.name,
+          whatsapp_number: formData.whatsapp,
+          year: formData.year,
+          branch: formData.branch,
+          pages: parseInt(formData.pages),
+          deadline: formData.deadline,
+          hostel_name: formData.hostel,
+          room_number: formData.room,
+          special_instructions: formData.notes,
+          is_urgent: formData.urgent,
+          match_handwriting: formData.matchHandwriting,
+          delivery_method: formData.deliveryMethod || 'hostel_delivery',
+          total_price: totalPrice
+        })
+        .select()
+        .single();
 
-    toast.success('Assignment request created successfully!');
-    fetchAssignments(); // Refresh list
-    return result.assignment;
-  } catch (error) {
-    console.error('Error creating assignment:', error);
-    toast.error('Failed to create assignment request');
-    throw error;
-  } finally {
-    setLoading(false);
-  }
-};
+      if (assignmentError) throw assignmentError;
+
+      // Upload files if any
+      if (files.length > 0) {
+        await uploadFiles(files, assignment.id);
+      }
+
+      toast.success('Assignment request created successfully!');
+      fetchAssignments(); // Refresh the list
+      return assignment;
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      toast.error('Failed to create assignment request');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get download URL for assignment file
   const getFileUrl = async (filePath: string) => {
-  const response = await fetch(`/api/files/signed-url?path=${encodeURIComponent(filePath)}`);
-  const result = await response.json();
-  return result.url;
-};
+    const { data } = await supabase.storage
+      .from('assignment-files')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
 
+    return data?.signedUrl;
+  };
 
   useEffect(() => {
     fetchHelpers();
