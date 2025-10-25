@@ -13,6 +13,7 @@ import authRoute from './routes/authRoute.js'
 import lostFoundRoute from './routes/lost-foundRoute.js'
 
 import createAdminRoutes, { createFeedbackRoute } from "./routes/AdminRoute.js";
+import createSemBooksRoutes from "./routes/SemBooksRoutes.js";
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 
@@ -29,13 +30,7 @@ const allowedOrigins = [
 ];
 
 // ✅ MIDDLEWARE MUST COME FIRST (before any routes)
-app.use(cookieParser());
-app.use("/api/admin", adminRoutes);
-app.use("/", SemBooksRoutes); 
-app.use("/",FacultyRoute);
-app.use("/",StudyMaterialRoute);
-app.use("/",authRoute);
-app.use("/",lostFoundRoute);
+
 
 
 app.use(express.json());
@@ -98,6 +93,14 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+app.use(cookieParser());
+app.use("/api/admin", createAdminRoutes(supabase));
+app.use("/", createSemBooksRoutes(supabase)); 
+app.use("/",FacultyRoute);
+app.use("/",StudyMaterialRoute);
+app.use("/",authRoute);
+app.use("/",lostFoundRoute);
 
 // Razorpay instance
 let razorpay = null;
