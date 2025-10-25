@@ -1822,10 +1822,11 @@ app.get("/api/study-materials", async (req, res) => {
 
     // Select table based on type
     const tableName = type; // Maps directly to table names: pyqs, notes, ebooks, ppts
+    console.log(`Fetching materials from table: ${tableName}`);
 
     let query = supabase
       .from(tableName)
-      .select('id, title, subject, semester, branch, year, uploaded_by, views, pdf_url, created_at')
+      .select('id, title, subject, semester, branch, year, uploaded_by, views, pdf_url, storage_path, created_at')
       .eq('status', 'approved') // Assuming tables have a status column
       .order('created_at', { ascending: false });
 
@@ -1841,20 +1842,39 @@ app.get("/api/study-materials", async (req, res) => {
     // Generate signed URLs for pdf_url (stored as storage_path in the bucket)
     const materialsWithSignedUrls = await Promise.all(
       data.map(async (material) => {
-        if (material.pdf_url) {
-          const folder = type; // Folder in bucket: pyqs, notes, ebooks, ppts
-          const storagePath = `${folder}/${material.pdf_url}`;
+        // Find the file path from any possible column
+        const filePath = material.storage_path || material.pdf_url || material.downloadUrl || material.url || null;
+        
+        if (!filePath) {
+          console.error(`No file path found for material ID ${material.id}:`, material);
+          return { ...material, pdf_url: null };
+        }
+
+        try {
+          // Use the storage_path directly without modifying it
+          const storagePath = filePath.replace(/^\/+/, ''); // just remove leading slashes if any
+          
+          console.log(`Generating signed URL for material ${material.id}:`, {
+            originalPath: filePath,
+            finalStoragePath: storagePath,
+            materialType: type
+          });
+
           const { data: signedUrlData, error: signedUrlError } = await supabase.storage
             .from('study-materials')
-            .createSignedUrl(storagePath, 300); // 5-minute expiry
+            .createSignedUrl(storagePath, 3000); // 50-minute expiry
 
           if (signedUrlError) {
             console.error(`Error creating signed URL for ${storagePath}:`, signedUrlError);
             return { ...material, pdf_url: null };
           }
+
+          console.log(`Successfully generated signed URL for material ${material.id}`);
           return { ...material, pdf_url: signedUrlData.signedUrl };
+        } catch (error) {
+          console.error(`Error processing material ${material.id}:`, error);
+          return { ...material, pdf_url: null };
         }
-        return { ...material, pdf_url: null };
       })
     );
 
@@ -1950,30 +1970,38 @@ app.post('/api/study-materials/upload', async (req, res) => {
 // Fetch study material requests (Admin)
 app.post('/api/admin/study-material-approve', async (req, res) => {
   try {
-    const { request_id, adminUserId } = req.body;
+    const { request_id, folder_type, adminUserId } = req.body;
 
-    // Fetch the request to get storage_path
+    // Validate folder_type
+    const validTypes = ['pyqs', 'notes', 'ebooks', 'ppts'];
+    if (!request_id || !folder_type || !validTypes.includes(folder_type)) {
+      return res.status(400).json({ error: 'Missing or invalid required fields' });
+    }
+
+    // Fetch the request from the appropriate table
+    const tableName = folder_type;
     const { data: request, error: fetchError } = await supabase
-      .from('study_material_requests')
-      .select('storage_path, filename')
+      .from(tableName)
+      .select('pdf_url')
       .eq('id', request_id)
       .single();
 
     if (fetchError || !request) throw new Error('Request not found');
 
-    // Move file to approved bucket
-    const { data: moveData, error: moveError } = await supabase.storage
-      .from('study-material-pending')
-      .move(request.storage_path, `study-material-approved/${request.storage_path}`);
+    // Move file to approved folder
+    const currentPath = `${folder_type}/pending/${request.pdf_url}`;
+    const newPath = `${folder_type}/${request.pdf_url}`;
+    const { error: moveError } = await supabase.storage
+      .from('study-materials')
+      .move(currentPath, newPath);
 
     if (moveError) throw moveError;
 
-    // Update the request with new status and storage_path
+    // Update the request status
     const { error: updateError } = await supabase
-      .from('study_material_requests')
+      .from(tableName)
       .update({
         status: 'approved',
-        storage_path: `study-material-approved/${request.storage_path}`,
         updated_at: new Date().toISOString()
       })
       .eq('id', request_id);
@@ -2021,12 +2049,44 @@ app.post('/api/admin/study-material-approve', async (req, res) => {
 // Reject study material (Admin)
 app.post('/api/admin/study-material-reject', async (req, res) => {
   try {
-    const { request_id, admin_comment } = req.body;
-    const { error } = await supabase
-      .from('study_material_requests')
-      .update({ status: 'rejected', admin_comment, updated_at: new Date().toISOString() })
+    const { request_id, folder_type, admin_comment } = req.body;
+
+    // Validate folder_type
+    const validTypes = ['pyqs', 'notes', 'ebooks', 'ppts'];
+    if (!request_id || !folder_type || !validTypes.includes(folder_type)) {
+      return res.status(400).json({ error: 'Missing or invalid required fields' });
+    }
+
+    // Fetch the request
+    const tableName = folder_type;
+    const { data: request, error: fetchError } = await supabase
+      .from(tableName)
+      .select('pdf_url')
+      .eq('id', request_id)
+      .single();
+
+    if (fetchError || !request) throw new Error('Request not found');
+
+    // Remove file from storage
+    const storagePath = `${folder_type}/pending/${request.pdf_url}`;
+    const { error: removeError } = await supabase.storage
+      .from('study-materials')
+      .remove([storagePath]);
+
+    if (removeError) throw removeError;
+
+    // Update request status
+    const { error: updateError } = await supabase
+      .from(tableName)
+      .update({
+        status: 'rejected',
+        admin_comment,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', request_id);
-    if (error) throw error;
+
+    if (updateError) throw updateError;
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error rejecting material:', error);
