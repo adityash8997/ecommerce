@@ -754,5 +754,5 @@ app.get('/api/service-visibility', async (req, res) => {
   
 
 /* ---------------------- SERVER ---------------------- */
-const PORT = 5001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
