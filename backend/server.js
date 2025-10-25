@@ -47,7 +47,12 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 // ✅ Add request logger
@@ -1161,6 +1166,18 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
       foundDate,
     } = req.body;
 
+    console.log('Application submission data:', {
+      applicantUserId,
+      lostItemId,
+      applicantName,
+      applicantEmail,
+      applicantPhone,
+      foundPhotoUrl: foundPhotoUrl ? 'provided' : 'missing',
+      foundDescription: foundDescription ? 'provided' : 'missing',
+      foundLocation,
+      foundDate
+    });
+
     if (!lostItemId || !lostItemOwnerEmail || !applicantName || !applicantEmail || !applicantPhone || !foundPhotoUrl || !foundDescription || !foundLocation || !foundDate) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -1183,15 +1200,27 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
       .single();
 
     if (insertError) {
+      console.error('Database insert error details:', {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      });
+      
       if (insertError.code === '23505' || `${insertError.message}`.includes('unique_application_per_user_per_item')) {
         return res.status(409).json({
           error: 'You have already applied for this lost item.',
           type: 'duplicate',
         });
       }
-      console.error('Database insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to save application' });
+      
+      return res.status(500).json({ 
+        error: 'Failed to save application',
+        details: insertError.message 
+      });
     }
+
+    console.log('Application submitted successfully:', applicationData.id);
 
     return res.json({
       success: true,
@@ -1200,7 +1229,10 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
     });
   } catch (error) {
     console.error('Error submitting application:', error);
-    return res.status(500).json({ error: 'Failed to submit application' });
+    return res.status(500).json({ 
+      error: 'Failed to submit application',
+      details: error.message 
+    });
   }
 });
 
@@ -1688,10 +1720,19 @@ app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing privacy_policy_version' });
     }
 
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
     const updateData = {
       user_id,
       privacy_policy_accepted: true,
       privacy_policy_version,
+      terms_conditions_accepted: existing?.terms_conditions_accepted || false,
+      terms_conditions_version: existing?.terms_conditions_version || '',
       updated_at: new Date().toISOString(),
     };
 
@@ -1699,12 +1740,18 @@ app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
       .from('policy_acceptances')
       .upsert(updateData, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error details:', error);
+      throw error;
+    }
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Error accepting privacy policy:', err);
-    return res.status(500).json({ error: 'Failed to accept privacy policy' });
+    return res.status(500).json({ 
+      error: 'Failed to accept privacy policy',
+      details: err.message 
+    });
   }
 });
 
@@ -1718,8 +1765,17 @@ app.post('/api/policy/terms', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing terms_conditions_version' });
     }
 
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
     const updateData = {
       user_id,
+      privacy_policy_accepted: existing?.privacy_policy_accepted || false,
+      privacy_policy_version: existing?.privacy_policy_version || '',
       terms_conditions_accepted: true,
       terms_conditions_version,
       updated_at: new Date().toISOString(),
@@ -1729,12 +1785,18 @@ app.post('/api/policy/terms', authenticateToken, async (req, res) => {
       .from('policy_acceptances')
       .upsert(updateData, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error details:', error);
+      throw error;
+    }
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Error accepting terms:', err);
-    return res.status(500).json({ error: 'Failed to accept terms' });
+    return res.status(500).json({ 
+      error: 'Failed to accept terms',
+      details: err.message 
+    });
   }
 });
 
@@ -2192,6 +2254,146 @@ app.get('/api/events', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Error fetching events:', err);
     res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+app.post('/api/events/add', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ success: false, message: 'Missing authorization header' });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user)
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+    const { formData } = req.body;
+    if (!formData?.event_name || !formData?.event_date)
+      return res.status(400).json({ success: false, message: 'Event name and date are required' });
+
+    // ✅ Check if user is admin
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin, email')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) throw profileError;
+
+    const reqs = formData.requirements || [];
+
+    if (profile?.is_admin) {
+      // Admin → directly publish to calendar
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert([
+          {
+            ...formData,
+            requirements: reqs,
+            validation: true,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        message: 'Event published successfully!',
+        data,
+      });
+    } else {
+      // Regular user → create request
+      const { error } = await supabase
+        .from('interview_event_requests')
+        .insert({
+          ...formData,
+          requirements: reqs,
+          requester_email: user.email,
+          user_id: user.id,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      return res.json({
+        success: true,
+        message:
+          "Event submitted for review! You'll be notified once it's approved.",
+      });
+    }
+  } catch (error) {
+    console.error('Event add error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post("/api/interviews/add", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+
+    const { formData } = req.body;
+    if (!formData?.interview_name || !formData?.interview_date) {
+      return res.status(400).json({ success: false, message: "Interview name and date are required" });
+    }
+
+    const reqs = formData.requirements
+      ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
+      : [];
+
+    // Get user profile to check admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .single();
+
+    if (profile?.is_admin) {
+      const { data, error } = await supabase
+        .from("interview_events")
+        .insert([{ ...formData, requirements: reqs, validation: true }])
+        .select();
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({ success: true, message: "Interview added successfully", data });
+    } else {
+      const { error } = await supabase
+        .from("interview_events")
+        .insert({
+          ...formData,
+          requirements: reqs,
+          
+          
+        });
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({
+        success: true,
+        message: "Interview submitted for review! You'll be notified once it's approved",
+      });
+    }
+  } catch (err) {
+    console.error("Interview submit error:", err);
+    res.status(500).json({ success: false, message: "Failed to submit interview" });
   }
 });
 
