@@ -1860,6 +1860,8 @@ app.get("/api/study-materials", async (req, res) => {
             materialType: type
           });
 
+          console.log(`Attempting to create signed URL for storage path: ${storagePath}`);
+          
           const { data: signedUrlData, error: signedUrlError } = await supabase.storage
             .from('study-materials')
             .createSignedUrl(storagePath, 3000); // 50-minute expiry
@@ -1869,7 +1871,15 @@ app.get("/api/study-materials", async (req, res) => {
             return { ...material, pdf_url: null };
           }
 
-          console.log(`Successfully generated signed URL for material ${material.id}`);
+          console.log('Generated URL Details:', {
+            materialId: material.id,
+            title: material.title,
+            originalPath: filePath,
+            storagePath: storagePath,
+            signedUrl: signedUrlData.signedUrl,
+            expiresIn: '50 minutes'
+          });
+          
           return { ...material, pdf_url: signedUrlData.signedUrl };
         } catch (error) {
           console.error(`Error processing material ${material.id}:`, error);

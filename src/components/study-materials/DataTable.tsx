@@ -107,9 +107,6 @@ export const DataTable: React.FC<DataTableProps> = ({
               {/* ✅ Show year column if ANY material has year data */}
               {hasYearData && <TableHead className="font-semibold">Year</TableHead>}
               {/* ✅ Show views column if data exists */}
-              {hasViewsData && <TableHead className="font-semibold">Views</TableHead>}
-              <TableHead className="font-semibold">Uploaded By</TableHead>
-              <TableHead className="font-semibold">Upload Date</TableHead>
               <TableHead className="font-semibold text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -140,21 +137,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                     </span>
                   </TableCell>
                 )}
-                {/* ✅ Show year cell if column exists */}
-                {hasYearData && (
+
                   <TableCell>
                     <span className="text-sm text-muted-foreground">
                       {material.year || "N/A"}
                     </span>
                   </TableCell>
-                )}
-                <TableCell className="text-sm text-muted-foreground">
-                  {material.uploadedBy}
-                </TableCell>
                 
-                <TableCell className="text-sm text-muted-foreground">
-                  {formatDate(material.uploadDate)}
-                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 justify-center">
                     <Button
