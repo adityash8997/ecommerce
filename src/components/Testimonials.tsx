@@ -2,14 +2,14 @@ import { Star, Quote } from "lucide-react";
 
 const testimonials = [
   {
-    name: "Aditya Sharma",
+    name: "Abhishek Raj",
     year: "B.Tech CSE, 2nd Year",
     content: "The KIIT Saathi AI Assistant is incredible! Available 24/7 to answer any question about campus life, academics, or procedures. It's like having a personal guide!",
     rating: 5,
     avatar: "👩‍💻"
   },
   {
-    name: "Krishna Mohanty",
+    name: "Enakshy Mondal",
     year: "B.Tech, 3rd Year",
     content: "Found all my study materials in one place! PYQs, notes, and curated YouTube playlists - everything I need for exam prep.",
     rating: 5,
@@ -23,14 +23,14 @@ const testimonials = [
     avatar: "👩‍🔬"
   },
   {
-    name: "Prajjwal Patel",
+    name: "Shubham",
     year: "B.Tech CSE, 2nd Year",
     content: "The Campus Map feature helped me navigate KIIT so easily as a fresher! No more getting lost between buildings or missing classes due to wrong directions.",
     rating: 5,
     avatar: "👨‍🔧"
   },
   {
-    name: "Diya Dasgupta",
+    name: "Sumit Jha",
     year: "BDS, 2nd Year",
     content: "Never miss any society events or sports competitions now! The KIIT Societies calendar keeps me updated on everything happening on campus. One place for all events!",
     rating: 5,
