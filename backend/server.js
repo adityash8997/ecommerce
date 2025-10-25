@@ -23,7 +23,10 @@ const allowedOrigins = [
   "https://kiitsaathi.vercel.app",
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
   "https://ksaathi.vercel.app",
-  "https://kiitsaathi.in"
+  "https://kiitsaathi.in",
+  "https://kiitsaathi-hosted.onrender.com",
+  "http://localhost:3000",
+  "http://localhost:3001"
 ];
 
 // ✅ MIDDLEWARE MUST COME FIRST (before any routes)
@@ -39,13 +42,22 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // In development, be more permissive with CORS
+    if (process.env.NODE_ENV === 'development' || origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    
+    // In production, strictly check against allowed origins
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
 // ✅ Add request logger
@@ -61,7 +73,16 @@ async function authenticateToken(req, res, next) {
 
   try {
     // ✅ Verify token using Supabase Auth system
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      console.error('Token verification failed:', error);
+      return res.status(403).json({ error: 'Invalid or expired token.' });
+    }
+
+    // ✅ Attach user data to request
+    req.user = user;
+    req.user_id = user.id;
 
     if (error || !data?.user) {
       return res.status(403).json({ error: 'Invalid or expired token.' });
@@ -1793,13 +1814,22 @@ app.get("/api/study-materials", async (req, res) => {
   try {
     const { type, subject, semester, year, search } = req.query;
 
+    // Validate type parameter
+    const validTypes = ['pyqs', 'notes', 'ebooks', 'ppts'];
+    if (!type || !validTypes.includes(type)) {
+      return res.status(400).json({ error: "Invalid or missing type parameter" });
+    }
+
+    // Select table based on type
+    const tableName = type; // Maps directly to table names: pyqs, notes, ebooks, ppts
+
     let query = supabase
-      .from('study_material_requests')
-      .select('*')
-      .eq('status', 'approved')
+      .from(tableName)
+      .select('id, title, subject, semester, branch, year, uploaded_by, views, pdf_url, created_at')
+      .eq('status', 'approved') // Assuming tables have a status column
       .order('created_at', { ascending: false });
 
-    if (type) query = query.eq('folder_type', type);
+    // Apply filters
     if (subject) query = query.eq('subject', subject);
     if (semester) query = query.eq('semester', semester);
     if (year) query = query.eq('year', year);
@@ -1808,10 +1838,30 @@ app.get("/api/study-materials", async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json({ data: data || [] });
+    // Generate signed URLs for pdf_url (stored as storage_path in the bucket)
+    const materialsWithSignedUrls = await Promise.all(
+      data.map(async (material) => {
+        if (material.pdf_url) {
+          const folder = type; // Folder in bucket: pyqs, notes, ebooks, ppts
+          const storagePath = `${folder}/${material.pdf_url}`;
+          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from('study-materials')
+            .createSignedUrl(storagePath, 300); // 5-minute expiry
+
+          if (signedUrlError) {
+            console.error(`Error creating signed URL for ${storagePath}:`, signedUrlError);
+            return { ...material, pdf_url: null };
+          }
+          return { ...material, pdf_url: signedUrlData.signedUrl };
+        }
+        return { ...material, pdf_url: null };
+      })
+    );
+
+    res.json({ data: materialsWithSignedUrls });
   } catch (error) {
-    console.error("Error fetching study materials:", error);
-    res.status(500).json({ error: "Failed to fetch materials" });
+    console.error(`Error fetching ${type} materials:`, error);
+    res.status(500).json({ error: `Failed to fetch ${type} materials` });
   }
 });
 
@@ -1823,9 +1873,14 @@ app.post('/api/study-materials/upload', async (req, res) => {
     }
     const file = req.files.file;
     const { title, subject, semester, branch, year, folder_type, uploader_name } = req.body;
-    if (!title || !subject || !semester || !folder_type || !uploader_name) {
-      return res.status(400).json({ error: 'Missing required fields', success: false });
+
+    // Validate required fields and folder_type
+    const validTypes = ['pyqs', 'notes', 'ebooks', 'ppts'];
+    if (!title || !subject || !semester || !folder_type || !uploader_name || !validTypes.includes(folder_type)) {
+      return res.status(400).json({ error: 'Missing or invalid required fields', success: false });
     }
+
+    // Validate file type
     const allowedTypes = [
       'application/pdf',
       'application/vnd.ms-powerpoint',
@@ -1836,42 +1891,55 @@ app.post('/api/study-materials/upload', async (req, res) => {
     if (!allowedTypes.includes(file.mimetype)) {
       return res.status(400).json({ error: 'Invalid file type', success: false });
     }
+
+    // Validate file size (50MB limit)
     if (file.size > 50 * 1024 * 1024) {
       return res.status(400).json({ error: 'File size exceeds 50MB limit', success: false });
     }
+
     const userId = req.user?.id || 'anonymous';
     const timestamp = Date.now();
-    const filename = `${userId}/${timestamp}_${file.name}`;
+    const filename = `${userId}_${timestamp}_${file.name}`;
+    const storagePath = `${folder_type}/pending/${filename}`; // Store in pending subfolder
+
+    // Upload to study-materials bucket
     const { error: uploadError } = await supabase.storage
-      .from('study-material-pending')
-      .upload(filename, file.data, {
+      .from('study-materials')
+      .upload(storagePath, file.data, {
         contentType: file.mimetype,
         upsert: false
       });
+
     if (uploadError) {
       console.error('Upload error:', uploadError);
       return res.status(500).json({ error: 'Failed to upload file', success: false });
     }
+
+    // Insert into the appropriate table
+    const tableName = folder_type; // Maps to pyqs, notes, ebooks, ppts
     const { error: insertError } = await supabase
-      .from('study_material_requests')
+      .from(tableName)
       .insert({
         title,
         subject,
         semester,
         branch,
         year,
-        folder_type,
-        filename: file.name,
-        storage_path: filename,
+        uploaded_by: uploader_name,
+        pdf_url: filename, // Store just the filename, folder is implied
         filesize: file.size,
         mime_type: file.mimetype,
-        uploader_name,
-        status: 'pending'
+        user_id: userId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
+
     if (insertError) {
-      await supabase.storage.from('study-material-pending').remove([filename]);
+      await supabase.storage.from('study-materials').remove([storagePath]);
       throw insertError;
     }
+
     res.json({ success: true });
   } catch (error) {
     console.error('Study material upload error:', error);
@@ -1880,25 +1948,44 @@ app.post('/api/study-materials/upload', async (req, res) => {
 });
 
 // Fetch study material requests (Admin)
-app.get('/api/admin/study-material-requests', async (req, res) => {
+app.post('/api/admin/study-material-approve', async (req, res) => {
   try {
-    const { status } = req.query;
-    let query = supabase
+    const { request_id, adminUserId } = req.body;
+
+    // Fetch the request to get storage_path
+    const { data: request, error: fetchError } = await supabase
       .from('study_material_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    res.json({ data });
+      .select('storage_path, filename')
+      .eq('id', request_id)
+      .single();
+
+    if (fetchError || !request) throw new Error('Request not found');
+
+    // Move file to approved bucket
+    const { data: moveData, error: moveError } = await supabase.storage
+      .from('study-material-pending')
+      .move(request.storage_path, `study-material-approved/${request.storage_path}`);
+
+    if (moveError) throw moveError;
+
+    // Update the request with new status and storage_path
+    const { error: updateError } = await supabase
+      .from('study_material_requests')
+      .update({
+        status: 'approved',
+        storage_path: `study-material-approved/${request.storage_path}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', request_id);
+
+    if (updateError) throw updateError;
+
+    res.json({ success: true });
   } catch (error) {
-    console.error('Error fetching study material requests:', error);
-    res.status(500).json({ error: 'Failed to fetch requests' });
+    console.error('Error approving material:', error);
+    res.status(500).json({ success: false, error: 'Failed to approve material' });
   }
 });
-
 // Get signed preview URL (Admin)
 app.get('/api/admin/study-material-preview-url', async (req, res) => {
   try {

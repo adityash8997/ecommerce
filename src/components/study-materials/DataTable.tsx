@@ -1,4 +1,4 @@
-// DataTable.tsx
+// DataTable.tsx - Fixed to show all available columns
 import React, { useState } from "react";
 import { Eye, Download, Loader2, Presentation } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +15,7 @@ interface StudyMaterialItem {
   views: number;
   uploadedBy: string;
   uploadDate?: string;
-  downloadUrl: string;
+  pdf_url: string;
 }
 
 interface DataTableProps {
@@ -71,6 +71,11 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
   };
 
+  // ✅ Check if any material has branch or year data
+  const hasBranchData = materials.some(m => m.branch);
+  const hasYearData = materials.some(m => m.year);
+  const hasViewsData = materials.some(m => m.views !== undefined);
+
   if (materials.length === 0) {
     return (
       <div className="text-center py-12">
@@ -97,7 +102,12 @@ export const DataTable: React.FC<DataTableProps> = ({
               <TableHead className="font-semibold">Title</TableHead>
               <TableHead className="font-semibold">Subject</TableHead>
               <TableHead className="font-semibold">Semester</TableHead>
-              {materialType === "ppts" && <TableHead className="font-semibold">Branch</TableHead>}
+              {/* ✅ Show branch column if ANY material has branch data */}
+              {hasBranchData && <TableHead className="font-semibold">Branch</TableHead>}
+              {/* ✅ Show year column if ANY material has year data */}
+              {hasYearData && <TableHead className="font-semibold">Year</TableHead>}
+              {/* ✅ Show views column if data exists */}
+              {hasViewsData && <TableHead className="font-semibold">Views</TableHead>}
               <TableHead className="font-semibold">Uploaded By</TableHead>
               <TableHead className="font-semibold">Upload Date</TableHead>
               <TableHead className="font-semibold text-center">Actions</TableHead>
@@ -108,7 +118,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               <TableRow key={material.id} className="hover:bg-muted/50">
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                   
+                    {getFileIcon()}
                     <span className="truncate max-w-xs">{material.title}</span>
                   </div>
                 </TableCell>
@@ -122,39 +132,74 @@ export const DataTable: React.FC<DataTableProps> = ({
                     {material.semester}
                   </span>
                 </TableCell>
-                {materialType === "ppts" && (
+                {/* ✅ Show branch cell if column exists */}
+                {hasBranchData && (
                   <TableCell>
                     <span className="text-sm text-muted-foreground">
                       {material.branch || "N/A"}
                     </span>
                   </TableCell>
                 )}
-                
+                {/* ✅ Show year cell if column exists */}
+                {hasYearData && (
+                  <TableCell>
+                    <span className="text-sm text-muted-foreground">
+                      {material.year || "N/A"}
+                    </span>
+                  </TableCell>
+                )}
                 <TableCell className="text-sm text-muted-foreground">
                   {material.uploadedBy}
                 </TableCell>
+                
                 <TableCell className="text-sm text-muted-foreground">
                   {formatDate(material.uploadDate)}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2 justify-center">
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => onViewPDF && onViewPDF(material.id)}
+                      onClick={() => {
+                        console.log('DataTable: View clicked', material.id);
+                        if (onViewPDF) {
+                          onViewPDF(material.id);
+                        } else if (material.pdf_url) {
+                          // Fallback: open the file directly
+                          window.open(material.pdf_url, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
                       className="h-8 px-2 hover:bg-primary/10"
                       title={`View ${getFileTypeLabel()}`}
                     >
-                      <Eye className="w-3 h-3" />
+                      <Eye className="w-4 h-4" />
                     </Button>
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
-                      onClick={() => onDownload && onDownload(material)}
+                      onClick={() => {
+                        console.log('DataTable: Download clicked', material);
+                        if (onDownload) {
+                          onDownload(material);
+                        } else if (material.pdf_url) {
+                          // Fallback: trigger browser download/open
+                          const a = document.createElement('a');
+                          a.href = material.pdf_url;
+                          a.target = '_blank';
+                          a.rel = 'noopener noreferrer';
+                          // try to set filename if possible
+                          a.download = material.title && material.title.includes('.') ? material.title : undefined;
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                        }
+                      }}
                       className="h-8 px-2 hover:bg-green-100 hover:text-green-700"
                       title={`Download ${getFileTypeLabel()}`}
                     >
-                      <Download className="w-3 h-3" />
+                      <Download className="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>

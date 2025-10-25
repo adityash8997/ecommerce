@@ -90,7 +90,7 @@ export const teamData = [
     Instagram: "https://www.instagram.com/siddharth.khubchandani",
     Image: "/team/Siddharth.jpg",
     Github: null,
-    role: "Video Editor",
+    role: "Photographer & Video Editor",
   },
   {
     name: "Vedant Agrawal",
@@ -98,7 +98,7 @@ export const teamData = [
     Instagram: "https://www.instagram.com/agrawal_vedant_16",
     Image: "/team/Vedant.jpg",
     Github: null,
-    role: "Video Editor",
+    role: "Photographer & Video Editor",
   },
   {
     name: "Smit Bharat Patil",
@@ -106,7 +106,7 @@ export const teamData = [
     Instagram: "https://www.instagram.com/sbktckp",
     Image: "/team/smit.jpg",
     Github: "https://github.com/sbktckp",
-    role: "Marketing",
+    role: "Marketing & Growth Manager",
   },
   {
     name: "Kirti Kumari",
