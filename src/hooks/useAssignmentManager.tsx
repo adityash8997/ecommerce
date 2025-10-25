@@ -47,6 +47,8 @@ export interface AssignmentHelper {
   sample_description?: string;
 }
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 export function useAssignmentManager() {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentRequest[]>([]);
@@ -59,7 +61,7 @@ export function useAssignmentManager() {
 
   setLoading(true);
   try {
-    const response = await fetch(`/api/assignments?user_id=${user.id}`);
+    const response = await fetch(`${HOSTED_URL}/api/assignments?user_id=${user.id}`);
     const result = await response.json();
     setAssignments(result.assignments || []);
   } catch (error) {
@@ -74,7 +76,7 @@ export function useAssignmentManager() {
   // Fetch available helpers
   const fetchHelpers = async () => {
   try {
-    const response = await fetch('/api/helpers');
+    const response = await fetch(`${HOSTED_URL}/api/helpers`);
     const result = await response.json();
     setHelpers(result.helpers || []);
   } catch (error) {
@@ -131,7 +133,7 @@ export function useAssignmentManager() {
 
   setLoading(true);
   try {
-    const response = await fetch('/api/assignments', {
+    const response = await fetch(`${HOSTED_URL}/api/assignments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -157,7 +159,7 @@ export function useAssignmentManager() {
 
   // Get download URL for assignment file
   const getFileUrl = async (filePath: string) => {
-  const response = await fetch(`/api/files/signed-url?path=${encodeURIComponent(filePath)}`);
+  const response = await fetch(`${HOSTED_URL}/api/files/signed-url?path=${encodeURIComponent(filePath)}`);
   const result = await response.json();
   return result.url;
 };

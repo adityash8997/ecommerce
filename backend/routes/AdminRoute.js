@@ -1,9 +1,8 @@
 import express from "express";
 
-const router = express.Router();
-
 // ✅ Export a function that accepts supabase instance
 const createAdminRoutes = (supabase) => {
+  const router = express.Router(); // ✅ Create NEW router each time
 
   // ============================================
   // ADMIN DASHBOARD DATA
@@ -87,9 +86,6 @@ const createAdminRoutes = (supabase) => {
     }
   });
 
-  // ============================================
-  // ADMIN APPROVAL ENDPOINTS
-  // ============================================
   router.post('/approve-item', async (req, res) => {
     try {
       const { itemId, type, adminUserId } = req.body;
@@ -139,9 +135,6 @@ const createAdminRoutes = (supabase) => {
     }
   });
 
-  // ============================================
-  // ADMIN REJECTION ENDPOINTS
-  // ============================================
   router.post('/reject-item', async (req, res) => {
     try {
       const { itemId, type, reason, adminUserId } = req.body;
@@ -201,9 +194,6 @@ const createAdminRoutes = (supabase) => {
     }
   });
 
-  // ============================================
-  // CONTACT STATUS UPDATE ENDPOINT
-  // ============================================
   router.patch('/update-contact-status', async (req, res) => {
     try {
       const { contactId, status } = req.body;
@@ -225,9 +215,6 @@ const createAdminRoutes = (supabase) => {
     }
   });
 
-  // ============================================
-  // FEEDBACK MANAGEMENT ENDPOINTS
-  // ============================================
   router.patch('/resolve-feedback', async (req, res) => {
     try {
       const { feedbackId, resolved } = req.body;
@@ -276,12 +263,11 @@ const createAdminRoutes = (supabase) => {
     }
   });
 
-  return router;
+  return router; // ✅ Return the router created inside the function
 };
 
-// ✅ Also export a function for the feedback endpoint that doesn't need admin routes
 export const createFeedbackRoute = (supabase) => {
-  const feedbackRouter = express.Router();
+  const feedbackRouter = express.Router(); // ✅ Also inside the function
   
   feedbackRouter.post("/", async (req, res) => {
     try {

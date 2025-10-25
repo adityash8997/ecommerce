@@ -26,8 +26,8 @@ import { semesters, years, semesterSubjects } from "@/data/studyMaterials";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {supabase} from "@/integrations/supabase/client"
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 // Types
 interface StudyMaterialItem {
   id: number;
@@ -217,7 +217,7 @@ export default function StudyMaterial() {
         search: searchQuery
       });
 
-      const response = await fetch(`${BASE_URL}/api/study-materials?${params.toString()}`);
+      const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`);
 
       if (!response.ok) {
         const errorText = await response.text();

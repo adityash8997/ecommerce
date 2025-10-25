@@ -8,6 +8,8 @@ export function useOrderHistory() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
   const fetchOrders = async () => {
     if (!user) {
       setOrders([]);
@@ -18,7 +20,7 @@ export function useOrderHistory() {
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders?user_id=${user.id}`);
+      const response = await fetch(`${HOSTED_URL}/api/orders?user_id=${user.id}`);
       const result = await response.json();
 
       if (!response.ok || result.error) {
@@ -44,7 +46,7 @@ export function useOrderHistory() {
     }
 
     try {
-      const response = await fetch('/api/orders', {
+      const response = await fetch(`${HOSTED_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, ...orderData }) // TEMP
@@ -76,7 +78,7 @@ export function useOrderHistory() {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+      const response = await fetch(`${HOSTED_URL}/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user.id, status }) // TEMP

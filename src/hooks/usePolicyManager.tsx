@@ -9,6 +9,7 @@ interface PolicyAcceptance {
   terms_conditions_version: string;
   last_updated: string;
 }
+  const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
 export function usePolicyManager() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export function usePolicyManager() {
     if (!user) return;
 
     try {
-      const response = await fetch(`/api/policy?user_id=${user.id}`);
+      const response = await fetch(`${HOSTED_URL}/api/policy?user_id=${user.id}`);
       const result = await response.json();
 
       if (response.ok && result.policyData) {
@@ -58,7 +59,7 @@ export function usePolicyManager() {
     if (!user) return;
 
     try {
-      const response = await fetch('/api/policy/privacy', {
+      const response = await fetch(`${HOSTED_URL}/api/policy/privacy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +89,7 @@ export function usePolicyManager() {
     if (!user) return false;
 
     try {
-      const response = await fetch('/api/policy/terms', {
+      const response = await fetch(`${HOSTED_URL}/api/policy/terms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
