@@ -87,25 +87,27 @@ const ResumeSaathi = () => {
   }, [user]);
 
   const fetchDailyDownloads = async () => {
-    if (!user) return;
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("resume_downloads_daily")
-        .select("downloads")
-        .eq("user_id", user.id)
-        .eq("day", today)
-        .maybeSingle();
+  if (!user) return;
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabase
+      .from("resume_downloads_daily")
+      .select("downloads")
+      .eq("user_id", user.id)
+      .eq("day", today)
+      .maybeSingle();
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching downloads:", error);
-        return;
-      }
-      setDailyDownloads(data?.downloads || 0);
-    } catch (error) {
-      console.error("Error fetching daily downloads:", error);
+    if (error && error.code !== "PGRST116") {
+      console.error("Error fetching downloads:", error);
+      return;
     }
-  };
+
+    setDailyDownloads(data?.downloads || 0);
+  } catch (error) {
+    console.error("Error fetching daily downloads:", error);
+  }
+};
+
 
   // Fetch monthly quota usages from backend
   const fetchMonthlyUsage = async () => {
@@ -549,8 +551,6 @@ const ResumeSaathi = () => {
       <Footer />
     </div>
   );
-  
 };
-
 
 export default ResumeSaathi;

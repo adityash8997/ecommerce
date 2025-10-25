@@ -1,31 +1,34 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config(); // ✅ Load environment variables FIRST
+
 import express from 'express';
 import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
-import adminRoutes from "./routes/AdminRoute.js";
 import SemBooksRoutes from "./routes/SemBooksRoutes.js"
 import FacultyRoute from "./routes/FacultyRoute.js"
 import StudyMaterialRoute from "./routes/StudyMaterialRoute.js"
 import authRoute from './routes/authRoute.js'
 import lostFoundRoute from './routes/lost-foundRoute.js'
 
+import createAdminRoutes, { createFeedbackRoute } from "./routes/AdminRoute.js";
+import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
 
 
 const app = express();
-import cookieParser from 'cookie-parser';
 
-const allowedOrigins = [
+const allowedOrigins = [  
   "http://localhost:8080",
   "http://10.5.83.177:8080",
   "http://localhost:5173",
   "https://kiitsaathi.vercel.app",
   "https://kiitsaathi-git-satvik-aditya-sharmas-projects-3c0e452b.vercel.app",
-   "https://ksaathi.vercel.app"
+  "https://ksaathi.vercel.app"
 ];
 
+// ✅ MIDDLEWARE MUST COME FIRST (before any routes)
 app.use(cookieParser());
 app.use("/api/admin", adminRoutes);
 app.use("/", SemBooksRoutes); 
@@ -35,6 +38,7 @@ app.use("/",authRoute);
 app.use("/",lostFoundRoute);
 
 
+app.use(express.json());
 
 // CORS configuration
 app.use(cors({
@@ -51,7 +55,29 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+// ✅ Add request logger
+app.use((req, res, next) => {
+  console.log(`📨 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']; // Expecting "Bearer <token>"
+  const token = authHeader?.split(' ')[1]; // Get token part
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET);
+    req.user_id = decoded.sub; // Supabase stores user ID in "sub"
+    next();
+  } catch (err) {
+    console.error('Invalid token:', err);
+    return res.status(403).json({ error: 'Invalid or expired token.' });
+  }
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -61,8 +87,42 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Health check endpoint
+console.log('🔧 Environment Debug Info:');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? `✅ Set (${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 20)}...)` : '❌ Missing');
+console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? '✅ Set' : '❌ Missing');
+console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? '✅ Set' : '❌ Missing');
+
+// ✅ Initialize Supabase AFTER environment variables are loaded
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Razorpay instance
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  try {
+    razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    console.log('✅ Razorpay initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Razorpay:', error.message);
+  }
+} else {
+  console.warn('⚠️  Razorpay not initialized - missing environment variables');
+}
+
+// ✅ SIMPLE TEST ROUTES FIRST (for debugging)
+app.get('/test', (req, res) => {
+  console.log('✅ Test endpoint hit!');
+  res.json({ message: 'Server is running!', timestamp: new Date().toISOString() });
+});
+
 app.get('/health', async (req, res) => {
+  console.log('✅ Health check endpoint hit!');
   try {
     // Test Supabase connection
     const { data, error } = await supabase
@@ -85,75 +145,46 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Test endpoint
-app.get('/test', (req, res) => {
-  res.json({ message: 'Server is running!' });
-});
+// ✅ NOW register route files (AFTER middleware and supabase initialization)
+app.use("/api/admin", createAdminRoutes(supabase));
+app.use("/api/feedback", createFeedbackRoute(supabase));
+app.use("/", createSemBooksRoutes(supabase));
 
 
-// Test Lost & Found order creation (simplified)
-app.post('/test-lost-found-order', async (req, res) => {
+// ============================================
+// PAYMENT ENDPOINTS (SECURED + CLEANED)
+// ============================================
+
+// ✅ Check if the authenticated user has paid to view a Lost & Found contact
+app.get('/has-paid-contact', authenticateToken, async (req, res) => {
   try {
-    console.log('🧪 Test Lost & Found Order Request:', req.body);
-    const { amount } = req.body;
-    
-    // Check if Razorpay is available
-    if (!razorpay) {
-      return res.status(500).json({ 
-        error: 'Razorpay not configured',
-        details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
-      });
+    const user_id = req.user_id;
+    const { item_id, item_title } = req.query;
+
+    if (!item_id || !item_title) {
+      return res.status(400).json({ error: 'Missing item_id or item_title' });
     }
-    
-    // Simple Razorpay order creation test
-    const order = await razorpay.orders.create({
-      amount: amount || 1500, // Default 15 rupees in paise
-      currency: 'INR',
-      receipt: 'test_' + Date.now(),
-      notes: {
-        test: 'true'
-      }
-    });
-    
-    console.log('✅ Test order created:', order.id);
-    res.json({ success: true, order });
-  } catch (error) {
-    console.error('❌ Test order error:', error);
-    res.status(500).json({ error: error.message });
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('service_name', 'LostAndFound')
+      .eq('subservice_name', item_title)
+      .eq('payment_status', 'completed')
+      .limit(1);
+
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    return res.json({ paid: !!(data && data.length) });
+  } catch (err) {
+    console.error('Unexpected error in /has-paid-contact:', err);
+    return res.status(500).json({ error: 'Unexpected server error' });
   }
 });
-
-
-
-
-// Razorpay instance - only create if environment variables are available
-let razorpay = null;
-
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  try {
-    razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-    console.log('✅ Razorpay initialized successfully');
-  } catch (error) {
-    console.error('❌ Failed to initialize Razorpay:', error.message);
-  }
-} else {
-  console.warn('⚠️  Razorpay not initialized - missing environment variables');
-}
-
-console.log('🔧 Environment Debug Info:');
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing');
-console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? `✅ Set (${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 20)}...)` : '❌ Missing');
-console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? '✅ Set' : '❌ Missing');
-console.log('RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? '✅ Set' : '❌ Missing');
-
-// Supabase instance
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
 
 // ✅ Check if user has paid for contact unlock for a specific item
 app.get('/has-paid-contact', async (req, res) => {
@@ -164,157 +195,29 @@ app.get('/has-paid-contact', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id')
       .eq('user_id', user_id)
       .eq('service_name', 'LostAndFound')
       .eq('subservice_name', item_title)
-      .eq('payment_status', 'success');
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.json({ paid: data && data.length > 0 });
-  } catch (err) {
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
-  }
-});
-
-// ✅ Create Razorpay order
-app.post('/create-order', async (req, res) => {
-  const { amount, currency = 'INR', receipt } = req.body;
-  
-  if (!razorpay) {
-    return res.status(500).json({ 
-      error: 'Payment service not available - Razorpay not configured',
-      details: 'Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET environment variables'
-    });
-  }
-  
-  try {
-    const order = await razorpay.orders.create({
-      amount: amount * 100, // in paise
-      currency,
-      receipt,
-    });
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ✅ Verify payment and save to Supabase
-app.post('/verify-payment', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, user_id, amount, service_name, subservice_name, payment_method } = req.body;
-
-  try {
-    // Insert order
-    const { data, error } = await supabase
-      .from('orders')
-      .insert([
-        {
-          user_id,
-          transaction_id: razorpay_order_id,
-          amount,
-          payment_status: 'success',
-          service_name,
-          subservice_name,
-          payment_method,
-        },
-      ]);
-
-    if (error) {
-      console.error('Supabase insert error:', error);
-      return res.status(500).json({ error: error.message, details: error });
-    }
-
-    // If LostAndFound, send contact details to user's email
-    if (service_name === 'LostAndFound') {
-      // 1. Get user email from Supabase users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('id', user_id)
-        .single();
-      if (userError || !userData?.email) {
-        console.error('User email fetch error:', userError);
-      } else {
-        // 2. Get contact details for the item
-        const { data: itemData, error: itemError } = await supabase
-          .from('lost_and_found_items')
-          .select('contact_name, contact_email, contact_phone, title')
-          .eq('title', subservice_name)
-          .single();
-        if (itemError || !itemData) {
-          console.error('LostFound item fetch error:', itemError);
-        } else {
-          // 3. Send email using Resend API
-          try {
-            const Resend = require('resend');
-            const resend = new Resend(process.env.RESEND_API_KEY);
-            await resend.emails.send({
-              from: 'KIIT Saathi <onboarding@resend.dev>',
-              to: [userData.email],
-              subject: `Contact Details for ${itemData.title}`,
-              html: `<h2>Contact Details for ${itemData.title}</h2>
-                <p><strong>Name:</strong> ${itemData.contact_name}</p>
-                <p><strong>Email:</strong> ${itemData.contact_email}</p>
-                <p><strong>Phone:</strong> ${itemData.contact_phone}</p>
-                <p>Thank you for using KIIT Saathi Lost & Found!</p>`
-            });
-            console.log('Contact details sent to', userData.email);
-          } catch (emailErr) {
-            console.error('Error sending contact email:', emailErr);
-          }
-        }
-      }
-    }
-
-    console.log('Order insert response:', data);
-    return res.json({ success: true, data });
-  } catch (err) {
-    console.error('Unexpected error in /verify-payment:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
-  }
-});
-
-// ✅ Get user's orders
-app.get('/get-orders', async (req, res) => {
-  const user_id = req.query.user_id;
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user_id)
-      .order('created_at', { ascending: false });
+      .eq('payment_status', 'completed')
+      .limit(1);
 
     if (error) {
       console.error('Supabase fetch error:', error);
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: 'Database error' });
     }
 
-    return res.json({ orders: data });
+    return res.json({ paid: !!(data && data.length) });
   } catch (err) {
-    console.error('Unexpected error in /get-orders:', err);
-    return res.status(500).json({ error: 'Unexpected server error', details: err });
+    console.error('Unexpected error in /has-paid-contact:', err);
+    return res.status(500).json({ error: 'Unexpected server error' });
   }
 });
 
-// ✅ Alternative endpoint for fetching orders
-app.get('/orders', async (req, res) => {
-  const user_id = req.query.user_id;
-  if (!user_id) {
-    return res.status(400).json({ error: 'Missing user_id' });
-  }
+// ✅ Create a generic Razorpay order (amount in rupees -> converted to paise)
+app.post('/create-order', authenticateToken, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', user_id)
-      .order('created_at', { ascending: false });
+    const { amount, currency = 'INR', receipt } = req.body;
 
     if (error) {
       console.error('Supabase fetch error (alt):', error);
@@ -353,6 +256,81 @@ app.post("/api/profile/ensure", async (req, res) => {
         { id: user_id, email, full_name: full_name || email },
       ]);
       if (insertError) throw insertError;
+    if (!razorpay) {
+      return res.status(500).json({
+        error: 'Payment service not available - Razorpay not configured',
+      });
+    }
+    if (!amount || !receipt) {
+      return res.status(400).json({ error: 'Missing amount or receipt' });
+    }
+
+    const order = await razorpay.orders.create({
+      amount: amount * 100, // rupees -> paise
+      currency,
+      receipt,
+    });
+  }
+    return res.json(order);
+  } catch (err) {
+    console.error('Error creating Razorpay order:', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+// ✅ Verify a generic payment and record it to orders
+app.post('/verify-payment', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      service_name,
+      subservice_name,
+      amount,
+      payment_method = 'razorpay',
+      currency = 'INR',
+    } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !service_name || !amount) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Signature verify
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Invalid payment signature' });
+    }
+
+    // Optional: fetch payment to double-check status
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      if (payment.status !== 'captured') {
+        return res.status(400).json({ error: 'Payment not captured' });
+      }
+    } catch (e) {
+      console.warn('Razorpay fetch warning:', e?.message);
+    }
+
+    const { error } = await supabase.from('orders').insert({
+      user_id,
+      service_name,
+      subservice_name: subservice_name || null,
+      amount,
+      payment_status: 'completed',
+      transaction_id: razorpay_payment_id,
+      payment_method,
+      booking_details: { currency, razorpay_order_id },
+    });
+
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({ error: 'Failed to save order' });
     }
 
     return res.json({ success: true });
@@ -363,7 +341,7 @@ app.post("/api/profile/ensure", async (req, res) => {
 });
 app.get("/api/group/:groupId", async (req, res) => {
   const { groupId } = req.params;
-  const { user_id } = req.query; // pass logged-in user's id in query
+  const { user_id } = req.query;
 
   try {
     // Fetch group details
@@ -392,192 +370,218 @@ app.get("/api/group/:groupId", async (req, res) => {
       .order("date", { ascending: false });
     if (expensesError) throw expensesError;
 
-    return res.json({
-      success: true,
-      group,
-      members,
-      expenses,
-    });
+    return res.json({ group, members, expenses });
   } catch (err) {
-    console.error("Error loading group data:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error("Error fetching group data:", err);
+    return res.status(500).json({ error: "Failed to fetch group data" });
   }
 });
 
-//HandleContactSubmit
-app.post("/api/contact", async (req, res) => {
+
+
+{/* ---------------------- events hook ENDPOINTS  ---------------------- */}
+
+/**
+ * GET /api/events
+ * Returns validated and chronological events
+ */
+app.get('/api/events', authenticateToken, async (req, res) => {
   try {
-    const data = req.body;
-
-    // Validate input
-    if (!data.name || !data.email || !data.message) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
-    }
-
-    // Call your Supabase Edge Function securely
-    const { error } = await supabase.functions.invoke("send-contact-email", {
-      body: data,
-    });
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('validation', true)
+      .order('event_date', { ascending: true });
 
     if (error) throw error;
 
-    return res.status(200).json({
-      success: true,
-      message: "Message sent successfully!",
-    });
+    res.json({ events: data || [] });
   } catch (err) {
-    console.error("Error invoking send-contact-email:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to send message.",
-    });
+    console.error('Error fetching events:', err);
+    res.status(500).json({ error: 'Failed to fetch events' });
   }
 });
 
 
-//Events
-app.post('/api/events/add', async (req, res) => {
+{/* ---------------------- group auto link ENDPOINTS  ---------------------- */}
+
+// ✅ FINAL FIXED BACKEND ENDPOINT (no foreign key joins required)
+// POST /api/groups/auto-link
+// ✅ SECURED version of POST /api/groups/auto-link
+// ✅ SECURED version of POST /api/groups/auto-link
+app.post('/api/groups/auto-link', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ success: false, message: 'Missing authorization header' });
+    const user_id = req.user_id; // ✅ From token
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // ✅ Fetch user email from Supabase Auth system
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(user_id);
+    if (userError || !userData?.user?.email) {
+      return res.status(400).json({ error: 'Could not fetch user email' });
+    }
+    const email = userData.user.email;
 
-    if (authError || !user)
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    // ✅ Extract roll number from email
+    const rollMatch = email.match(/^(\d+)@/);
+    if (!rollMatch) {
+      return res.json({ newGroups: [] });
+    }
+    const rollNumber = rollMatch[1];
 
-    const { formData } = req.body;
-    if (!formData?.event_name || !formData?.event_date)
-      return res.status(400).json({ success: false, message: 'Event name and date are required' });
+    // ✅  Fetch matching groups based on roll_number in group_members
+    const { data: matchingMembers, error: membersError } = await supabase
+      .from('group_members')
+      .select(`
+        id,
+        roll_number,
+        group_id,
+        groups!inner(
+          id,
+          name,
+          created_by
+        )
+      `)
+      .eq('roll_number', rollNumber);
 
-    // ✅ Check if user is admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin, email')
-      .eq('id', user.id)
-      .single();
+    if (membersError) throw membersError;
+    if (!matchingMembers || matchingMembers.length === 0) {
+      return res.json({ newGroups: [] });
+    }
 
-    if (profileError) throw profileError;
+    const newGroups = [];
 
-    const reqs = formData.requirements || [];
+    // ✅ Loop through matched groups
+    for (const member of matchingMembers) {
+      const group = member.groups;
+      if (!group) continue;
 
-    if (profile?.is_admin) {
-      // Admin → directly publish to calendar
-      const { data, error } = await supabase
-        .from('calendar_events')
-        .insert([
-          {
-            ...formData,
-            requirements: reqs,
-            validation: true,
-          },
-        ])
-        .select();
+      // ✅ Skip if user created this group
+      if (group.created_by === user_id) continue;
 
-      if (error) throw error;
+      // ✅ Check if notification exists
+      const { data: existingNotification } = await supabase
+        .from('group_notifications')
+        .select('id')
+        .eq('user_id', user_id)
+        .eq('group_id', group.id)
+        .single();
 
-      return res.json({
-        success: true,
-        message: 'Event published successfully!',
-        data,
-      });
-    } else {
-      // Regular user → create request
-      const { error } = await supabase
-        .from('interview_event_requests')
-        .insert({
-          ...formData,
-          requirements: reqs,
-          requester_email: user.email,
-          user_id: user.id,
-          status: 'pending',
-        });
+      if (existingNotification) continue;
 
-      if (error) throw error;
+      // ✅ Insert notification
+      await supabase
+        .from('group_notifications')
+        .insert({ user_id, group_id: group.id });
 
-      return res.json({
-        success: true,
-        message:
-          "Event submitted for review! You'll be notified once it's approved.",
+      // ✅ Fetch group creator info
+      const { data: creatorProfile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', group.created_by)
+        .single();
+
+      const creatorName = creatorProfile?.full_name || 'Unknown';
+      const creatorEmail = creatorProfile?.email || '';
+      const creatorRollNumber = creatorEmail.match(/^(\d+)@/)?.[1] || '';
+
+      newGroups.push({
+        name: group.name,
+        creatorName,
+        creatorRollNumber,
+        rollNumber
       });
     }
-  } catch (error) {
-    console.error('Event add error:', error);
-    res.status(500).json({ success: false, message: error.message });
+
+    return res.json({ newGroups });
+  } catch (err) {
+    console.error('Error auto-linking groups:', err);
+    return res.status(500).json({ error: 'Failed to auto-link groups' });
   }
 });
-// server.js
-app.post("/api/interviews/add", async (req, res) => {
+
+
+
+{/* ---------------------- use order history hook ENDPOINTS  ---------------------- */}
+
+// 1️⃣ GET /api/orders - Fetch user's orders
+// ✅ GET /api/orders - Fetch user's orders (SECURED)
+app.get('/api/orders', authenticateToken, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const user_id = req.user_id; // ✅ Secure user from token
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return res.json({ orders: data || [] });
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    return res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+
+// ✅ POST /api/orders - Create new order (SECURED)
+app.post('/api/orders', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ Secure user from token
+    const { service_name, subservice_name, amount, payment_status, transaction_id, payment_method, booking_details } = req.body;
+
+    if (!service_name || !amount || !payment_status) {
+      return res.status(400).json({ error: 'Missing required fields: service_name, amount, or payment_status' });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    }
-
-    const { formData } = req.body;
-    if (!formData?.interview_name || !formData?.interview_date) {
-      return res.status(400).json({ success: false, message: "Interview name and date are required" });
-    }
-
-    const reqs = formData.requirements
-      ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
-      : [];
-
-    // Get user profile to check admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id,
+        service_name,
+        subservice_name: subservice_name || null,
+        amount,
+        payment_status,
+        transaction_id: transaction_id || null,
+        payment_method: payment_method || null,
+        booking_details: booking_details || null
+      })
+      .select()
       .single();
 
-    if (profile?.is_admin) {
-      const { data, error } = await supabase
-        .from("interview_events")
-        .insert([{ ...formData, requirements: reqs, validation: true }])
-        .select();
+    if (error) throw error;
 
-      if (error) {
-        return res.status(500).json({ success: false, message: error.message });
-      }
-
-      return res.json({ success: true, message: "Interview added successfully", data });
-    } else {
-      const { error } = await supabase
-        .from("interview_event_requests")
-        .insert({
-          ...formData,
-          requirements: reqs,
-          requester_email: user.email,
-          user_id: user.id,
-          status: "pending",
-        });
-
-      if (error) {
-        return res.status(500).json({ success: false, message: error.message });
-      }
-
-      return res.json({
-        success: true,
-        message: "Interview submitted for review! You'll be notified once it's approved",
-      });
-    }
+    return res.json({ order: data });
   } catch (err) {
-    console.error("Interview submit error:", err);
-    res.status(500).json({ success: false, message: "Failed to submit interview" });
+    console.error('Error creating order:', err);
+    return res.status(500).json({ error: 'Failed to create order' });
+  }
+});
+
+
+// ✅ PATCH /api/orders/:id/status - Update order payment status (SECURED)
+app.patch('/api/orders/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const user_id = req.user_id; // ✅ Secure user from token
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Missing status field' });
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ payment_status: status })
+      .eq('id', id)
+      .eq('user_id', user_id); // ✅ Prevent updating others' orders
+
+    if (error) throw error;
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating order status:', err);
+    return res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 
@@ -723,6 +727,29 @@ app.post("/api/create-group", async (req, res) => {
 
 
 
+{/* ---------------------- use service visibility hook ENDPOINTS ---------------------- */}
+
+
+// ✅ GET service visibility data
+app.get('/api/service-visibility', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('service_visibility')
+      .select('*');
+
+    if (error) throw error;
+
+    return res.json({ services: data || [] });
+  } catch (err) {
+    console.error('Error fetching service visibility:', err);
+    return res.status(500).json({ error: 'Failed to fetch service visibility' });
+  }
+});
+
+
+  
+  
+
 /* ---------------------- SERVER ---------------------- */
-const PORT = 3001;
+const PORT = 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
