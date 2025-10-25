@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 export function SystemStatus() {
   const { user } = useAuth();
@@ -25,11 +24,13 @@ export function SystemStatus() {
       // Check auth
       newChecks.auth = !!user;
 
-      // Check Supabase connection directly
-      const { data, error } = await supabase.from('profiles').select('count').limit(1);
-      newChecks.database = !error;
-      newChecks.storage = true; // Storage buckets are configured
-      newChecks.policies = true; // RLS policies are in place
+      // Call backend API for system status
+      const response = await fetch('/api/system-status', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch system status');
+      const result = await response.json();
+      newChecks.database = !!result.database;
+      newChecks.storage = !!result.storage;
+      newChecks.policies = !!result.policies;
 
       setChecks(newChecks);
       const allReady = newChecks.auth && newChecks.database && newChecks.storage && newChecks.policies;

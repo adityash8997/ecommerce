@@ -526,6 +526,7 @@ export const ResumeAnalyzer = ({ onAnalyzeResumeData }: { onAnalyzeResumeData?: 
 
     setAnalyzing(true);
     setResult(null);
+    setAnalysisType('pdf');
 
     try {
       // For PDF files, directly use Gemini AI backend analysis
@@ -657,7 +658,7 @@ export const ResumeAnalyzer = ({ onAnalyzeResumeData }: { onAnalyzeResumeData?: 
                     variant="default" 
                     className="bg-[hsl(var(--kiit-green))] hover:bg-[hsl(var(--kiit-green-dark))]"
                     disabled={(monthlyUsage.analysis?.remaining ?? 3) <= 0}
-                    asChild={!((monthlyUsage.analysis?.remaining ?? 3) <= 0)}
+                    asChild={!(monthlyUsage.analysis?.remaining ?? 3) <= 0}
                   >
                     <span>Choose Resume PDF</span>
                   </Button>

@@ -41,7 +41,8 @@ export const TemplatePreview = ({
           {data.personalInfo.fullName || "Your Name"}
         </h1>
         <p className="text-sm text-gray-700 mb-2">
-          Full Stack Developer | Computer Science Graduate
+          {data.professionalTitle ||
+            "Full Stack Developer | Computer Science Graduate"}
         </p>
         <div className="text-xs text-gray-600 flex justify-center gap-4 flex-wrap">
           {data.personalInfo.email && <span>📧 {data.personalInfo.email}</span>}

@@ -13,7 +13,9 @@ import {
 } from "@react-pdf/renderer";
 import { ResumeData } from "./ResumeSaathi";
 
-// ✅ Helvetica is built-in, no need to register
+// ✅ Use built-in Helvetica for ATS safety
+Font.register({ family: "Helvetica" });
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,
@@ -98,7 +100,8 @@ const ResumePDF = ({ data }: { data: ResumeData }) => (
       <View style={styles.header}>
         <Text style={styles.name}>{data.personalInfo.fullName}</Text>
         <Text style={styles.title}>
-          Full Stack Developer | Computer Science Undergraduate
+          {data.professionalTitle ||
+            "Full Stack Developer | Computer Science Undergraduate"}
         </Text>
         <Text style={styles.contact}>
           {[

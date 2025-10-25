@@ -18,13 +18,13 @@ interface DeleteAllDataButtonProps {
 }
 
 export function DeleteAllDataButton({ onDataDeleted }: DeleteAllDataButtonProps) {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
   const handleDeleteAllData = async () => {
-    if (!user || !session) return;
+    if (!user) return;
 
     if (confirmText !== "DELETE ALL MY DATA") {
       toast.error('Please type "DELETE ALL MY DATA" to confirm');
@@ -39,7 +39,7 @@ export function DeleteAllDataButton({ onDataDeleted }: DeleteAllDataButtonProps)
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${user?.access_token}`,
           },
           body: JSON.stringify({ user_id: user.id }),
         }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { useSecureDatabase } from './useSecureDatabase';
-import { supabase } from '@/integrations/supabase/client';
 
 interface LostAndFoundItem {
   id: string;
@@ -26,17 +25,12 @@ export function useSecureLostAndFound() {
   const { user } = useAuth();
   const { loading, error, executeQuery, clearError } = useSecureDatabase();
 
-  // ✅ Fetch active items from Supabase
+  // ✅ Fetch active items from backend
   const fetchItems = async () => {
     const result = await executeQuery(async () => {
-      const { data, error } = await supabase
-        .from('lost_and_found_items')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as LostAndFoundItem[];
+      const response = await fetch('/api/lostfound');
+      const data = await response.json();
+      return data.items as LostAndFoundItem[];
     }, { 
       fallback: [] as LostAndFoundItem[],
       retries: 3 
@@ -54,18 +48,16 @@ export function useSecureLostAndFound() {
     }
 
     const result = await executeQuery(async () => {
-      const { data, error } = await supabase
-        .from('lost_and_found_items')
-        .insert([{
-          ...itemData,
+      const response = await fetch('/api/lostfound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           user_id: user.id,
-          status: 'pending'
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as LostAndFoundItem;
+          ...itemData
+        })
+      });
+      const data = await response.json();
+      return data.item as LostAndFoundItem;
     });
 
     if (result) {
@@ -82,16 +74,16 @@ export function useSecureLostAndFound() {
     }
 
     const result = await executeQuery(async () => {
-      const { data, error } = await supabase
-        .from('lost_and_found_items')
-        .update(updates)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as LostAndFoundItem;
+      const response = await fetch(`/api/lostfound/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          ...updates
+        })
+      });
+      const data = await response.json();
+      return data.item as LostAndFoundItem;
     });
 
     if (result) {
