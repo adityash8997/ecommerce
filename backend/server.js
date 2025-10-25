@@ -6,6 +6,7 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import fileUpload from 'express-fileupload';
 
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
@@ -15,6 +16,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(fileUpload());
 
 const allowedOrigins = [  
   "http://localhost:8080",

@@ -33,7 +33,7 @@ export function usePolicyManager() {
     if (!user || !accessToken) return;
 
     try {
-      const response = await fetch(`${HOSTED_URL}/api/policy?user_id=${user.id}`, {
+      const response = await fetch(`${HOSTED_URL}/api/policy`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'

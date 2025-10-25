@@ -58,6 +58,7 @@
     "dotenv": "^17.2.2",
     "embla-carousel-react": "^8.3.0",
     "express": "^5.1.0",
+    "express-fileupload": "^1.5.1",
     "framer-motion": "^12.23.12",
     "fuse.js": "^7.1.0",
     "html2canvas": "^1.4.1",
