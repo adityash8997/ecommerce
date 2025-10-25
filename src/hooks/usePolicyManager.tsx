@@ -34,7 +34,6 @@ export function usePolicyManager() {
     if (!user || !accessToken) return;
 
     try {
-      // ✅ Remove user_id query param - backend gets it from token
       const response = await fetch(`${HOSTED_URL}/api/policy`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

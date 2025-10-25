@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   MessageSquare,
@@ -187,53 +187,69 @@ export default function StudyMaterial() {
     }
   ]
 
+  const fetchMaterials = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const params = new URLSearchParams();
+      
+      // Always include type
+      console.log('🔍 activeSection before params:', activeSection);
+      params.append('type', activeSection); // pyqs, notes, ebooks, ppts
+      
+      // Only add other params if they have values
+      if (selectedSubject !== 'all' && selectedSubject) {
+        params.append('subject', selectedSubject);
+      }
+      if (selectedSemester !== 'all' && selectedSemester) {
+        params.append('semester', selectedSemester);
+      }
+      if (selectedYear !== 'all' && selectedYear) {
+        params.append('year', selectedYear);
+      }
+      if (searchQuery && searchQuery.trim()) {
+        params.append('search', searchQuery);
+      }
+
+      const finalUrl = `${HOSTED_URL}/api/study-materials?${params.toString()}`;
+      console.log('🌐 Making request to:', finalUrl);
+      console.log('📦 Query params:', Object.fromEntries(params));
+
+      const response = await fetch(finalUrl, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch materials: ${response.status} - ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Invalid response: Expected JSON, got ${contentType} - ${text.slice(0, 100)}...`);
+      }
+
+      const { data } = await response.json();
+      setMaterials(data || []);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error('Failed to load materials');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery]);
+
   useEffect(() => {
     if (user) {
       fetchMaterials();
     }
-  }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery, user]);
-
-  const fetchMaterials = async () => {
-  setLoading(true);
-  setError('');
-
-  try {
-    const params = new URLSearchParams({
-      type: activeSection, // pyqs, notes, ebooks, ppts
-      subject: selectedSubject !== 'all' ? selectedSubject : '',
-      semester: selectedSemester !== 'all' ? selectedSemester : '',
-      year: selectedYear !== 'all' ? selectedYear : '',
-      search: searchQuery
-    });
-
-    const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch materials: ${response.status} - ${errorText}`);
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      throw new Error(`Invalid response: Expected JSON, got ${contentType} - ${text.slice(0, 100)}...`);
-    }
-
-    const { data } = await response.json();
-    setMaterials(data || []);
-  } catch (err: any) {
-    setError(err.message);
-    toast.error('Failed to load materials');
-  } finally {
-    setLoading(false);
-  }
-};
+  }, [user, fetchMaterials]);
   
   const availableSubjects =
     selectedSemester === "all"
@@ -291,10 +307,10 @@ const handleView = async (id: number) => {
 };
 
 const handleDownload = async (material: StudyMaterialItem) => {
-  console.log('⬇️ handleDownload called with material:', material);
+  console.log('⬇️ handleDownload called with material:', JSON.stringify(material, null, 2));
   try {
     if (!material || !material.pdf_url) {
-      console.error('❌ No valid material or pdf_url:', material);
+      console.error('❌ No valid material or pdf_url:', JSON.stringify(material, null, 2));
       toast.error("No file available to download");
       return;
     }
