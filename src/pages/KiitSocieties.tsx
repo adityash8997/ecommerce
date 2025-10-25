@@ -28,6 +28,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import moment from "moment";
 
+
 const KiitSocieties = () => {
   const navigate = useNavigate();
   const [societyEvents, setSocietyEvents] = useState<Record<string, any>>({});
@@ -678,27 +679,49 @@ const KiitSocieties = () => {
 
   // Fetch events for all societies
   // Fetch events for all societies
+  const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
   useEffect(() => {
-    const fetchSocietyEvents = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/society-events");
-        const eventsBySociety = await res.json();
-        setSocietyEvents(eventsBySociety);
-        console.log("Events by society:", eventsBySociety);
-        console.log(
-          "Society names in array:",
-          kiitSocieties.map((s) => s.name)
-        );
-      } catch (error) {
-        console.error("Error fetching events:", error);
-        toast.error("Failed to load events");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchSocietyEvents = async () => {
+    try {
+      const res = await fetch(`${HOSTED_URL}/api/events`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    fetchSocietyEvents();
-  }, []);
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("Please login to view events");
+          return;
+        }
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const eventsBySociety = await res.json();
+      
+      // ✅ Transform the events array into an object grouped by society name
+      const groupedEvents = (eventsBySociety.events || []).reduce((acc: Record<string, any[]>, event: any) => {
+        const societyKey = event.society_name.toLowerCase().trim();
+        if (!acc[societyKey]) {
+          acc[societyKey] = [];
+        }
+        acc[societyKey].push(event);
+        return acc;
+      }, {});
+      
+      setSocietyEvents(groupedEvents);
+      console.log("Events by society:", groupedEvents);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      toast.error("Failed to load events");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchSocietyEvents();
+}, []);
 
   const handleServiceClick = (route: string) => {
     if (route) {
