@@ -25,13 +25,30 @@ const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
 export function useSecureLostAndFound() {
   const [items, setItems] = useState<LostAndFoundItem[]>([]);
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const { loading, error, executeQuery, clearError } = useSecureDatabase();
 
   // ✅ Fetch active items from backend
   const fetchItems = async () => {
     const result = await executeQuery(async () => {
-      const response = await fetch('/api/lostfound');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add token only if user is logged in (GET is public, but include token for future features)
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      
+      const response = await fetch(`${HOSTED_URL}/api/lostfound/items`, {
+        credentials: 'include',
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       return data.items as LostAndFoundItem[];
     }, { 
@@ -46,19 +63,28 @@ export function useSecureLostAndFound() {
 
   // ✅ Add a new item (requires user)
   const addItem = async (itemData: Omit<LostAndFoundItem, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'status'>) => {
-    if (!user) {
+    if (!user || !accessToken) {
       throw new Error('Authentication required to add items');
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch(`${HOSTED_URL}/api/lostfound`, {
+      const response = await fetch(`${HOSTED_URL}/api/lostfound/items`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           user_id: user.id,
           ...itemData
         })
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       return data.item as LostAndFoundItem;
     });
@@ -72,19 +98,28 @@ export function useSecureLostAndFound() {
 
   // ✅ Update an item
   const updateItem = async (id: string, updates: Partial<LostAndFoundItem>) => {
-    if (!user) {
+    if (!user || !accessToken) {
       throw new Error('Authentication required to update items');
     }
 
     const result = await executeQuery(async () => {
-      const response = await fetch(`${HOSTED_URL}/api/lostfound/${id}`, {
+      const response = await fetch(`${HOSTED_URL}/api/lostfound/items/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           user_id: user.id,
           ...updates
         })
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       return data.item as LostAndFoundItem;
     });

@@ -75,7 +75,7 @@ export const ApplicationSubmissionForm: React.FC<ApplicationSubmissionFormProps>
     formData.append('lostItemId', lostItemId);
     // You can add more fields if needed
 
-    const response = await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/upload-lost-found-image`, {
+    const response = await fetch(`${import.meta.env.VITE_HOSTED_URL}/api/upload-lost-found-image`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -108,9 +108,10 @@ export const ApplicationSubmissionForm: React.FC<ApplicationSubmissionFormProps>
       const photoUrl = await uploadImage(selectedImage);
 
       // Submit application to backend
-      const response = await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/submit-lost-item-application`, {
+      const response = await fetch(`${import.meta.env.VITE_HOSTED_URL}/api/lostfound/submit-lost-item-application`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           lostItemId,
           lostItemTitle,

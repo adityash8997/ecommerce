@@ -234,7 +234,15 @@ export default function Auth() {
         throw new Error(data.error || 'Sign in failed');
       }
 
-      localStorage.setItem('access_token', data.session.access_token);
+      // ✅ Set the session in Supabase client (not just localStorage)
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
+      });
+
+      if (sessionError) {
+        throw sessionError;
+      }
 
       toast.success('Successfully signed in!');
       navigate('/');

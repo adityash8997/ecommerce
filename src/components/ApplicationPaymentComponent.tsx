@@ -92,11 +92,12 @@ const ApplicationPaymentComponent: React.FC<ApplicationPaymentComponentProps> = 
 
     try {
       console.log('🔵 Creating payment order...');
-      console.log('API URL:', import.meta.env.VITE_LOST_FOUND_API_URL);
+      console.log('API URL:', import.meta.env.VITE_HOSTED_URL);
       
-      const orderRes = await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/create-application-unlock-order`, {
+      const orderRes = await fetch(`${import.meta.env.VITE_HOSTED_URL}/api/lostfound/create-application-unlock-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           amount: 500, // ₹5 in paise
           applicationId,
@@ -129,9 +130,10 @@ const ApplicationPaymentComponent: React.FC<ApplicationPaymentComponentProps> = 
         handler: async (response: any) => {
           console.log('✅ Payment completed:', response.razorpay_payment_id);
           try {
-            const verifyRes = await fetch(`${import.meta.env.VITE_LOST_FOUND_API_URL}/verify-application-unlock-payment`, {
+            const verifyRes = await fetch(`${import.meta.env.VITE_HOSTED_URL}/api/lostfound/verify-application-unlock-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
