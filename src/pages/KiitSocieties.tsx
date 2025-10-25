@@ -685,16 +685,12 @@ const KiitSocieties = () => {
     try {
       const res = await fetch(`${HOSTED_URL}/api/events`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          
           'Content-Type': 'application/json'
         }
       });
 
       if (!res.ok) {
-        if (res.status === 401) {
-          toast.error("Please login to view events");
-          return;
-        }
         throw new Error(`HTTP error! status: ${res.status}`);
       }
 
