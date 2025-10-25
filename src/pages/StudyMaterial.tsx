@@ -40,7 +40,7 @@ interface StudyMaterialItem {
   views: number;
   uploadedBy: string;
   uploadDate?: string;
-  downloadUrl: string;
+  pdf_url: string;
 }
 
 export default function StudyMaterial() {
@@ -206,7 +206,13 @@ export default function StudyMaterial() {
         search: searchQuery
       });
 
-      const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`);
+      const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -220,6 +226,7 @@ export default function StudyMaterial() {
       }
 
       const { data } = await response.json();
+      console.log('Received materials:', data);
       setMaterials(data || []);
     } catch (err: any) {
       setError(err.message);
@@ -236,6 +243,13 @@ export default function StudyMaterial() {
 
   // Filter function for study materials
   const filterMaterials = (materials: StudyMaterialItem[]) => {
+    console.log('Filter conditions:', {
+      searchQuery,
+      selectedSubject,
+      selectedSemester,
+      selectedYear
+    });
+
     return materials.filter(item => {
       const matchesSearch = searchQuery === "" ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -245,57 +259,140 @@ export default function StudyMaterial() {
       const matchesSemester = selectedSemester === "all" || item.semester === selectedSemester;
       const matchesYear = selectedYear === "all" || (item.year && item.year === selectedYear);
 
+      console.log('Item filtering result:', {
+        item,
+        matchesSearch,
+        matchesSubject,
+        matchesSemester,
+        matchesYear
+      });
+
       return matchesSearch && matchesSubject && matchesSemester && matchesYear;
     });
   };
 
-  // Update handleDownload function signature and logic
-const handleDownload = async (material: StudyMaterialItem) => {
+// ✅ Enhanced handleView with better logging and feedback
+const handleView = async (id: number) => {
+  console.log('🔍 handleView called with ID:', id);
+  
   try {
-    const table =
-      activeSection === "notes"
-        ? "notes"
-        : activeSection === "pyqs"
-        ? "pyqs"
-        : activeSection === "ebooks"
-        ? "ebooks"
-        : "ppts";
-
+    // Find the selected material
+    const material = materials.find((m) => m.id === id);
+    
     if (!material) {
+      console.error('❌ Material not found with ID:', id);
       toast.error("Material not found");
       return;
     }
 
-    // Force file download
-    if (material.downloadUrl) {
-      const response = await fetch(material.downloadUrl);
+    console.log('✅ Material found:', material);
+
+    // Update local state instantly (optimistic update)
+    setMaterials((prev) =>
+      prev.map((m) =>
+        m.id === id ? { ...m, views: (m.views || 0) + 1 } : m
+      )
+    );
+
+    // Open file in new tab if available
+    if (material.pdf_url) {
+      console.log('🚀 Opening file in new tab:', material.pdf_url);
+      
+      const newWindow = window.open(material.pdf_url, "_blank", "noopener,noreferrer");
+      
+      if (newWindow) {
+        toast.success(`Opening ${material.title}...`);
+      } else {
+        toast.error("Please allow pop-ups to preview files");
+      }
+    } else {
+      console.error('❌ No download URL available for material:', material);
+      toast.error("No file available to view");
+    }
+  } catch (error) {
+    console.error("❌ Error in handleView:", error);
+    toast.error("Failed to open file");
+  }
+};
+
+// ✅ Enhanced handleDownload with better error handling
+const handleDownload = async (material: StudyMaterialItem) => {
+  console.log('⬇️ handleDownload called with material:', material);
+
+  try {
+    if (!material) {
+      console.error('❌ No material provided to download');
+      toast.error("Material not found");
+      return;
+    }
+
+    if (!material.pdf_url) {
+      console.error('❌ No download URL available for material:', material);
+      toast.error("No file available to download");
+      return;
+    }
+
+    console.log('🚀 Starting download from:', material.pdf_url);
+    
+    const loadingToast = toast.loading(`Downloading ${material.title}...`);
+
+    try {
+      const response = await fetch(material.pdf_url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`, // Include if required
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to fetch file`);
+      }
+
       const blob = await response.blob();
+      console.log('✅ File fetched, blob size:', blob.size);
+      
       const fileURL = window.URL.createObjectURL(blob);
+      const fileName = material.title?.includes(".")
+        ? material.title
+        : `${material.title || "file"}.${material.pdf_url
+            .split(".")
+            .pop()
+            ?.split("?")[0] || "pdf"}`;
+
+      console.log('📁 Downloading as:', fileName);
 
       const link = document.createElement("a");
       link.href = fileURL;
-      const fileName =
-        material.title?.includes(".")
-          ? material.title
-          : `${material.title || "file"}.${material.downloadUrl
-              .split(".")
-              .pop()
-              ?.split("?")[0]}`;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      // Cleanup memory
       window.URL.revokeObjectURL(fileURL);
-    } else {
-      toast.error("No file available to download");
+
+      toast.dismiss(loadingToast);
+      toast.success(`Downloaded ${material.title}`);
+      console.log('✅ Download completed successfully');
+    } catch (fetchError: any) {
+      toast.dismiss(loadingToast);
+      console.error('❌ Fetch/Download error:', fetchError);
+      toast.error(`Download failed: ${fetchError.message}`);
     }
-  } catch (error) {
-    console.error("Error downloading file:", error);
+  } catch (error: any) {
+    console.error("❌ Error in handleDownload:", error);
     toast.error("Failed to download file");
   }
 };
+
+// ✅ Add debugging on material load
+useEffect(() => {
+  if (materials.length > 0) {
+    console.log('📊 Materials loaded:', {
+      count: materials.length,
+      firstMaterial: materials[0],
+      allColumns: Object.keys(materials[0])
+    });
+  }
+}, [materials]);
 
 
   if (authLoading) {
@@ -323,42 +420,6 @@ const handleDownload = async (material: StudyMaterialItem) => {
     );
   }
 
-  const handleView = async (id: number) => {
-  try {
-    const table =
-      activeSection === "notes"
-        ? "notes"
-        : activeSection === "pyqs"
-        ? "pyqs"
-        : activeSection === "ebooks"
-        ? "ebooks"
-        : "ppts";
-
-    // Find the selected material
-    const material = materials.find((m) => m.id === id);
-    if (!material) {
-      toast.error("Material not found");
-      return;
-    }
-
-    // Update local state instantly
-    setMaterials((prev) =>
-      prev.map((m) =>
-        m.id === id ? { ...m, views: m.views + 1 } : m
-      )
-    );
-
-    // Open file in new tab if available
-    if (material.downloadUrl) {
-      window.open(material.downloadUrl, "_blank", "noopener,noreferrer");
-    } else {
-      toast.error("No file available to view");
-    }
-  } catch (error) {
-    console.error("Error updating view count:", error);
-    toast.error("Failed to open file");
-  }
-};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -461,7 +522,7 @@ const handleDownload = async (material: StudyMaterialItem) => {
               </div>
             ) : (
               <div className="glass-card rounded-2xl overflow-hidden border border-border/50 shadow-xl">
-                <DataTable
+                                <DataTable
                   materials={filterMaterials(materials)}
                   onViewPDF={handleView}
                   loading={loading}
