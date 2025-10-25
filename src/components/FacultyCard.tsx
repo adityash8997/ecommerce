@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +22,13 @@ export const FacultyCard = ({ faculty, isExpanded, onToggle }: FacultyCardProps)
   const { isAdmin, uploading, getPhotoUrl, uploadPhoto } = useFacultyPhotos();
 
   // Load photo on mount
-  useState(() => {
-    const url = getPhotoUrl(faculty.id);
-    setPhotoUrl(url);
-  });
+  useEffect(() => {
+    const loadPhoto = async () => {
+      const url = await getPhotoUrl(faculty.id);
+      setPhotoUrl(url);
+    };
+    loadPhoto();
+  }, [faculty.id, getPhotoUrl]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
