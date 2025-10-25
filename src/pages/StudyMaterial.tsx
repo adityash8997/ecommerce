@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { semesters, years, semesterSubjects } from "@/data/studyMaterials";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {supabase} from "@/integrations/supabase/client"
+import { useAuth } from "@/hooks/useAuth"
 
 const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 // Types
@@ -55,7 +55,7 @@ export default function StudyMaterial() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [user, setUser] = useState<any>(null);
+  const { user, loading: authLoading } = useAuth();
 
   //playlist from youtube 
   const playlistYoutube = [
@@ -187,22 +187,11 @@ export default function StudyMaterial() {
     }
   ]
 
-  // Get current user session
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setError("Please login to access study materials");
-      }
-    };
-    getUser();
-  }, []);
-
-  useEffect(() => {
-    fetchMaterials();
-  }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery]);
+    if (user) {
+      fetchMaterials();
+    }
+  }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery, user]);
 
   const fetchMaterials = async () => {
     setLoading(true);
@@ -309,7 +298,21 @@ const handleDownload = async (material: StudyMaterialItem) => {
 };
 
 
-  if (!user && !loading) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-kiit-primary/20 rounded-full"></div>
+            <div className="w-16 h-16 border-4 border-kiit-primary border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          </div>
+          <p className="mt-4 text-muted-foreground animate-pulse">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

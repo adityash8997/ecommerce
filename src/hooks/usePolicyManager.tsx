@@ -12,7 +12,7 @@ interface PolicyAcceptance {
   const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
 export function usePolicyManager() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [policyData, setPolicyData] = useState<PolicyAcceptance | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
@@ -30,10 +30,15 @@ export function usePolicyManager() {
   }, [user]);
 
   const loadPolicyAcceptance = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     try {
-      const response = await fetch(`${HOSTED_URL}/api/policy?user_id=${user.id}`);
+      const response = await fetch(`${HOSTED_URL}/api/policy?user_id=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const result = await response.json();
 
       if (response.ok && result.policyData) {
@@ -56,19 +61,24 @@ export function usePolicyManager() {
   };
 
   const acceptPrivacyPolicy = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     try {
       const response = await fetch(`${HOSTED_URL}/api/policy/privacy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
-          user_id: user.id,
           privacy_policy_version: CURRENT_PRIVACY_VERSION,
         })
       });
 
-      if (!response.ok) throw new Error('Policy update failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Policy update failed');
+      }
 
       setPolicyData(prev => ({
         ...prev,
@@ -86,19 +96,24 @@ export function usePolicyManager() {
   };
 
   const acceptTermsAndConditions = async () => {
-    if (!user) return false;
+    if (!user || !accessToken) return false;
 
     try {
       const response = await fetch(`${HOSTED_URL}/api/policy/terms`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
-          user_id: user.id,
           terms_conditions_version: CURRENT_TERMS_VERSION,
         })
       });
 
-      if (!response.ok) throw new Error('Terms update failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Terms update failed');
+      }
 
       setPolicyData(prev => ({
         ...prev,
