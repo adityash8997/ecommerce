@@ -169,7 +169,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        console.log('DataTable: Download clicked', material);
+                        console.log('DataTable: Download clicked', JSON.stringify(material, null, 2));
                         if (onDownload) {
                           onDownload(material);
                         } else if (material.pdf_url) {

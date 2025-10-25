@@ -6,6 +6,7 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import fileUpload from 'express-fileupload';
 
 import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
@@ -15,6 +16,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(fileUpload());
 
 const allowedOrigins = [  
   "http://localhost:8080",
@@ -1180,6 +1182,18 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
       foundDate,
     } = req.body;
 
+    console.log('Application submission data:', {
+      applicantUserId,
+      lostItemId,
+      applicantName,
+      applicantEmail,
+      applicantPhone,
+      foundPhotoUrl: foundPhotoUrl ? 'provided' : 'missing',
+      foundDescription: foundDescription ? 'provided' : 'missing',
+      foundLocation,
+      foundDate
+    });
+
     if (!lostItemId || !lostItemOwnerEmail || !applicantName || !applicantEmail || !applicantPhone || !foundPhotoUrl || !foundDescription || !foundLocation || !foundDate) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -1202,15 +1216,27 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
       .single();
 
     if (insertError) {
+      console.error('Database insert error details:', {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint
+      });
+      
       if (insertError.code === '23505' || `${insertError.message}`.includes('unique_application_per_user_per_item')) {
         return res.status(409).json({
           error: 'You have already applied for this lost item.',
           type: 'duplicate',
         });
       }
-      console.error('Database insert error:', insertError);
-      return res.status(500).json({ error: 'Failed to save application' });
+      
+      return res.status(500).json({ 
+        error: 'Failed to save application',
+        details: insertError.message 
+      });
     }
+
+    console.log('Application submitted successfully:', applicationData.id);
 
     return res.json({
       success: true,
@@ -1219,7 +1245,10 @@ app.post('/api/lostfound/submit-lost-item-application', authenticateToken, async
     });
   } catch (error) {
     console.error('Error submitting application:', error);
-    return res.status(500).json({ error: 'Failed to submit application' });
+    return res.status(500).json({ 
+      error: 'Failed to submit application',
+      details: error.message 
+    });
   }
 });
 
@@ -1355,7 +1384,21 @@ app.get('/api/lostfound/items', async (req, res) => {
 
     if (error) throw error;
 
-    return res.json({ items: data || [] });
+    // ✅ Ensure image URLs are properly formatted as public URLs
+    const itemsWithImages = (data || []).map(item => {
+      if (item.image_url && !item.image_url.startsWith('http')) {
+        // If image_url is just a filename, generate the full public URL
+        const { data: urlData } = supabase.storage
+          .from('lost-and-found-images')
+          .getPublicUrl(item.image_url);
+        console.log(`🖼️ Generated public URL for ${item.image_url}: ${urlData.publicUrl}`);
+        return { ...item, image_url: urlData.publicUrl };
+      }
+      return item;
+    });
+
+    console.log(`📦 Returning ${itemsWithImages.length} Lost & Found items`);
+    return res.json({ items: itemsWithImages });
   } catch (err) {
     console.error('Error fetching lost & found items:', err);
     return res.status(500).json({ error: 'Failed to fetch items' });
@@ -1367,6 +1410,13 @@ app.post('/api/lostfound/items', authenticateToken, async (req, res) => {
   try {
     const user_id = req.user_id;
     const { ...itemData } = req.body;
+
+    console.log('📝 Adding new Lost & Found item:', {
+      title: itemData.title,
+      item_type: itemData.item_type,
+      has_image: !!itemData.image_url,
+      user_id
+    });
 
     const newItem = {
       ...itemData,
@@ -1380,12 +1430,16 @@ app.post('/api/lostfound/items', authenticateToken, async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error inserting item:', error);
+      throw error;
+    }
 
+    console.log('✅ Item added successfully:', data.id);
     return res.json({ item: data });
   } catch (err) {
     console.error('Error adding lost & found item:', err);
-    return res.status(500).json({ error: 'Failed to add item' });
+    return res.status(500).json({ error: 'Failed to add item', details: err.message });
   }
 });
 
@@ -1707,10 +1761,19 @@ app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing privacy_policy_version' });
     }
 
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
     const updateData = {
       user_id,
       privacy_policy_accepted: true,
       privacy_policy_version,
+      terms_conditions_accepted: existing?.terms_conditions_accepted || false,
+      terms_conditions_version: existing?.terms_conditions_version || '',
       updated_at: new Date().toISOString(),
     };
 
@@ -1718,12 +1781,18 @@ app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
       .from('policy_acceptances')
       .upsert(updateData, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error details:', error);
+      throw error;
+    }
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Error accepting privacy policy:', err);
-    return res.status(500).json({ error: 'Failed to accept privacy policy' });
+    return res.status(500).json({ 
+      error: 'Failed to accept privacy policy',
+      details: err.message 
+    });
   }
 });
 
@@ -1737,8 +1806,17 @@ app.post('/api/policy/terms', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing terms_conditions_version' });
     }
 
+    // Check if record exists
+    const { data: existing } = await supabase
+      .from('policy_acceptances')
+      .select('*')
+      .eq('user_id', user_id)
+      .single();
+
     const updateData = {
       user_id,
+      privacy_policy_accepted: existing?.privacy_policy_accepted || false,
+      privacy_policy_version: existing?.privacy_policy_version || '',
       terms_conditions_accepted: true,
       terms_conditions_version,
       updated_at: new Date().toISOString(),
@@ -1748,12 +1826,18 @@ app.post('/api/policy/terms', authenticateToken, async (req, res) => {
       .from('policy_acceptances')
       .upsert(updateData, { onConflict: 'user_id' });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error details:', error);
+      throw error;
+    }
 
     return res.json({ success: true });
   } catch (err) {
     console.error('Error accepting terms:', err);
-    return res.status(500).json({ error: 'Failed to accept terms' });
+    return res.status(500).json({ 
+      error: 'Failed to accept terms',
+      details: err.message 
+    });
   }
 });
 
@@ -1811,87 +1895,145 @@ app.get('/api/semester-combos', async (req, res) => {
 
 // Get study materials
 app.get("/api/study-materials", async (req, res) => {
+  const { type, subject, semester, year, search } = req.query;
+  
   try {
-    const { type, subject, semester, year, search } = req.query;
+    console.log('📚 Study materials request received:', {
+      type,
+      subject,
+      semester,
+      year,
+      search,
+      fullQuery: req.query
+    });
 
     // Validate type parameter
     const validTypes = ['pyqs', 'notes', 'ebooks', 'ppts'];
     if (!type || !validTypes.includes(type)) {
+      console.error('❌ Invalid type parameter:', type);
       return res.status(400).json({ error: "Invalid or missing type parameter" });
     }
 
     // Select table based on type
     const tableName = type; // Maps directly to table names: pyqs, notes, ebooks, ppts
-    console.log(`Fetching materials from table: ${tableName}`);
+    console.log(`✅ Fetching materials from table: ${tableName}`);
 
     let query = supabase
       .from(tableName)
-      .select('id, title, subject, semester, branch, year, uploaded_by, views, pdf_url, storage_path, created_at')
-      .eq('status', 'approved') // Assuming tables have a status column
+      .select('*') // Select all columns to avoid missing column errors
       .order('created_at', { ascending: false });
 
-    // Apply filters
+    // Apply filters only if the columns exist
     if (subject) query = query.eq('subject', subject);
     if (semester) query = query.eq('semester', semester);
     if (year) query = query.eq('year', year);
     if (search) query = query.ilike('title', `%${search}%`);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      console.error(`❌ Supabase query error:`, error);
+      throw error;
+    }
 
-    // Generate signed URLs for pdf_url (stored as storage_path in the bucket)
-    const materialsWithSignedUrls = await Promise.all(
-      data.map(async (material) => {
-        // Find the file path from any possible column
-        const filePath = material.storage_path || material.pdf_url || material.downloadUrl || material.url || null;
+    console.log(`📊 Found ${data?.length || 0} materials in ${tableName} table`);
+
+    // If no data, return empty array
+    if (!data || data.length === 0) {
+      console.log(`📭 No materials found, returning empty array`);
+      return res.json({ data: [] });
+    }
+
+    // Generate PUBLIC URLs for pdf_url (stored as storage_path in the bucket)
+    const materialsWithPublicUrls = data.map((material) => {
+      // Find the file path from any possible column
+      const filePath = material.storage_path || material.pdf_url || material.downloadUrl || material.url || null;
+      
+      if (!filePath) {
+        console.error(`❌ No file path found for material ID ${material.id}:`, {
+          id: material.id,
+          title: material.title,
+          storage_path: material.storage_path,
+          pdf_url: material.pdf_url
+        });
+        return { ...material, pdf_url: null };
+      }
+
+      try {
+        // Check if it's already a full URL
+        if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+          console.log(`✅ Material ${material.id} already has a full URL:`, filePath);
+          return { ...material, pdf_url: filePath };
+        }
+
+        // Remove leading slashes if any for storage path
+        const storagePath = filePath.replace(/^\/+/, '');
         
-        if (!filePath) {
-          console.error(`No file path found for material ID ${material.id}:`, material);
+        console.log(`🔗 Generating PUBLIC URL for material ${material.id}:`, {
+          title: material.title,
+          originalPath: filePath,
+          finalStoragePath: storagePath,
+          materialType: type
+        });
+
+        // Generate PUBLIC URL from storage path
+        const { data: publicUrlData } = supabase.storage
+          .from('study-materials')
+          .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+          console.error(`❌ Error creating public URL for ${storagePath}`);
           return { ...material, pdf_url: null };
         }
 
-        try {
-          // Use the storage_path directly without modifying it
-          const storagePath = filePath.replace(/^\/+/, ''); // just remove leading slashes if any
-          
-          console.log(`Generating signed URL for material ${material.id}:`, {
-            originalPath: filePath,
-            finalStoragePath: storagePath,
-            materialType: type
-          });
+        console.log(`✅ Successfully generated public URL for material ${material.id}:`, publicUrlData.publicUrl);
+        return { ...material, pdf_url: publicUrlData.publicUrl };
+      } catch (error) {
+        console.error(`❌ Error processing material ${material.id}:`, error);
+        return { ...material, pdf_url: null };
+      }
+    });
 
-          console.log(`Attempting to create signed URL for storage path: ${storagePath}`);
-          
-          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-            .from('study-materials')
-            .createSignedUrl(storagePath, 3000); // 50-minute expiry
+    const materialsWithValidUrls = materialsWithPublicUrls.filter(m => m.pdf_url !== null);
+    console.log(`📤 Returning ${materialsWithValidUrls.length}/${materialsWithPublicUrls.length} materials with valid URLs`);
 
-          if (signedUrlError) {
-            console.error(`Error creating signed URL for ${storagePath}:`, signedUrlError);
-            return { ...material, pdf_url: null };
-          }
-
-          console.log('Generated URL Details:', {
-            materialId: material.id,
-            title: material.title,
-            originalPath: filePath,
-            storagePath: storagePath,
-            signedUrl: signedUrlData.signedUrl,
-            expiresIn: '50 minutes'
-          });
-          
-          return { ...material, pdf_url: signedUrlData.signedUrl };
-        } catch (error) {
-          console.error(`Error processing material ${material.id}:`, error);
-          return { ...material, pdf_url: null };
-        }
-      })
-    );
-
-    res.json({ data: materialsWithSignedUrls });
+    res.json({ data: materialsWithPublicUrls });
   } catch (error) {
-    console.error(`Error fetching ${type} materials:`, error);
-    res.status(500).json({ error: `Failed to fetch ${type} materials` });
+    console.error(`❌ Error fetching study materials (type: ${type}):`, error);
+    res.status(500).json({ error: `Failed to fetch study materials`, details: error.message });
+  }
+});
+
+// Debug endpoint to test table access
+app.get("/api/study-materials/debug/:type", async (req, res) => {
+  try {
+    const { type } = req.params;
+    console.log(`🔍 Debug: Testing access to ${type} table`);
+    
+    const { data, error, count } = await supabase
+      .from(type)
+      .select('*', { count: 'exact' })
+      .limit(5);
+    
+    if (error) {
+      console.error(`❌ Debug error:`, error);
+      return res.json({ 
+        success: false, 
+        table: type,
+        error: error.message,
+        details: error 
+      });
+    }
+    
+    console.log(`✅ Debug: Found ${count} total rows, returning first 5`);
+    res.json({ 
+      success: true, 
+      table: type,
+      totalCount: count,
+      sampleData: data,
+      columns: data.length > 0 ? Object.keys(data[0]) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

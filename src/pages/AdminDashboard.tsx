@@ -37,6 +37,8 @@ import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { AdminStudyMaterialRequests } from '@/components/AdminStudyMaterialRequests';
 
+const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
+
 interface LostFoundRequest {
   id: string;
   title: string;
@@ -145,7 +147,7 @@ export default function AdminDashboard() {
   fetchData();
   
   // Set up SSE connection for real-time notifications
-  const eventSource = new EventSource('/api/admin/realtime-notifications');
+  const eventSource = new EventSource(`${HOSTED_URL}/api/admin/realtime-notifications`);
   
   eventSource.onopen = () => {
     console.log('✅ Admin real-time connection opened');
@@ -222,7 +224,7 @@ export default function AdminDashboard() {
 // Replace fetchData function
 const fetchData = async () => {
   try {
-    const response = await fetch('/api/admin/dashboard-data');
+    const response = await fetch(`${HOSTED_URL}/api/admin/dashboard-data`);
     
     if (!response.ok) {
       throw new Error('Failed to fetch admin data');
@@ -246,7 +248,7 @@ const fetchData = async () => {
 // Replace handleApprove function
 const handleApprove = async (item: any, type: 'lost-found' | 'event') => {
   try {
-    const response = await fetch('/api/admin/approve-item', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/approve-item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -270,7 +272,7 @@ const handleApprove = async (item: any, type: 'lost-found' | 'event') => {
 // Replace handleResaleApprove function
 const handleResaleApprove = async (listing: any) => {
   try {
-    const response = await fetch('/api/admin/approve-resale', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/approve-resale`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -298,7 +300,7 @@ const handleResaleReject = async () => {
   }
 
   try {
-    const response = await fetch('/api/admin/reject-resale', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/reject-resale`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -333,7 +335,7 @@ const handleReject = async () => {
   }
 
   try {
-    const response = await fetch('/api/admin/reject-item', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/reject-item`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -427,7 +429,7 @@ const handleReject = async () => {
 // Replace handleContactStatusUpdate function
 const handleContactStatusUpdate = async (contactId: string, newStatus: 'new' | 'read' | 'resolved') => {
   try {
-    const response = await fetch('/api/admin/update-contact-status', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/update-contact-status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contactId, status: newStatus })
@@ -446,7 +448,7 @@ const handleContactStatusUpdate = async (contactId: string, newStatus: 'new' | '
 // Replace handleFeedbackResolve function
 const handleFeedbackResolve = async (feedbackId: string, resolved: boolean) => {
   try {
-    const response = await fetch('/api/admin/resolve-feedback', {
+    const response = await fetch(`${HOSTED_URL}/api/admin/resolve-feedback`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ feedbackId, resolved })

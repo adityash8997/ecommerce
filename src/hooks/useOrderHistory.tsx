@@ -3,7 +3,7 @@ import { useAuth } from './useAuth';
 import { toast } from './use-toast';
 
 export function useOrderHistory() {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +11,7 @@ export function useOrderHistory() {
   const HOSTED_URL = import.meta.env.VITE_HOSTED_URL;
 
   const fetchOrders = async () => {
-    if (!user) {
+    if (!user || !accessToken) {
       setOrders([]);
       return;
     }
@@ -20,7 +20,12 @@ export function useOrderHistory() {
     setError(null);
 
     try {
-      const response = await fetch(`${HOSTED_URL}/api/orders?user_id=${user.id}`);
+      const response = await fetch(`${HOSTED_URL}/api/orders?user_id=${user.id}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        credentials: 'include'
+      });
       const result = await response.json();
 
       if (!response.ok || result.error) {
@@ -41,15 +46,19 @@ export function useOrderHistory() {
   };
 
   const createOrder = async (orderData) => {
-    if (!user) {
+    if (!user || !accessToken) {
       throw new Error('User must be authenticated to create orders');
     }
 
     try {
       const response = await fetch(`${HOSTED_URL}/api/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, ...orderData }) // TEMP
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: user.id, ...orderData })
       });
 
       const result = await response.json();
@@ -77,11 +86,19 @@ export function useOrderHistory() {
   };
 
   const updateOrderStatus = async (orderId, status) => {
+    if (!accessToken) {
+      throw new Error('Authentication required');
+    }
+
     try {
       const response = await fetch(`${HOSTED_URL}/api/orders/${orderId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, status }) // TEMP
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: user.id, status })
       });
 
       const result = await response.json();
