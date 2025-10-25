@@ -194,47 +194,46 @@ export default function StudyMaterial() {
   }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery, user]);
 
   const fetchMaterials = async () => {
-    setLoading(true);
-    setError('');
+  setLoading(true);
+  setError('');
 
-    try {
-      const params = new URLSearchParams({
-        type: activeSection,
-        subject: selectedSubject !== 'all' ? selectedSubject : '',
-        semester: selectedSemester !== 'all' ? selectedSemester : '',
-        year: selectedYear !== 'all' ? selectedYear : '',
-        search: searchQuery
-      });
+  try {
+    const params = new URLSearchParams({
+      type: activeSection, // pyqs, notes, ebooks, ppts
+      subject: selectedSubject !== 'all' ? selectedSubject : '',
+      semester: selectedSemester !== 'all' ? selectedSemester : '',
+      year: selectedYear !== 'all' ? selectedYear : '',
+      search: searchQuery
+    });
 
-      const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+    const response = await fetch(`${HOSTED_URL}/api/study-materials?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch materials: ${response.status} - ${errorText}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        throw new Error(`Invalid response: Expected JSON, got ${contentType} - ${text.slice(0, 100)}...`);
-      }
-
-      const { data } = await response.json();
-      console.log('Received materials:', data);
-      setMaterials(data || []);
-    } catch (err: any) {
-      setError(err.message);
-      toast.error('Failed to load materials');
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch materials: ${response.status} - ${errorText}`);
     }
-  };
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      throw new Error(`Invalid response: Expected JSON, got ${contentType} - ${text.slice(0, 100)}...`);
+    }
+
+    const { data } = await response.json();
+    setMaterials(data || []);
+  } catch (err: any) {
+    setError(err.message);
+    toast.error('Failed to load materials');
+  } finally {
+    setLoading(false);
+  }
+};
   
   const availableSubjects =
     selectedSemester === "all"
@@ -259,14 +258,6 @@ export default function StudyMaterial() {
       const matchesSemester = selectedSemester === "all" || item.semester === selectedSemester;
       const matchesYear = selectedYear === "all" || (item.year && item.year === selectedYear);
 
-      console.log('Item filtering result:', {
-        item,
-        matchesSearch,
-        matchesSubject,
-        matchesSemester,
-        matchesYear
-      });
-
       return matchesSearch && matchesSubject && matchesSemester && matchesYear;
     });
   };
@@ -274,40 +265,24 @@ export default function StudyMaterial() {
 // ✅ Enhanced handleView with better logging and feedback
 const handleView = async (id: number) => {
   console.log('🔍 handleView called with ID:', id);
-  
   try {
-    // Find the selected material
     const material = materials.find((m) => m.id === id);
     
-    if (!material) {
-      console.error('❌ Material not found with ID:', id);
-      toast.error("Material not found");
+    if (!material || !material.pdf_url) {
+      console.error('❌ Material or pdf_url not found:', { id, material });
+      toast.error("No file available to view");
       return;
     }
-
-    console.log('✅ Material found:', material);
-
-    // Update local state instantly (optimistic update)
     setMaterials((prev) =>
       prev.map((m) =>
         m.id === id ? { ...m, views: (m.views || 0) + 1 } : m
       )
     );
-
-    // Open file in new tab if available
-    if (material.pdf_url) {
-      console.log('🚀 Opening file in new tab:', material.pdf_url);
-      
-      const newWindow = window.open(material.pdf_url, "_blank", "noopener,noreferrer");
-      
-      if (newWindow) {
-        toast.success(`Opening ${material.title}...`);
-      } else {
-        toast.error("Please allow pop-ups to preview files");
-      }
+    const newWindow = window.open(material.pdf_url, "_blank", "noopener,noreferrer");
+    if (newWindow) {
+      toast.success(`Opening ${material.title}...`);
     } else {
-      console.error('❌ No download URL available for material:', material);
-      toast.error("No file available to view");
+      toast.error("Please allow pop-ups to preview files");
     }
   } catch (error) {
     console.error("❌ Error in handleView:", error);
@@ -315,70 +290,44 @@ const handleView = async (id: number) => {
   }
 };
 
-// ✅ Enhanced handleDownload with better error handling
 const handleDownload = async (material: StudyMaterialItem) => {
   console.log('⬇️ handleDownload called with material:', material);
-
   try {
-    if (!material) {
-      console.error('❌ No material provided to download');
-      toast.error("Material not found");
-      return;
-    }
-
-    if (!material.pdf_url) {
-      console.error('❌ No download URL available for material:', material);
+    if (!material || !material.pdf_url) {
+      console.error('❌ No valid material or pdf_url:', material);
       toast.error("No file available to download");
       return;
     }
 
-    console.log('🚀 Starting download from:', material.pdf_url);
-    
     const loadingToast = toast.loading(`Downloading ${material.title}...`);
-
-    try {
-      const response = await fetch(material.pdf_url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`, // Include if required
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch file`);
-      }
-
-      const blob = await response.blob();
-      console.log('✅ File fetched, blob size:', blob.size);
-      
-      const fileURL = window.URL.createObjectURL(blob);
-      const fileName = material.title?.includes(".")
-        ? material.title
-        : `${material.title || "file"}.${material.pdf_url
-            .split(".")
-            .pop()
-            ?.split("?")[0] || "pdf"}`;
-
-      console.log('📁 Downloading as:', fileName);
-
-      const link = document.createElement("a");
-      link.href = fileURL;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      window.URL.revokeObjectURL(fileURL);
-
-      toast.dismiss(loadingToast);
-      toast.success(`Downloaded ${material.title}`);
-      console.log('✅ Download completed successfully');
-    } catch (fetchError: any) {
-      toast.dismiss(loadingToast);
-      console.error('❌ Fetch/Download error:', fetchError);
-      toast.error(`Download failed: ${fetchError.message}`);
+    console.log('📥 Attempting to download from URL:', material.pdf_url);
+    
+    const response = await fetch(material.pdf_url, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: Failed to fetch file`);
     }
+    
+    const blob = await response.blob();
+    const fileURL = window.URL.createObjectURL(blob);
+    const fileName = material.title?.includes(".")
+      ? material.title
+      : `${material.title}.pdf`;
+    const link = document.createElement("a");
+    link.href = fileURL;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(fileURL);
+    toast.dismiss(loadingToast);
+    toast.success(`Downloaded ${material.title}`);
   } catch (error: any) {
-    console.error("❌ Error in handleDownload:", error);
+    console.error("❌ Download error:", error);
     toast.error("Failed to download file");
   }
 };
