@@ -2380,6 +2380,9 @@ app.post("/api/interviews/add", async (req, res) => {
       ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
       : [];
 
+
+
+      
     // Get user profile to check admin
     const { data: profile } = await supabase
       .from("profiles")
