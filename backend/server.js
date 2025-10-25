@@ -2176,7 +2176,7 @@ app.get("/api/group/:groupId", async (req, res) => {
  * GET /api/events
  * Returns validated and chronological events
  */
-app.get('/api/events', authenticateToken, async (req, res) => {
+app.get('/api/events',  async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('calendar_events')
@@ -2264,6 +2264,76 @@ app.post('/api/events/add', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+app.post("/api/interviews/add", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+
+    const { formData } = req.body;
+    if (!formData?.interview_name || !formData?.interview_date) {
+      return res.status(400).json({ success: false, message: "Interview name and date are required" });
+    }
+
+    const reqs = formData.requirements
+      ? formData.requirements.split(",").map(r => r.trim()).filter(Boolean)
+      : [];
+
+    // Get user profile to check admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .single();
+
+    if (profile?.is_admin) {
+      const { data, error } = await supabase
+        .from("interview_events")
+        .insert([{ ...formData, requirements: reqs, validation: true }])
+        .select();
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({ success: true, message: "Interview added successfully", data });
+    } else {
+      const { error } = await supabase
+        .from("interview_events")
+        .insert({
+          ...formData,
+          requirements: reqs,
+          
+          
+        });
+
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      return res.json({
+        success: true,
+        message: "Interview submitted for review! You'll be notified once it's approved",
+      });
+    }
+  }  catch (err) {
+    console.error("Interview submit error:", err);
+    res.status(500).json({ success: false, message: "Failed to submit interview" });
+  }
+});
+
+
 
 
 
