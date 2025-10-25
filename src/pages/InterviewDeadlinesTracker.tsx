@@ -312,7 +312,7 @@ const InterviewDeadlinesTracker = () => {
       toast.error(result.message || "Failed to add event");
     }
   } catch (err) {
-    console.error("Unexpected error:", err);
+ 
     toast.error("Failed to submit event");
   } finally {
     setIsSubmitting(false);
@@ -369,7 +369,7 @@ const handleInterviewSubmit = async (e: React.FormEvent) => {
       toast.error(result.message || "Failed to submit interview");
     }
   } catch (err) {
-    console.error("Unexpected error:", err);
+    
     toast.error("Failed to submit interview");
   } finally {
     setIsSubmitting(false);

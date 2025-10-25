@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -94,7 +95,7 @@ const SplitSaathi = () => {
     const uniqueGroups = await res.json();
     setGroups(uniqueGroups);
   } catch (error) {
-    console.error("Error loading groups:", error.message);
+    alert("Error loading groups:");
   } finally {
     setLoadingGroups(false);
   }
