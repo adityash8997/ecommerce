@@ -1754,6 +1754,45 @@ export type Database = {
           },
         ]
       }
+      lost_found_contact_unlocks: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          id: string
+          item_id: string
+          order_id: string
+          payer_user_id: string
+          payment_id: string
+          platform_fee: number
+          poster_reward: number
+          updated_at: string
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string
+          id?: string
+          item_id: string
+          order_id: string
+          payer_user_id: string
+          payment_id: string
+          platform_fee?: number
+          poster_reward?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          item_id?: string
+          order_id?: string
+          payer_user_id?: string
+          payment_id?: string
+          platform_fee?: number
+          poster_reward?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lost_found_requests: {
         Row: {
           category: string
@@ -1913,6 +1952,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json | null
+          order_id: string
+          service_type: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          service_type: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          service_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       policy_acceptances: {
         Row: {
           created_at: string
@@ -1922,6 +2000,7 @@ export type Database = {
           privacy_policy_version: string
           terms_conditions_accepted: boolean
           terms_conditions_version: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -1932,6 +2011,7 @@ export type Database = {
           privacy_policy_version?: string
           terms_conditions_accepted?: boolean
           terms_conditions_version?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -1942,6 +2022,7 @@ export type Database = {
           privacy_policy_version?: string
           terms_conditions_accepted?: boolean
           terms_conditions_version?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
