@@ -50,6 +50,7 @@ app.use(cors({
 
 // ✅ Add request logger
 
+
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.split(' ')[1];
@@ -1322,7 +1323,8 @@ app.post('/api/lostfound/verify-application-unlock-payment', authenticateToken, 
 });
 
 // ✅ GET Lost & Found items (active only) - SECURED
-app.get('/api/lostfound/items', authenticateToken, async (req, res) => {
+// ✅ GET - Fetch all Lost/Found items (PUBLIC - no auth required for browsing)
+app.get('/api/lostfound/items', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('lost_and_found_items')
@@ -1403,7 +1405,7 @@ app.post('/api/payments/create-lost-found-order', async (req, res) => {
   try {
     const { amount, itemId, itemTitle, itemPosterEmail, payerUserId, receipt } = req.body;
 
-    // Validate required fields
+    // Validate required fields 
     if (!amount || !itemId || !itemTitle || !payerUserId) {
       return res.status(400).json({ 
         error: 'Missing required fields', 
@@ -1549,7 +1551,7 @@ app.post('/api/payments/verify-lost-found-payment', async (req, res) => {
     // Send contact details email
     try {
       // This would typically call your email service
-      await fetch(`${process.env.BASE_URL}/api/payments/send-contact-details`, {
+      await fetch(`/api/payments/send-contact-details`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1688,7 +1690,7 @@ app.post('/api/policy/privacy', authenticateToken, async (req, res) => {
       user_id,
       privacy_policy_accepted: true,
       privacy_policy_version,
-      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     const { error } = await supabase
@@ -1718,7 +1720,6 @@ app.post('/api/policy/terms', authenticateToken, async (req, res) => {
       user_id,
       terms_conditions_accepted: true,
       terms_conditions_version,
-      last_updated: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
@@ -2541,5 +2542,5 @@ app.get('/api/service-visibility', async (req, res) => {
   
 
 /* ---------------------- SERVER ---------------------- */
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
