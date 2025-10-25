@@ -13,30 +13,11 @@ export interface FacultyMember {
   school?: string;
 }
 
-
 // Contact Persons (46 total) - Updated with real data
-const contactPersonsData: FacultyMember[] = [
-  // Faculty and Contact Person Data for KIIT CSIT
-// Updated with real data from official Excel files
-
-export interface FacultyMember {
-  id: string;
-  name: string;
-  designation: string;
-  email: string;
-  phone?: string;
-  linkedin: string;
-  category: "contact" | "faculty";
-  department?: string;
-  school?: string;
-}
-
-
-// Contact Persons (46 total) - Updated with real data
-const contactPersonsData: FacultyMember[] = [
+export const contactPersonsData: FacultyMember[] = [
   {
     id: "cp-1",
-    name: "Dr. Biswajit Sahoo(Director General)",
+    name: "Dr. Biswajit Sahoo (Director General)",
     designation: "Director General",
     email: "director.csit@kiit.ac.in",
     phone: "9437229507",
@@ -45,7 +26,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-2",
-    name: "Dr. Hrudaya Kumar Tripathy(Dean, Research)",
+    name: "Dr. Hrudaya Kumar Tripathy (Dean, Research)",
     designation: "Dean, Research",
     email: "dean_research.cse@kiit.ac.in",
     phone: "9437432185",
@@ -54,7 +35,7 @@ const contactPersonsData: FacultyMember[] = [
   },
   {
     id: "cp-3",
-    name: "Dr. Bhabani Sankar Prasad Mishra(Dean, Academics (CS))",
+    name: "Dr. Bhabani Sankar Prasad Mishra (Dean, Academics - CS)",
     designation: "Dean, Academics (CS)",
     email: "dean.cs@kiit.ac.in",
     phone: "9438037401",
