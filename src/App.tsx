@@ -92,7 +92,6 @@ import { AdminGuard } from "@/components/AdminGuard";
 
 import ResumeSaathi from "./pages/ResumeSaathi/ResumeSaathi";
 
-import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 
@@ -243,10 +242,7 @@ const AppRoutes = () => {
 
         <Route path="/resume-saathi" element={<ResumeSaathi />} />
 
-        <Route
-          path="/terms-and-conditions"
-          element={<TermsAndConditionsPage />}
-        />
+        
 
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 

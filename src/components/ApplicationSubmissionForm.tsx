@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { X, ImageIcon, Upload, CheckCircle } from "lucide-react";
 
 interface ApplicationSubmissionFormProps {
@@ -28,6 +29,7 @@ export const ApplicationSubmissionForm: React.FC<ApplicationSubmissionFormProps>
   onSuccess
 }) => {
   const { toast } = useToast();
+  const { accessToken } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -108,9 +110,16 @@ export const ApplicationSubmissionForm: React.FC<ApplicationSubmissionFormProps>
       const photoUrl = await uploadImage(selectedImage);
 
       // Submit application to backend
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_HOSTED_URL}/api/lostfound/submit-lost-item-application`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
         body: JSON.stringify({
           lostItemId,
