@@ -22,6 +22,8 @@ export const Navbar = () => {
   // Check if current user is admin
   const isAdmin = user?.email === 'adityash8997@gmail.com' || user?.email === '24155598@kiit.ac.in';
 
+
+  
   const handleSignOut = async () => {
     try {
       await signOut();
