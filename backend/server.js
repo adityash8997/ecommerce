@@ -1368,7 +1368,21 @@ app.get('/api/lostfound/items', async (req, res) => {
 
     if (error) throw error;
 
-    return res.json({ items: data || [] });
+    // ✅ Ensure image URLs are properly formatted as public URLs
+    const itemsWithImages = (data || []).map(item => {
+      if (item.image_url && !item.image_url.startsWith('http')) {
+        // If image_url is just a filename, generate the full public URL
+        const { data: urlData } = supabase.storage
+          .from('lost-and-found-images')
+          .getPublicUrl(item.image_url);
+        console.log(`🖼️ Generated public URL for ${item.image_url}: ${urlData.publicUrl}`);
+        return { ...item, image_url: urlData.publicUrl };
+      }
+      return item;
+    });
+
+    console.log(`📦 Returning ${itemsWithImages.length} Lost & Found items`);
+    return res.json({ items: itemsWithImages });
   } catch (err) {
     console.error('Error fetching lost & found items:', err);
     return res.status(500).json({ error: 'Failed to fetch items' });
@@ -2240,7 +2254,7 @@ app.get("/api/group/:groupId", async (req, res) => {
  * GET /api/events
  * Returns validated and chronological events
  */
-app.get('/api/events', authenticateToken, async (req, res) => {
+app.get('/api/events',  async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('calendar_events')
