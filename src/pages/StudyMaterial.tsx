@@ -200,56 +200,6 @@ export default function StudyMaterial() {
     getUser();
   }, []);
 
-  // Fetch materials from Supabase
-  // useEffect(() => {
-  //   const fetchMaterials = async () => {
-  //     setLoading(true);
-  //     setError("");
-
-  //     let query;
-  //     if (activeSection === "notes") {
-  //       query = supabase.from("notes").select("*").order("created_at", { ascending: false });
-  //     } else if (activeSection === "pyqs") {
-  //       query = supabase.from("pyqs").select("*").order("created_at", { ascending: false });
-  //     } else if (activeSection === "ppts") {
-  //       query = supabase.from("ppts").select("*").order("created_at", { ascending: false });
-  //     } else if (activeSection === "ebooks") {
-  //       query = supabase.from("ebooks").select("*").order("created_at", { ascending: false });
-  //     }
-
-  //     if (!query) {
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     const { data, error } = await query;
-
-  //     if (error) {
-  //       console.error("Fetch error:", error);
-  //       setError(error.message);
-  //       setLoading(false);
-  //       return;
-  //     }
-
-  //     const mapped = data.map((item: any) => ({
-  //       id: item.id,
-  //       title: item.title,
-  //       subject: item.subject,
-  //       semester: item.semester,
-  //       branch: item.branch || "",
-  //       year: item.year || "",
-  //       views: item.views ?? 0,
-  //       uploadedBy: item.uploaded_by,
-  //       uploadDate: item.upload_date ?? item.created_at,
-  //       downloadUrl: activeSection === "ppts" ? item.ppt_url : item.pdf_url,
-  //     }));
-
-  //     setMaterials(mapped);
-  //     setLoading(false);
-  //   };
-
-  //   fetchMaterials();
-  // }, [activeSection]);
   useEffect(() => {
     fetchMaterials();
   }, [activeSection, selectedSubject, selectedSemester, selectedYear, searchQuery]);
